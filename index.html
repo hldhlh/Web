@@ -7,34 +7,356 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        :root {
+            /* Dracula Palette Variables */
+            --drac-bg: #282a36;           /* Background */
+            --drac-current-line: #44475a; /* Selection/Lines */
+            --drac-foreground: #f8f8f2;   /* Foreground Text */
+            --drac-comment: #6272a4;      /* Comment/Muted */
+            --drac-cyan: #8be9fd;         /* Cyan Accent */
+            --drac-green: #50fa7b;       /* Green Completed */
+            --drac-orange: #ffb86c;      /* Orange */
+            --drac-pink: #ff79c6;        /* Pink Hover/Focus */
+            --drac-purple: #bd93f9;      /* Purple Primary */
+            --drac-red: #ff5555;         /* Red Danger/Alert */
+            --drac-yellow: #f1fa8c;      /* Yellow */
+
+            /* Nord Palette Variables (Commented Out) */
+            /*
+            --nord0: #2E3440; 
+            --nord1: #3B4252; 
+            --nord3: #4C566A; 
+            --nord4: #D8DEE9; 
+            --nord6: #ECEFF4; 
+            --nord8: #88C0D0; 
+            --nord9: #81A1C1; 
+            --nord10: #5E81AC;
+            --nord11: #BF616A;
+            --nord-green: #A3BE8C; 
+            */
+
+            /* Applied Theme Variables (Using Dracula) */
+            --bg-color: var(--drac-bg);
+            --bg-gradient-end: #3a3c50; /* Slightly lighter than drac-bg for gradient */
+            --text-color: var(--drac-foreground);
+            --text-muted-color: var(--drac-comment);
+            --text-completed-color: var(--drac-green);
+
+            --container-bg: rgba(68, 71, 90, 0.75); /* drac-current-line with alpha */
+            --container-border: rgba(98, 114, 164, 0.6); /* drac-comment with alpha */
+            --item-bg: rgba(68, 71, 90, 0.5);
+            --item-bg-hover: rgba(68, 71, 90, 0.8);
+
+            --checkbox-bg: rgba(248, 248, 242, 0.1); /* drac-foreground with alpha */
+            --checkbox-bg-hover: rgba(248, 248, 242, 0.2);
+            --checkbox-border: var(--drac-comment);
+            --checkbox-checked-bg: var(--drac-purple);
+            --checkbox-checked-border: var(--drac-purple);
+            --checkbox-hover-border: var(--drac-pink);
+            --checkbox-checkmark-color: var(--drac-bg);
+
+            --btn-primary-bg: var(--drac-purple);
+            --btn-primary-hover-bg: #d0a7fa; /* Lighter purple */
+            --btn-primary-text: var(--drac-bg);
+
+            --btn-danger-bg: rgba(68, 71, 90, 0.6);
+            --btn-danger-bg-hover: rgba(255, 85, 85, 0.8); /* drac-red with alpha */
+            --btn-danger-text: var(--drac-foreground);
+
+            --input-bg: rgba(68, 71, 90, 0.3);
+            --input-bg-focus: rgba(68, 71, 90, 0.5);
+            --input-border: var(--drac-comment);
+            --input-focus-border: var(--drac-pink);
+            --input-placeholder-color: var(--drac-comment);
+            --input-shadow-focus: rgba(255, 121, 198, 0.25); /* drac-pink with alpha */
+
+            --alert-bg: rgba(255, 85, 85, 0.7); /* drac-red with alpha */
+            --alert-border: rgba(255, 85, 85, 0.8);
+            --alert-text-color: var(--drac-foreground);
+
+            /* Shadow Variables (Reusing from previous) */
+            --shadow-color-light: rgba(0, 0, 0, 0.15);
+            --shadow-color-medium: rgba(0, 0, 0, 0.25);
+            --shadow-color-dark: rgba(0, 0, 0, 0.3);
+        }
+
         body {
-            background-color: #f8f9fa;
+            /* background-color: #3b1e57; */
+            /* background-image: linear-gradient(135deg, #3b1e57 0%, #5a3e76 100%); */
+            /* background-color: #2E3440; */ /* Nord dark blue/gray */
+            /* background-image: linear-gradient(135deg, #2E3440 0%, #3B4252 100%); */ /* Subtle gradient */
+            /* background-color: var(--nord0); */
+            /* background-image: linear-gradient(135deg, var(--nord0) 0%, var(--nord1) 100%); */
+            background-color: var(--bg-color);
+            background-image: linear-gradient(135deg, var(--bg-color) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
             padding-top: 30px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* color: #f0f0f0; */
+            /* color: #ECEFF4; */ /* Nord light text */
+            /* color: var(--nord6); */
+            color: var(--text-color);
         }
         .todo-container {
             max-width: 600px;
             margin: 0 auto;
-            background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            /* background-color: rgba(40, 20, 60, 0.75); */
+            /* background-color: rgba(59, 66, 82, 0.75); */ /* Nord slightly lighter dark, translucent */
+            /* background-color: var(--container-bg); */
+            background-color: var(--container-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 12px;
+            padding: 25px;
+            /* box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); */
+            /* box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25); */
+            /* box-shadow: 0 8px 32px var(--shadow-color-medium); */
+            box-shadow: 0 8px 32px var(--shadow-color-medium);
+            /* border: 1px solid rgba(140, 109, 174, 0.5); */
+            /* border: 1px solid rgba(76, 86, 106, 0.6); */ /* Nord subtle border */
+            /* border: 1px solid var(--container-border); */
+            border: 1px solid var(--container-border);
         }
         .todo-item {
             display: flex;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            /* background-color: rgba(90, 62, 118, 0.5); */
+            /* background-color: rgba(76, 86, 106, 0.5); */ /* Nord gray, translucent */
+            /* background-color: var(--item-bg); */
+            background-color: var(--item-bg);
+            border-radius: 8px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            /* color: #ECEFF4; */ /* Ensure text inside is light */
+            /* color: var(--nord6); */
+            color: var(--text-color);
+        }
+        .todo-item:hover {
+            /* background-color: rgba(90, 62, 118, 0.8); */
+            /* background-color: rgba(76, 86, 106, 0.8); */
+            /* background-color: var(--item-bg-hover); */
+            background-color: var(--item-bg-hover);
+            transform: translateY(-1px);
+            /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); */
+            /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); */
+            /* box-shadow: 0 2px 8px var(--shadow-color-light); */
+            box-shadow: 0 2px 8px var(--shadow-color-light);
         }
         .todo-item input[type="checkbox"] {
             margin-right: 15px;
+            /* accent-color: #ab92f0; */
+            /* accent-color: #88C0D0; */ /* Nord blue accent */
+            /* accent-color: var(--nord8); */
+            accent-color: var(--btn-primary-bg); /* Use primary purple for accent */
+            width: 18px;
+            height: 18px;
+            transition: all 0.15s ease;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            /* background-color: rgba(255, 255, 255, 0.1); */
+            /* background-color: rgba(216, 222, 233, 0.15); */ /* Very subtle light background */
+            /* background-color: var(--checkbox-bg); */
+            background-color: var(--checkbox-bg);
+            /* border: 1px solid #bca7d9; */
+            /* border: 1px solid #4C566A; */ /* Nord gray border */
+            /* border: 1px solid var(--nord3); */
+            border: 1px solid var(--checkbox-border);
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+            outline: none;
+        }
+        .todo-item input[type="checkbox"]:checked {
+            /* background-color: #ab92f0; */
+            /* background-color: #88C0D0; */ /* Nord blue accent */
+            /* background-color: var(--nord8); */
+            background-color: var(--checkbox-checked-bg);
+            /* border-color: #88C0D0; */
+            /* border-color: var(--nord8); */
+            border-color: var(--checkbox-checked-border);
+        }
+        .todo-item input[type="checkbox"]:checked::after {
+            content: '';
+            display: block;
+            width: 5px;
+            height: 10px;
+            /* border: solid white; */
+            /* border: solid #2E3440; */ /* Dark checkmark for contrast */
+            /* border: solid var(--nord0); */
+            border: solid var(--checkbox-checkmark-color);
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+            position: absolute;
+            left: 5px;
+            top: 1px;
+        }
+        .todo-item input[type="checkbox"]:hover {
+            transform: scale(1.1);
+            /* border-color: #f5ecff; */
+            /* border-color: #88C0D0; */ /* Highlight with accent color */
+            /* border-color: var(--nord8); */
+            border-color: var(--checkbox-hover-border);
+            /* background-color: rgba(255, 255, 255, 0.2); */
+            /* background-color: rgba(216, 222, 233, 0.25); */ /* Slightly brighter */
+            /* background-color: var(--checkbox-bg-hover); */
+            background-color: var(--checkbox-bg-hover);
         }
         .completed {
             text-decoration: line-through;
-            color: #6c757d;
+            /* color: #bca7d9; */
+            /* color: #A3BE8C; */ /* Nord subtle green/gray for completed */
+            /* color: var(--nord-green); */
+            color: var(--text-completed-color);
+            transition: all 0.2s ease;
         }
         .loading {
             text-align: center;
             padding: 20px;
+            /* color: #e0d3ff; */
+            /* color: #88C0D0; */ /* Nord blue accent */
+            /* color: var(--nord8); */
+            color: var(--drac-cyan); /* Use Cyan for loading */
+        }
+        h1 {
+            /* color: #f5ecff; */
+            /* color: #ECEFF4; */ /* Nord light text */
+            /* color: var(--nord6); */
+            color: var(--text-color);
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            /* text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); */
+            /* text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); */
+            /* text-shadow: 0 1px 2px var(--shadow-color-dark); */
+            text-shadow: 0 1px 2px var(--shadow-color-dark);
+        }
+        .btn-primary {
+            /* background-color: #8c6dae; */
+            /* background-color: #5E81AC; */ /* Nord primary blue */
+            /* background-color: var(--nord10); */
+            background-color: var(--btn-primary-bg);
+            border: none;
+            border-radius: 6px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); */
+            /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); */
+            /* box-shadow: 0 2px 6px var(--shadow-color-light); */
+            box-shadow: 0 2px 6px var(--shadow-color-light);
+            /* color: #ECEFF4; */
+            /* color: var(--nord6); */
+            color: var(--btn-primary-text);
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            /* background-color: #a082c4; */
+            /* background-color: #81A1C1; */ /* Nord lighter blue */
+            /* background-color: var(--nord9); */
+            background-color: var(--btn-primary-hover-bg);
+            transform: translateY(-1px);
+            /* box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3); */
+            /* box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); */
+            /* box-shadow: 0 3px 8px var(--shadow-color-medium); */
+            box-shadow: 0 3px 8px var(--shadow-color-medium);
+            /* color: #ECEFF4; */
+            /* color: var(--nord6); */
+            color: var(--btn-primary-text);
+        }
+        .btn-danger {
+            /* background-color: rgba(90, 62, 118, 0.6); */
+            /* background-color: rgba(76, 86, 106, 0.6); */ /* Nord gray */
+            /* background-color: var(--btn-danger-bg); */
+            background-color: var(--btn-danger-bg);
+            border: none;
+            /* color: #f5ecff; */
+            /* color: #ECEFF4; */
+            /* color: var(--nord6); */
+            color: var(--btn-danger-text);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 6px;
+            opacity: 0.8;
+        }
+        .btn-danger:hover {
+            /* background-color: rgba(90, 62, 118, 0.9); */
+            /* background-color: rgba(191, 97, 106, 0.8); */ /* Nord subtle red on hover */
+            /* background-color: var(--btn-danger-bg-hover); */
+            background-color: var(--btn-danger-bg-hover);
+            /* color: #ffffff; */
+            /* color: #ECEFF4; */
+            /* color: var(--nord6); */
+            color: var(--btn-danger-text);
+            opacity: 1;
+            transform: scale(1.05);
+        }
+        input[type="text"].form-control {
+            /* background-color: rgba(90, 62, 118, 0.3); */
+            /* background-color: rgba(76, 86, 106, 0.3); */ /* Nord dark gray translucent */
+            /* background-color: var(--input-bg); */
+            background-color: var(--input-bg);
+            /* border: 1px solid rgba(140, 109, 174, 0.4); */
+            /* border: 1px solid #4C566A; */ /* Nord gray border */
+            /* border: 1px solid var(--nord3); */
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            /* color: #f0f0f0; */
+            /* color: #ECEFF4; */ /* Nord light text */
+            /* color: var(--nord6); */
+            color: var(--text-color);
+        }
+        input[type="text"].form-control::placeholder { /* Style placeholder */
+             /* color: #bca7d9; */
+             /* color: #D8DEE9; */
+             /* color: var(--nord4); */
+             color: var(--input-placeholder-color);
+             opacity: 0.6;
+        }
+        input[type="text"].form-control:focus {
+            /* background-color: rgba(90, 62, 118, 0.5); */
+            /* background-color: rgba(76, 86, 106, 0.5); */
+            /* background-color: var(--input-bg-focus); */
+            background-color: var(--input-bg-focus);
+            /* border-color: #a082c4; */
+            /* border-color: #88C0D0; */ /* Nord blue accent */
+            /* border-color: var(--nord8); */
+            border-color: var(--input-focus-border);
+            /* box-shadow: 0 0 0 0.15rem rgba(140, 109, 174, 0.25); */
+            /* box-shadow: 0 0 0 0.15rem rgba(136, 192, 208, 0.25); */
+            /* box-shadow: 0 0 0 0.15rem var(--input-shadow-focus); */
+            box-shadow: 0 0 0 0.15rem var(--input-shadow-focus);
+            transform: translateY(-1px);
+            /* color: #ECEFF4; */
+            /* color: var(--nord6); */
+            color: var(--text-color);
+        }
+        .input-group {
+            /* box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); */
+            /* box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); */
+            /* box-shadow: 0 4px 15px var(--shadow-color-light); */
+            box-shadow: 0 4px 15px var(--shadow-color-light);
+            border-radius: 6px;
+        }
+        .text-muted {
+            /* color: #bca7d9 !important; */
+            /* color: #A3BE8C !important; */ /* Nord subtle green/gray */
+            /* color: var(--nord-green) !important; */
+            color: var(--text-muted-color) !important;
+        }
+        .alert-danger {
+            /* background-color: rgba(100, 40, 70, 0.8); */
+            /* background-color: rgba(191, 97, 106, 0.7); */ /* Nord subtle red */
+            /* background-color: var(--alert-bg); */
+            background-color: var(--alert-bg);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            /* border: 1px solid rgba(200, 100, 140, 0.6); */
+            /* border: 1px solid rgba(191, 97, 106, 0.8); */
+            /* border: 1px solid var(--alert-border); */
+            border: 1px solid var(--alert-border);
+            /* color: #fddde9; */
+            /* color: #ECEFF4; */ /* Nord light text */
+            /* color: var(--nord6); */
+            color: var(--alert-text-color);
+            border-radius: 8px;
         }
     </style>
 </head>
