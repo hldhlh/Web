@@ -200,30 +200,25 @@
         /* 流星效果 */
         .shooting-star {
             position: absolute;
-            width: 3px;
-            height: 3px;
-            background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1));
-            border-radius: 50%;
+            height: 2px;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.8) 100%);
+            border-radius: 0;
             z-index: -1;
-            animation: shooting 4s linear infinite;
-            transform: rotate(-45deg);
+            overflow: hidden;
+            opacity: 0;
         }
         
-        @keyframes shooting {
-            0% {
-                transform: translateX(-100px) translateY(-100px) rotate(-45deg);
-                opacity: 0;
-            }
-            10% {
-                opacity: 1;
-            }
-            70% {
-                opacity: 1;
-            }
-            100% {
-                transform: translateX(300px) translateY(300px) rotate(-45deg);
-                opacity: 0;
-            }
+        .star-head {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.7), 
+                       0 0 20px 5px rgba(140, 230, 255, 0.3);
         }
         
         .todo-container {
@@ -630,18 +625,27 @@
                 const star = document.createElement('div');
                 star.className = 'shooting-star';
                 
-                // 随机起始位置 (边界外)
-                const posX = Math.floor(Math.random() * window.innerWidth);
-                const posY = Math.floor(Math.random() * 300);
+                // 添加流星头部
+                const head = document.createElement('div');
+                head.className = 'star-head';
+                star.appendChild(head);
+                
+                // 随机起始位置（屏幕上方外侧）
+                const screenWidth = window.innerWidth;
+                const posX = Math.floor(Math.random() * screenWidth * 1.5) - screenWidth * 0.25;
+                const posY = -50 - Math.floor(Math.random() * 100);
                 
                 // 随机大小
-                const size = 2 + Math.random() * 4;
+                const size = 1 + Math.random() * 2;
                 
-                // 随机长度 (尾巴)
-                const tailLength = 30 + Math.random() * 60;
+                // 随机长度（尾巴）
+                const tailLength = 80 + Math.random() * 120;
                 
-                // 随机角度
-                const angle = -25 - (Math.random() * 40);
+                // 随机角度（真实流星更倾斜）
+                const angle = 15 + Math.random() * 30;
+                
+                // 随机速度
+                const duration = 1 + Math.random() * 2;
                 
                 // 设置流星样式
                 star.style.left = `${posX}px`;
@@ -650,19 +654,55 @@
                 star.style.width = `${tailLength}px`;
                 star.style.transform = `rotate(${angle}deg)`;
                 
-                body.appendChild(star);
+                document.body.appendChild(star);
                 
-                // 动画结束后移除
-                setTimeout(() => {
-                    star.remove();
-                    // 递归调用，随机时间后创建下一颗流星
-                    setTimeout(addShootingStar, 3000 + Math.random() * 8000);
-                }, 4000);
+                // 计算终点坐标（保证流星能完全经过屏幕）
+                const distToTravel = screenWidth * 2 + tailLength;
+                const radians = angle * Math.PI / 180;
+                const endX = posX + Math.cos(radians) * distToTravel;
+                const endY = posY + Math.sin(radians) * distToTravel;
+                
+                // 创建动画并播放
+                let startTime = null;
+                
+                function animate(timestamp) {
+                    if (!startTime) startTime = timestamp;
+                    const progress = (timestamp - startTime) / (duration * 1000);
+                    
+                    if (progress < 1) {
+                        const currentX = posX + (endX - posX) * progress;
+                        const currentY = posY + (endY - posY) * progress;
+                        
+                        star.style.left = `${currentX}px`;
+                        star.style.top = `${currentY}px`;
+                        
+                        // 淡入淡出效果
+                        if (progress < 0.1) {
+                            // 淡入
+                            star.style.opacity = progress * 10;
+                        } else if (progress > 0.8) {
+                            // 淡出
+                            star.style.opacity = (1 - progress) * 5;
+                        } else {
+                            star.style.opacity = 1;
+                        }
+                        
+                        requestAnimationFrame(animate);
+                    } else {
+                        star.remove();
+                        // 随机间隔后再生成新流星，使流星出现更自然
+                        setTimeout(addShootingStar, 1000 + Math.random() * 5000);
+                    }
+                }
+                
+                // 开始动画
+                requestAnimationFrame(animate);
             }
             
-            // 启动流星生成
-            setTimeout(addShootingStar, 2000);
-            setTimeout(addShootingStar, 6000);
+            // 启动流星生成（多条流星，随机时间）
+            for (let i = 0; i < 3; i++) {
+                setTimeout(addShootingStar, 1000 + Math.random() * 3000 * i);
+            }
         }
         
         // 当页面加载完成时创建星星
