@@ -8,113 +8,233 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            /* Dracula Palette Variables */
-            --drac-bg: #282a36;           /* Background */
-            --drac-current-line: #44475a; /* Selection/Lines */
-            --drac-foreground: #f8f8f2;   /* Foreground Text */
-            --drac-comment: #6272a4;      /* Comment/Muted */
-            --drac-cyan: #8be9fd;         /* Cyan Accent */
-            --drac-green: #50fa7b;       /* Green Completed */
-            --drac-orange: #ffb86c;      /* Orange */
-            --drac-pink: #ff79c6;        /* Pink Hover/Focus */
-            --drac-purple: #bd93f9;      /* Purple Primary */
-            --drac-red: #ff5555;         /* Red Danger/Alert */
-            --drac-yellow: #f1fa8c;      /* Yellow */
+            /* 星空梦幻风格配色 */
+            --starry-bg: #1a1b2e;            /* 深夜蓝背景 */
+            --starry-surface: #252743;       /* 稍浅表面色 */
+            --starry-accent: #7e9bfe;        /* 梦幻蓝紫色强调 */
+            --starry-accent-light: #a5b8ff;  /* 更亮的蓝紫色 */
+            --starry-accent-dark: #5d7fe7;   /* 更深的蓝紫色 */
+            --starry-text: #dce9ff;          /* 淡蓝文本色 */
+            --starry-text-muted: #9eafd9;    /* 柔和次要文本 */
+            --starry-success: #96efcb;       /* 薄荷绿色 */
+            --starry-danger: #ffacc8;        /* 柔和粉红 */
+            --starry-danger-dark: #ff80a9;   /* 深粉红 */
+            --starry-cyan: #8ce6ff;          /* 天蓝色 */
+            --starry-gold: #ffdf8c;          /* 金色点缀 */
 
-            /* Nord Palette Variables (Commented Out) */
-            /*
-            --nord0: #2E3440; 
-            --nord1: #3B4252; 
-            --nord3: #4C566A; 
-            --nord4: #D8DEE9; 
-            --nord6: #ECEFF4; 
-            --nord8: #88C0D0; 
-            --nord9: #81A1C1; 
-            --nord10: #5E81AC;
-            --nord11: #BF616A;
-            --nord-green: #A3BE8C; 
-            */
+            /* 应用星空风格变量 */
+            --bg-color: var(--starry-bg);
+            --bg-gradient-end: #2d2f4c; /* 稍浅的渐变结束色 */
+            --text-color: var(--starry-text);
+            --text-muted-color: var(--starry-text-muted);
+            --text-completed-color: var(--starry-success);
 
-            /* Applied Theme Variables (Using Dracula) */
-            --bg-color: var(--drac-bg);
-            --bg-gradient-end: #3a3c50; /* Slightly lighter than drac-bg for gradient */
-            --text-color: var(--drac-foreground);
-            --text-muted-color: var(--drac-comment);
-            --text-completed-color: var(--drac-green);
+            --container-bg: rgba(37, 39, 67, 0.7); /* surface色半透明 */
+            --container-border: rgba(126, 155, 254, 0.3); /* 强调色半透明 */
+            --item-bg: rgba(37, 39, 67, 0.5);
+            --item-bg-hover: rgba(45, 47, 76, 0.8);
 
-            --container-bg: rgba(68, 71, 90, 0.75); /* drac-current-line with alpha */
-            --container-border: rgba(98, 114, 164, 0.6); /* drac-comment with alpha */
-            --item-bg: rgba(68, 71, 90, 0.5);
-            --item-bg-hover: rgba(68, 71, 90, 0.8);
+            --checkbox-bg: rgba(220, 233, 255, 0.1); /* 文本色半透明 */
+            --checkbox-bg-hover: rgba(220, 233, 255, 0.15);
+            --checkbox-border: var(--starry-text-muted);
+            --checkbox-checked-bg: var(--starry-accent);
+            --checkbox-checked-border: var(--starry-accent);
+            --checkbox-hover-border: var(--starry-accent-light);
+            --checkbox-checkmark-color: var(--starry-bg);
 
-            --checkbox-bg: rgba(248, 248, 242, 0.1); /* drac-foreground with alpha */
-            --checkbox-bg-hover: rgba(248, 248, 242, 0.2);
-            --checkbox-border: var(--drac-comment);
-            --checkbox-checked-bg: var(--drac-purple);
-            --checkbox-checked-border: var(--drac-purple);
-            --checkbox-hover-border: var(--drac-pink);
-            --checkbox-checkmark-color: var(--drac-bg);
+            --btn-primary-bg: var(--starry-accent);
+            --btn-primary-hover-bg: var(--starry-accent-light);
+            --btn-primary-text: var(--starry-bg);
 
-            --btn-primary-bg: var(--drac-purple);
-            --btn-primary-hover-bg: #d0a7fa; /* Lighter purple */
-            --btn-primary-text: var(--drac-bg);
+            --btn-danger-bg: rgba(45, 47, 76, 0.6);
+            --btn-danger-bg-hover: var(--starry-danger-dark);
+            --btn-danger-text: var(--starry-text);
 
-            --btn-danger-bg: rgba(68, 71, 90, 0.6);
-            --btn-danger-bg-hover: rgba(255, 85, 85, 0.8); /* drac-red with alpha */
-            --btn-danger-text: var(--drac-foreground);
+            --input-bg: rgba(37, 39, 67, 0.4);
+            --input-bg-focus: rgba(37, 39, 67, 0.6);
+            --input-border: var(--starry-text-muted);
+            --input-focus-border: var(--starry-accent-light);
+            --input-placeholder-color: var(--starry-text-muted);
+            --input-shadow-focus: rgba(126, 155, 254, 0.25);
 
-            --input-bg: rgba(68, 71, 90, 0.3);
-            --input-bg-focus: rgba(68, 71, 90, 0.5);
-            --input-border: var(--drac-comment);
-            --input-focus-border: var(--drac-pink);
-            --input-placeholder-color: var(--drac-comment);
-            --input-shadow-focus: rgba(255, 121, 198, 0.25); /* drac-pink with alpha */
+            --alert-bg: rgba(255, 172, 200, 0.2);
+            --alert-border: rgba(255, 172, 200, 0.4);
+            --alert-text-color: var(--starry-text);
 
-            --alert-bg: rgba(255, 85, 85, 0.7); /* drac-red with alpha */
-            --alert-border: rgba(255, 85, 85, 0.8);
-            --alert-text-color: var(--drac-foreground);
-
-            /* Shadow Variables (Reusing from previous) */
-            --shadow-color-light: rgba(0, 0, 0, 0.15);
-            --shadow-color-medium: rgba(0, 0, 0, 0.25);
-            --shadow-color-dark: rgba(0, 0, 0, 0.3);
+            /* 阴影变量 */
+            --shadow-color-light: rgba(10, 14, 40, 0.15);
+            --shadow-color-medium: rgba(10, 14, 40, 0.25);
+            --shadow-color-dark: rgba(10, 14, 40, 0.3);
+            --shadow-glow: 0 0 15px rgba(126, 155, 254, 0.15);
         }
 
         body {
-            /* background-color: #3b1e57; */
-            /* background-image: linear-gradient(135deg, #3b1e57 0%, #5a3e76 100%); */
-            /* background-color: #2E3440; */ /* Nord dark blue/gray */
-            /* background-image: linear-gradient(135deg, #2E3440 0%, #3B4252 100%); */ /* Subtle gradient */
-            /* background-color: var(--nord0); */
-            /* background-image: linear-gradient(135deg, var(--nord0) 0%, var(--nord1) 100%); */
             background-color: var(--bg-color);
             background-image: linear-gradient(135deg, var(--bg-color) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             padding-top: 30px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            /* color: #f0f0f0; */
-            /* color: #ECEFF4; */ /* Nord light text */
-            /* color: var(--nord6); */
             color: var(--text-color);
+            position: relative;
+            overflow-x: hidden;
         }
+        
+        /* 添加星星效果 */
+        body::before, body::after {
+            content: "";
+            position: fixed;
+            width: 3px;
+            height: 3px;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.3;
+            box-shadow: 
+                100px 200px 0 0 rgba(255, 255, 255, 0.6),
+                300px 300px 0 0 rgba(255, 255, 255, 0.4),
+                500px 150px 0 0 rgba(255, 255, 255, 0.5),
+                700px 350px 0 0 rgba(255, 255, 255, 0.6),
+                900px 250px 0 0 rgba(255, 255, 255, 0.3),
+                1100px 150px 0 0 rgba(255, 255, 255, 0.4),
+                1300px 300px 0 0 rgba(255, 255, 255, 0.5),
+                200px 400px 0 0 rgba(255, 255, 255, 0.3),
+                400px 500px 0 0 rgba(255, 255, 255, 0.4),
+                600px 450px 0 0 rgba(255, 255, 255, 0.5),
+                800px 600px 0 0 rgba(255, 255, 255, 0.3),
+                1000px 500px 0 0 rgba(255, 255, 255, 0.4),
+                1200px 450px 0 0 rgba(255, 255, 255, 0.5),
+                500px 550px 0 0 rgba(255, 255, 255, 0.3),
+                50px 100px 0 0 rgba(255, 255, 255, 0.4),
+                150px 350px 0 0 rgba(255, 255, 255, 0.5),
+                250px 550px 0 0 rgba(255, 255, 255, 0.3),
+                350px 100px 0 0 rgba(255, 255, 255, 0.4),
+                450px 400px 0 0 rgba(255, 255, 255, 0.5),
+                550px 650px 0 0 rgba(255, 223, 140, 0.6),
+                650px 200px 0 0 rgba(140, 230, 255, 0.5);
+            z-index: -1;
+            animation: twinkle 6s infinite alternate;
+        }
+        
+        body::after {
+            left: 50%;
+            opacity: 0.4;
+            box-shadow: 
+                -100px 200px 0 0 rgba(255, 255, 255, 0.6),
+                -300px 300px 0 0 rgba(255, 255, 255, 0.4),
+                -500px 150px 0 0 rgba(255, 255, 255, 0.5),
+                -700px 350px 0 0 rgba(255, 255, 255, 0.6),
+                -900px 250px 0 0 rgba(255, 255, 255, 0.3),
+                -1100px 150px 0 0 rgba(255, 255, 255, 0.4),
+                -1300px 300px 0 0 rgba(255, 255, 255, 0.5),
+                -200px 400px 0 0 rgba(255, 255, 255, 0.3),
+                -400px 500px 0 0 rgba(255, 255, 255, 0.4),
+                -600px 450px 0 0 rgba(255, 255, 255, 0.5),
+                -800px 600px 0 0 rgba(255, 255, 255, 0.3),
+                -1000px 500px 0 0 rgba(255, 255, 255, 0.4),
+                -1200px 450px 0 0 rgba(255, 255, 255, 0.5),
+                -550px 650px 0 0 rgba(255, 223, 140, 0.6),
+                -450px 200px 0 0 rgba(140, 230, 255, 0.5);
+            animation: twinkle 4s infinite alternate-reverse;
+        }
+        
+        /* 添加星星闪烁动画 */
+        @keyframes twinkle {
+            0% {
+                opacity: 0.2;
+            }
+            25% {
+                opacity: 0.4;
+            }
+            50% {
+                opacity: 0.3;
+            }
+            75% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 0.3;
+            }
+        }
+        
+        /* 添加分散的小星星 */
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            z-index: -1;
+            animation: twinkle-star 3s infinite;
+        }
+        
+        @keyframes twinkle-star {
+            0% {
+                opacity: 0;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+        
+        /* 发光星星 */
+        .star-glow {
+            box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px var(--starry-cyan);
+            animation: glow-star 4s infinite;
+        }
+        
+        @keyframes glow-star {
+            0% {
+                opacity: 0.2;
+                box-shadow: 0 0 2px #fff, 0 0 4px #fff;
+            }
+            50% {
+                opacity: 0.9;
+                box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px var(--starry-cyan);
+            }
+            100% {
+                opacity: 0.2;
+                box-shadow: 0 0 2px #fff, 0 0 4px #fff;
+            }
+        }
+        
+        /* 流星效果 */
+        .shooting-star {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,1));
+            border-radius: 50%;
+            z-index: -1;
+            animation: shooting 4s linear infinite;
+            transform: rotate(-45deg);
+        }
+        
+        @keyframes shooting {
+            0% {
+                transform: translateX(-100px) translateY(-100px) rotate(-45deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            70% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(300px) translateY(300px) rotate(-45deg);
+                opacity: 0;
+            }
+        }
+        
         .todo-container {
             max-width: 600px;
             margin: 0 auto;
-            /* background-color: rgba(40, 20, 60, 0.75); */
-            /* background-color: rgba(59, 66, 82, 0.75); */ /* Nord slightly lighter dark, translucent */
-            /* background-color: var(--container-bg); */
             background-color: var(--container-bg);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border-radius: 12px;
             padding: 25px;
-            /* box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); */
-            /* box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25); */
-            /* box-shadow: 0 8px 32px var(--shadow-color-medium); */
-            box-shadow: 0 8px 32px var(--shadow-color-medium);
-            /* border: 1px solid rgba(140, 109, 174, 0.5); */
-            /* border: 1px solid rgba(76, 86, 106, 0.6); */ /* Nord subtle border */
-            /* border: 1px solid var(--container-border); */
+            box-shadow: 0 8px 32px var(--shadow-color-medium), var(--shadow-glow);
             border: 1px solid var(--container-border);
         }
         .todo-item {
@@ -122,32 +242,18 @@
             align-items: center;
             padding: 12px 15px;
             margin-bottom: 8px;
-            /* background-color: rgba(90, 62, 118, 0.5); */
-            /* background-color: rgba(76, 86, 106, 0.5); */ /* Nord gray, translucent */
-            /* background-color: var(--item-bg); */
             background-color: var(--item-bg);
             border-radius: 8px;
             transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            /* color: #ECEFF4; */ /* Ensure text inside is light */
-            /* color: var(--nord6); */
             color: var(--text-color);
         }
         .todo-item:hover {
-            /* background-color: rgba(90, 62, 118, 0.8); */
-            /* background-color: rgba(76, 86, 106, 0.8); */
-            /* background-color: var(--item-bg-hover); */
             background-color: var(--item-bg-hover);
             transform: translateY(-1px);
-            /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); */
-            /* box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); */
-            /* box-shadow: 0 2px 8px var(--shadow-color-light); */
             box-shadow: 0 2px 8px var(--shadow-color-light);
         }
         .todo-item input[type="checkbox"] {
             margin-right: 15px;
-            /* accent-color: #ab92f0; */
-            /* accent-color: #88C0D0; */ /* Nord blue accent */
-            /* accent-color: var(--nord8); */
             accent-color: var(--btn-primary-bg); /* Use primary purple for accent */
             width: 18px;
             height: 18px;
@@ -155,13 +261,7 @@
             appearance: none;
             -webkit-appearance: none;
             -moz-appearance: none;
-            /* background-color: rgba(255, 255, 255, 0.1); */
-            /* background-color: rgba(216, 222, 233, 0.15); */ /* Very subtle light background */
-            /* background-color: var(--checkbox-bg); */
             background-color: var(--checkbox-bg);
-            /* border: 1px solid #bca7d9; */
-            /* border: 1px solid #4C566A; */ /* Nord gray border */
-            /* border: 1px solid var(--nord3); */
             border: 1px solid var(--checkbox-border);
             border-radius: 3px;
             position: relative;
@@ -169,12 +269,7 @@
             outline: none;
         }
         .todo-item input[type="checkbox"]:checked {
-            /* background-color: #ab92f0; */
-            /* background-color: #88C0D0; */ /* Nord blue accent */
-            /* background-color: var(--nord8); */
             background-color: var(--checkbox-checked-bg);
-            /* border-color: #88C0D0; */
-            /* border-color: var(--nord8); */
             border-color: var(--checkbox-checked-border);
         }
         .todo-item input[type="checkbox"]:checked::after {
@@ -182,9 +277,6 @@
             display: block;
             width: 5px;
             height: 10px;
-            /* border: solid white; */
-            /* border: solid #2E3440; */ /* Dark checkmark for contrast */
-            /* border: solid var(--nord0); */
             border: solid var(--checkbox-checkmark-color);
             border-width: 0 2px 2px 0;
             transform: rotate(45deg);
@@ -194,167 +286,96 @@
         }
         .todo-item input[type="checkbox"]:hover {
             transform: scale(1.1);
-            /* border-color: #f5ecff; */
-            /* border-color: #88C0D0; */ /* Highlight with accent color */
-            /* border-color: var(--nord8); */
             border-color: var(--checkbox-hover-border);
-            /* background-color: rgba(255, 255, 255, 0.2); */
-            /* background-color: rgba(216, 222, 233, 0.25); */ /* Slightly brighter */
-            /* background-color: var(--checkbox-bg-hover); */
             background-color: var(--checkbox-bg-hover);
         }
         .completed {
             text-decoration: line-through;
-            /* color: #bca7d9; */
-            /* color: #A3BE8C; */ /* Nord subtle green/gray for completed */
-            /* color: var(--nord-green); */
             color: var(--text-completed-color);
             transition: all 0.2s ease;
         }
         .loading {
             text-align: center;
             padding: 20px;
-            /* color: #e0d3ff; */
-            /* color: #88C0D0; */ /* Nord blue accent */
-            /* color: var(--nord8); */
-            color: var(--drac-cyan); /* Use Cyan for loading */
+            color: var(--starry-cyan); /* 使用星空风格的天蓝色 */
         }
         h1 {
-            /* color: #f5ecff; */
-            /* color: #ECEFF4; */ /* Nord light text */
-            /* color: var(--nord6); */
             color: var(--text-color);
             font-weight: 600;
             margin-bottom: 1.5rem;
-            /* text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); */
-            /* text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); */
-            /* text-shadow: 0 1px 2px var(--shadow-color-dark); */
             text-shadow: 0 1px 2px var(--shadow-color-dark);
         }
         .btn-primary {
-            /* background-color: #8c6dae; */
-            /* background-color: #5E81AC; */ /* Nord primary blue */
-            /* background-color: var(--nord10); */
             background-color: var(--btn-primary-bg);
             border: none;
             border-radius: 6px;
             transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); */
-            /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); */
-            /* box-shadow: 0 2px 6px var(--shadow-color-light); */
             box-shadow: 0 2px 6px var(--shadow-color-light);
-            /* color: #ECEFF4; */
-            /* color: var(--nord6); */
             color: var(--btn-primary-text);
         }
         .btn-primary:hover, .btn-primary:focus {
-            /* background-color: #a082c4; */
-            /* background-color: #81A1C1; */ /* Nord lighter blue */
-            /* background-color: var(--nord9); */
             background-color: var(--btn-primary-hover-bg);
             transform: translateY(-1px);
-            /* box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3); */
-            /* box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); */
-            /* box-shadow: 0 3px 8px var(--shadow-color-medium); */
             box-shadow: 0 3px 8px var(--shadow-color-medium);
-            /* color: #ECEFF4; */
-            /* color: var(--nord6); */
             color: var(--btn-primary-text);
         }
         .btn-danger {
-            /* background-color: rgba(90, 62, 118, 0.6); */
-            /* background-color: rgba(76, 86, 106, 0.6); */ /* Nord gray */
-            /* background-color: var(--btn-danger-bg); */
-            background-color: var(--btn-danger-bg);
-            border: none;
-            /* color: #f5ecff; */
-            /* color: #ECEFF4; */
-            /* color: var(--nord6); */
-            color: var(--btn-danger-text);
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 6px;
-            opacity: 0.8;
+            background-color: transparent;
+            border: 1px solid var(--starry-danger);
+            color: var(--starry-danger);
+            transition: all 0.3s ease;
+            border-radius: 20px;
+            opacity: 0; /* 初始状态不可见 */
+            display: block; /* 确保按钮一直存在但不可见 */
+            font-weight: normal; /* 恢复文字粗细 */
+            padding: 2px 10px;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            box-shadow: none;
         }
+        
+        /* 当鼠标悬停在任务项上时显示删除按钮 */
+        .todo-item:hover .btn-danger {
+            opacity: 0.7;
+        }
+        
         .btn-danger:hover {
-            /* background-color: rgba(90, 62, 118, 0.9); */
-            /* background-color: rgba(191, 97, 106, 0.8); */ /* Nord subtle red on hover */
-            /* background-color: var(--btn-danger-bg-hover); */
-            background-color: var(--btn-danger-bg-hover);
-            /* color: #ffffff; */
-            /* color: #ECEFF4; */
-            /* color: var(--nord6); */
-            color: var(--btn-danger-text);
+            background-color: var(--starry-danger);
+            color: var(--starry-bg);
             opacity: 1;
-            transform: scale(1.05);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(255, 172, 200, 0.4);
         }
         input[type="text"].form-control {
-            /* background-color: rgba(90, 62, 118, 0.3); */
-            /* background-color: rgba(76, 86, 106, 0.3); */ /* Nord dark gray translucent */
-            /* background-color: var(--input-bg); */
             background-color: var(--input-bg);
-            /* border: 1px solid rgba(140, 109, 174, 0.4); */
-            /* border: 1px solid #4C566A; */ /* Nord gray border */
-            /* border: 1px solid var(--nord3); */
             border: 1px solid var(--input-border);
             border-radius: 6px;
             transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            /* color: #f0f0f0; */
-            /* color: #ECEFF4; */ /* Nord light text */
-            /* color: var(--nord6); */
             color: var(--text-color);
         }
         input[type="text"].form-control::placeholder { /* Style placeholder */
-             /* color: #bca7d9; */
-             /* color: #D8DEE9; */
-             /* color: var(--nord4); */
              color: var(--input-placeholder-color);
              opacity: 0.6;
         }
         input[type="text"].form-control:focus {
-            /* background-color: rgba(90, 62, 118, 0.5); */
-            /* background-color: rgba(76, 86, 106, 0.5); */
-            /* background-color: var(--input-bg-focus); */
             background-color: var(--input-bg-focus);
-            /* border-color: #a082c4; */
-            /* border-color: #88C0D0; */ /* Nord blue accent */
-            /* border-color: var(--nord8); */
             border-color: var(--input-focus-border);
-            /* box-shadow: 0 0 0 0.15rem rgba(140, 109, 174, 0.25); */
-            /* box-shadow: 0 0 0 0.15rem rgba(136, 192, 208, 0.25); */
-            /* box-shadow: 0 0 0 0.15rem var(--input-shadow-focus); */
             box-shadow: 0 0 0 0.15rem var(--input-shadow-focus);
             transform: translateY(-1px);
-            /* color: #ECEFF4; */
-            /* color: var(--nord6); */
             color: var(--text-color);
         }
         .input-group {
-            /* box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); */
-            /* box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); */
-            /* box-shadow: 0 4px 15px var(--shadow-color-light); */
             box-shadow: 0 4px 15px var(--shadow-color-light);
             border-radius: 6px;
         }
         .text-muted {
-            /* color: #bca7d9 !important; */
-            /* color: #A3BE8C !important; */ /* Nord subtle green/gray */
-            /* color: var(--nord-green) !important; */
             color: var(--text-muted-color) !important;
         }
         .alert-danger {
-            /* background-color: rgba(100, 40, 70, 0.8); */
-            /* background-color: rgba(191, 97, 106, 0.7); */ /* Nord subtle red */
-            /* background-color: var(--alert-bg); */
             background-color: var(--alert-bg);
             backdrop-filter: blur(5px);
             -webkit-backdrop-filter: blur(5px);
-            /* border: 1px solid rgba(200, 100, 140, 0.6); */
-            /* border: 1px solid rgba(191, 97, 106, 0.8); */
-            /* border: 1px solid var(--alert-border); */
             border: 1px solid var(--alert-border);
-            /* color: #fddde9; */
-            /* color: #ECEFF4; */ /* Nord light text */
-            /* color: var(--nord6); */
             color: var(--alert-text-color);
             border-radius: 8px;
         }
@@ -544,6 +565,108 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', initialize);
+        
+        // 添加动态星星
+        function createStars() {
+            const body = document.body;
+            const numStars = 50; // 创建50颗动态星星
+            
+            for (let i = 0; i < numStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                
+                // 随机位置
+                const posX = Math.floor(Math.random() * window.innerWidth);
+                const posY = Math.floor(Math.random() * window.innerHeight);
+                
+                // 随机大小
+                const size = Math.random() * 3;
+                
+                // 随机动画延迟
+                const delay = Math.random() * 5;
+                
+                // 随机动画持续时间
+                const duration = 2 + Math.random() * 3;
+                
+                // 设置星星样式
+                star.style.left = `${posX}px`;
+                star.style.top = `${posY}px`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.animationDelay = `${delay}s`;
+                star.style.animationDuration = `${duration}s`;
+                
+                body.appendChild(star);
+            }
+            
+            // 添加发光星星 (更少量)
+            const numGlowStars = 15;
+            for (let i = 0; i < numGlowStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'star star-glow';
+                
+                // 随机位置
+                const posX = Math.floor(Math.random() * window.innerWidth);
+                const posY = Math.floor(Math.random() * window.innerHeight);
+                
+                // 随机大小 (稍大)
+                const size = 1 + Math.random() * 3;
+                
+                // 随机动画延迟
+                const delay = Math.random() * 5;
+                
+                // 设置星星样式
+                star.style.left = `${posX}px`;
+                star.style.top = `${posY}px`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.animationDelay = `${delay}s`;
+                
+                body.appendChild(star);
+            }
+            
+            // 添加流星
+            function addShootingStar() {
+                const star = document.createElement('div');
+                star.className = 'shooting-star';
+                
+                // 随机起始位置 (边界外)
+                const posX = Math.floor(Math.random() * window.innerWidth);
+                const posY = Math.floor(Math.random() * 300);
+                
+                // 随机大小
+                const size = 2 + Math.random() * 4;
+                
+                // 随机长度 (尾巴)
+                const tailLength = 30 + Math.random() * 60;
+                
+                // 随机角度
+                const angle = -25 - (Math.random() * 40);
+                
+                // 设置流星样式
+                star.style.left = `${posX}px`;
+                star.style.top = `${posY}px`;
+                star.style.height = `${size}px`;
+                star.style.width = `${tailLength}px`;
+                star.style.transform = `rotate(${angle}deg)`;
+                
+                body.appendChild(star);
+                
+                // 动画结束后移除
+                setTimeout(() => {
+                    star.remove();
+                    // 递归调用，随机时间后创建下一颗流星
+                    setTimeout(addShootingStar, 3000 + Math.random() * 8000);
+                }, 4000);
+            }
+            
+            // 启动流星生成
+            setTimeout(addShootingStar, 2000);
+            setTimeout(addShootingStar, 6000);
+        }
+        
+        // 当页面加载完成时创建星星
+        window.addEventListener('load', createStars);
     </script>
 </body>
 </html> 
