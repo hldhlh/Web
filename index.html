@@ -3,466 +3,611 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supabase 待办事项应用</title>
+    <title>现代待办事项应用</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            /* 星空梦幻风格配色 */
-            --starry-bg: #1a1b2e;            /* 深夜蓝背景 */
-            --starry-surface: #252743;       /* 稍浅表面色 */
-            --starry-accent: #7e9bfe;        /* 梦幻蓝紫色强调 */
-            --starry-accent-light: #a5b8ff;  /* 更亮的蓝紫色 */
-            --starry-accent-dark: #5d7fe7;   /* 更深的蓝紫色 */
-            --starry-text: #dce9ff;          /* 淡蓝文本色 */
-            --starry-text-muted: #9eafd9;    /* 柔和次要文本 */
-            --starry-success: #96efcb;       /* 薄荷绿色 */
-            --starry-danger: #ffacc8;        /* 柔和粉红 */
-            --starry-danger-dark: #ff80a9;   /* 深粉红 */
-            --starry-cyan: #8ce6ff;          /* 天蓝色 */
-            --starry-gold: #ffdf8c;          /* 金色点缀 */
-
-            /* 应用星空风格变量 */
-            --bg-color: var(--starry-bg);
-            --bg-gradient-end: #2d2f4c; /* 稍浅的渐变结束色 */
-            --text-color: var(--starry-text);
-            --text-muted-color: var(--starry-text-muted);
-            --text-completed-color: var(--starry-success);
-
-            --container-bg: rgba(37, 39, 67, 0.7); /* surface色半透明 */
-            --container-border: rgba(126, 155, 254, 0.3); /* 强调色半透明 */
-            --item-bg: rgba(37, 39, 67, 0.5);
-            --item-bg-hover: rgba(45, 47, 76, 0.8);
-
-            --checkbox-bg: rgba(220, 233, 255, 0.1); /* 文本色半透明 */
-            --checkbox-bg-hover: rgba(220, 233, 255, 0.15);
-            --checkbox-border: var(--starry-text-muted);
-            --checkbox-checked-bg: var(--starry-accent);
-            --checkbox-checked-border: var(--starry-accent);
-            --checkbox-hover-border: var(--starry-accent-light);
-            --checkbox-checkmark-color: var(--starry-bg);
-
-            --btn-primary-bg: var(--starry-accent);
-            --btn-primary-hover-bg: var(--starry-accent-light);
-            --btn-primary-text: var(--starry-bg);
-
-            --btn-danger-bg: rgba(45, 47, 76, 0.6);
-            --btn-danger-bg-hover: var(--starry-danger-dark);
-            --btn-danger-text: var(--starry-text);
-
-            --input-bg: rgba(37, 39, 67, 0.4);
-            --input-bg-focus: rgba(37, 39, 67, 0.6);
-            --input-border: var(--starry-text-muted);
-            --input-focus-border: var(--starry-accent-light);
-            --input-placeholder-color: var(--starry-text-muted);
-            --input-shadow-focus: rgba(126, 155, 254, 0.25);
-
-            --alert-bg: rgba(255, 172, 200, 0.2);
-            --alert-border: rgba(255, 172, 200, 0.4);
-            --alert-text-color: var(--starry-text);
-
-            /* 阴影变量 */
-            --shadow-color-light: rgba(10, 14, 40, 0.15);
-            --shadow-color-medium: rgba(10, 14, 40, 0.25);
-            --shadow-color-dark: rgba(10, 14, 40, 0.3);
-            --shadow-glow: 0 0 15px rgba(126, 155, 254, 0.15);
+            --bg-color: #f5f5f7;
+            --sidebar-bg: #ffffff;
+            --sidebar-text: #555555;
+            --sidebar-active: #000000;
+            --sidebar-count: #888888;
+            --primary-color: #007bff;
+            --primary-hover: #0069d9;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --text-color: #333333;
+            --card-bg: #ffffff;
+            --border-color: rgba(0, 0, 0, 0.1);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --time-color: #888888;
         }
 
         body {
             background-color: var(--bg-color);
-            background-image: linear-gradient(135deg, var(--bg-color) 0%, var(--bg-gradient-end) 100%);
-            min-height: 100vh;
-            padding-top: 30px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: var(--text-color);
-            position: relative;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
             overflow-x: hidden;
         }
-        
-        /* 添加星星效果 */
-        body::before, body::after {
-            content: "";
-            position: fixed;
-            width: 3px;
-            height: 3px;
-            background: white;
-            border-radius: 50%;
-            opacity: 0.3;
-            box-shadow: 
-                100px 200px 0 0 rgba(255, 255, 255, 0.6),
-                300px 300px 0 0 rgba(255, 255, 255, 0.4),
-                500px 150px 0 0 rgba(255, 255, 255, 0.5),
-                700px 350px 0 0 rgba(255, 255, 255, 0.6),
-                900px 250px 0 0 rgba(255, 255, 255, 0.3),
-                1100px 150px 0 0 rgba(255, 255, 255, 0.4),
-                1300px 300px 0 0 rgba(255, 255, 255, 0.5),
-                200px 400px 0 0 rgba(255, 255, 255, 0.3),
-                400px 500px 0 0 rgba(255, 255, 255, 0.4),
-                600px 450px 0 0 rgba(255, 255, 255, 0.5),
-                800px 600px 0 0 rgba(255, 255, 255, 0.3),
-                1000px 500px 0 0 rgba(255, 255, 255, 0.4),
-                1200px 450px 0 0 rgba(255, 255, 255, 0.5),
-                500px 550px 0 0 rgba(255, 255, 255, 0.3),
-                50px 100px 0 0 rgba(255, 255, 255, 0.4),
-                150px 350px 0 0 rgba(255, 255, 255, 0.5),
-                250px 550px 0 0 rgba(255, 255, 255, 0.3),
-                350px 100px 0 0 rgba(255, 255, 255, 0.4),
-                450px 400px 0 0 rgba(255, 255, 255, 0.5),
-                550px 650px 0 0 rgba(255, 223, 140, 0.6),
-                650px 200px 0 0 rgba(140, 230, 255, 0.5);
-            z-index: -1;
-            animation: twinkle 6s infinite alternate;
-        }
-        
-        body::after {
-            left: 50%;
-            opacity: 0.4;
-            box-shadow: 
-                -100px 200px 0 0 rgba(255, 255, 255, 0.6),
-                -300px 300px 0 0 rgba(255, 255, 255, 0.4),
-                -500px 150px 0 0 rgba(255, 255, 255, 0.5),
-                -700px 350px 0 0 rgba(255, 255, 255, 0.6),
-                -900px 250px 0 0 rgba(255, 255, 255, 0.3),
-                -1100px 150px 0 0 rgba(255, 255, 255, 0.4),
-                -1300px 300px 0 0 rgba(255, 255, 255, 0.5),
-                -200px 400px 0 0 rgba(255, 255, 255, 0.3),
-                -400px 500px 0 0 rgba(255, 255, 255, 0.4),
-                -600px 450px 0 0 rgba(255, 255, 255, 0.5),
-                -800px 600px 0 0 rgba(255, 255, 255, 0.3),
-                -1000px 500px 0 0 rgba(255, 255, 255, 0.4),
-                -1200px 450px 0 0 rgba(255, 255, 255, 0.5),
-                -550px 650px 0 0 rgba(255, 223, 140, 0.6),
-                -450px 200px 0 0 rgba(140, 230, 255, 0.5);
-            animation: twinkle 4s infinite alternate-reverse;
-        }
-        
-        /* 添加星星闪烁动画 */
-        @keyframes twinkle {
-            0% {
-                opacity: 0.2;
-            }
-            25% {
-                opacity: 0.4;
-            }
-            50% {
-                opacity: 0.3;
-            }
-            75% {
-                opacity: 0.5;
-            }
-            100% {
-                opacity: 0.3;
-            }
-        }
-        
-        /* 添加分散的小星星 */
-        .star {
-            position: absolute;
-            background-color: white;
-            border-radius: 50%;
-            z-index: -1;
-            animation: twinkle-star 3s infinite;
-        }
-        
-        @keyframes twinkle-star {
-            0% {
-                opacity: 0;
-            }
-            50% {
-                opacity: 0.8;
-            }
-            100% {
-                opacity: 0;
-            }
-        }
-        
-        /* 发光星星 */
-        .star-glow {
-            box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px var(--starry-cyan);
-            animation: glow-star 4s infinite;
-        }
-        
-        @keyframes glow-star {
-            0% {
-                opacity: 0.2;
-                box-shadow: 0 0 2px #fff, 0 0 4px #fff;
-            }
-            50% {
-                opacity: 0.9;
-                box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px var(--starry-cyan);
-            }
-            100% {
-                opacity: 0.2;
-                box-shadow: 0 0 2px #fff, 0 0 4px #fff;
-            }
-        }
-        
-        /* 流星效果 */
-        .shooting-star-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
+
+        .app-container {
+            display: flex;
             height: 100vh;
-            pointer-events: none;
-            overflow: hidden;
-            z-index: -1;
+            width: 100%;
         }
-        
-        .shooting-star {
-            position: absolute;
-            height: 2px;
-            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.8) 100%);
-            border-radius: 0;
-            z-index: -1;
-            overflow: hidden;
-            opacity: 0;
+
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 240px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            height: 100%;
+            box-shadow: var(--shadow-sm);
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            z-index: 10;
         }
-        
-        .star-head {
-            position: absolute;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background-color: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.7), 
-                       0 0 20px 5px rgba(140, 230, 255, 0.3);
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px 0;
         }
-        
-        .todo-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: var(--container-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 8px 32px var(--shadow-color-medium), var(--shadow-glow);
-            border: 1px solid var(--container-border);
+
+        .sidebar-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--sidebar-text);
+            margin: 15px 0 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .todo-item {
+
+        .nav-item {
             display: flex;
             align-items: center;
-            padding: 12px 15px;
-            margin-bottom: 8px;
-            background-color: var(--item-bg);
-            border-radius: 8px;
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            color: var(--text-color);
-        }
-        .todo-item:hover {
-            background-color: var(--item-bg-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px var(--shadow-color-light);
-        }
-        .todo-item input[type="checkbox"] {
-            margin-right: 15px;
-            accent-color: var(--btn-primary-bg); /* Use primary purple for accent */
-            width: 18px;
-            height: 18px;
-            transition: all 0.15s ease;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            background-color: var(--checkbox-bg);
-            border: 1px solid var(--checkbox-border);
-            border-radius: 3px;
-            position: relative;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            border-radius: 6px;
             cursor: pointer;
-            outline: none;
+            transition: all 0.2s;
+            color: var(--sidebar-text);
         }
-        .todo-item input[type="checkbox"]:checked {
-            background-color: var(--checkbox-checked-bg);
-            border-color: var(--checkbox-checked-border);
+
+        .nav-item:hover {
+            background-color: rgba(0, 0, 0, 0.05);
         }
-        .todo-item input[type="checkbox"]:checked::after {
-            content: '';
-            display: block;
-            width: 5px;
-            height: 10px;
-            border: solid var(--checkbox-checkmark-color);
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg);
-            position: absolute;
-            left: 5px;
-            top: 1px;
+
+        .nav-item.active {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: var(--sidebar-active);
+            font-weight: 500;
         }
-        .todo-item input[type="checkbox"]:hover {
-            transform: scale(1.1);
-            border-color: var(--checkbox-hover-border);
-            background-color: var(--checkbox-bg-hover);
+
+        .nav-item i {
+            margin-right: 10px;
+            font-size: 1.1rem;
         }
-        .completed {
+
+        .nav-item .count {
+            margin-left: auto;
+            background-color: transparent;
+            color: var(--sidebar-count);
+            font-size: 0.8rem;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        .nav-item.active .count {
+            background-color: var(--sidebar-active);
+            color: white;
+        }
+
+        .create-new {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background-color: rgba(0, 123, 255, 0.1);
+            color: var(--primary-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 15px;
+            font-weight: 500;
+        }
+
+        .create-new:hover {
+            background-color: rgba(0, 123, 255, 0.2);
+        }
+
+        .create-new i {
+            margin-right: 10px;
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            margin-left: 240px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0 20px;
+            margin-bottom: 20px;
+        }
+
+        .header-title {
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+
+        .date-display {
+            display: flex;
+            align-items: center;
+            color: var(--time-color);
+            font-size: 0.9rem;
+        }
+
+        .date-dropdown {
+            margin-left: 10px;
+            background: transparent;
+            border: none;
+            color: var(--time-color);
+            cursor: pointer;
+        }
+
+        /* 任务列表样式 */
+        .todo-card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .form-control {
+            border-radius: 6px;
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+        }
+
+        .form-control:focus {
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        .task-checkbox {
+            margin-right: 15px;
+            min-width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .task-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding-right: 100px;
+        }
+
+        .task-text {
+            font-size: 1rem;
+            padding: 0 10px;
+        }
+
+        .task-completed .task-text {
             text-decoration: line-through;
-            color: var(--text-completed-color);
-            transition: all 0.2s ease;
+            color: var(--success-color);
         }
+
+        .task-time {
+            color: var(--time-color);
+            font-size: 0.8rem;
+            position: absolute;
+            right: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 80px;
+            text-align: right;
+            font-family: monospace, 'Courier New', Courier;
+        }
+
+        .task-actions {
+            opacity: 0;
+            transition: all 0.2s;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .task-item:hover .task-actions {
+            opacity: 1;
+        }
+
+        .task-action-btn {
+            background: transparent;
+            border: none;
+            color: var(--time-color);
+            cursor: pointer;
+            padding: 0 5px;
+            font-size: 1rem;
+        }
+
+        .task-action-btn:hover {
+            color: var(--danger-color);
+        }
+
+        .avatar-group {
+            display: flex;
+        }
+
+        .avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-left: -8px;
+            border: 2px solid white;
+            background-color: #f0f0f0;
+            color: #666;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .avatar:first-child {
+            margin-left: 0;
+        }
+
+        .avatar-1 { background-color: #FFD700; }
+        .avatar-2 { background-color: #FF7F50; }
+        .avatar-3 { background-color: #6A5ACD; }
+
+        .category-tag {
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+
+        .tag-work {
+            background-color: rgba(0, 123, 255, 0.2);
+            color: var(--primary-color);
+        }
+
+        .tag-personal {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: var(--danger-color);
+        }
+
+        .btn-add-task {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-add-task:hover {
+            background-color: var(--primary-hover);
+        }
+
         .loading {
             text-align: center;
             padding: 20px;
-            color: var(--starry-cyan); /* 使用星空风格的天蓝色 */
-        }
-        h1 {
-            color: var(--text-color);
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            text-shadow: 0 1px 2px var(--shadow-color-dark);
-        }
-        .btn-primary {
-            background-color: var(--btn-primary-bg);
-            border: none;
-            border-radius: 6px;
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 6px var(--shadow-color-light);
-            color: var(--btn-primary-text);
-        }
-        .btn-primary:hover, .btn-primary:focus {
-            background-color: var(--btn-primary-hover-bg);
-            transform: translateY(-1px);
-            box-shadow: 0 3px 8px var(--shadow-color-medium);
-            color: var(--btn-primary-text);
-        }
-        .btn-danger {
-            background-color: transparent;
-            border: 1px solid var(--starry-danger);
-            color: var(--starry-danger);
-            transition: all 0.3s ease;
-            border-radius: 20px;
-            opacity: 0; /* 初始状态不可见 */
-            display: block; /* 确保按钮一直存在但不可见 */
-            font-weight: normal; /* 恢复文字粗细 */
-            padding: 2px 10px;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-            box-shadow: none;
+            color: var(--time-color);
         }
         
-        /* 当鼠标悬停在任务项上时显示删除按钮 */
-        .todo-item:hover .btn-danger {
-            opacity: 0.7;
-        }
-        
-        .btn-danger:hover {
-            background-color: var(--starry-danger);
-            color: var(--starry-bg);
-            opacity: 1;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 8px rgba(255, 172, 200, 0.4);
-        }
-        input[type="text"].form-control {
-            background-color: var(--input-bg);
-            border: 1px solid var(--input-border);
-            border-radius: 6px;
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            color: var(--text-color);
-        }
-        input[type="text"].form-control::placeholder { /* Style placeholder */
-             color: var(--input-placeholder-color);
-             opacity: 0.6;
-        }
-        input[type="text"].form-control:focus {
-            background-color: var(--input-bg-focus);
-            border-color: var(--input-focus-border);
-            box-shadow: 0 0 0 0.15rem var(--input-shadow-focus);
-            transform: translateY(-1px);
-            color: var(--text-color);
-        }
-        .input-group {
-            box-shadow: 0 4px 15px var(--shadow-color-light);
-            border-radius: 6px;
-        }
-        .text-muted {
-            color: var(--text-muted-color) !important;
-        }
-        .alert-danger {
-            background-color: var(--alert-bg);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            border: 1px solid var(--alert-border);
-            color: var(--alert-text-color);
-            border-radius: 8px;
+        /* 根据窗口大小调整布局 */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                top: auto;
+                height: 60px;
+                padding: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: space-around;
+                z-index: 100;
+            }
+            
+            .sidebar-title, .sidebar-header {
+                display: none;
+            }
+            
+            .nav-item {
+                flex-direction: column;
+                padding: 5px;
+                margin: 0;
+                text-align: center;
+                font-size: 0.7rem;
+            }
+            
+            .nav-item i {
+                margin-right: 0;
+                margin-bottom: 2px;
+            }
+            
+            .nav-item .count {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                margin-left: 0;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding-bottom: 70px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="todo-container">
-            <h1 class="text-center mb-4">待办事项</h1>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h5>清风小阁</h5>
+                <button class="btn btn-sm" id="expand-btn">
+                    <i class="bi bi-arrows-angle-expand"></i>
+                </button>
+            </div>
             
-            <!-- Add Task Form -->
-            <form id="todo-form" class="mb-4">
-                <div class="input-group">
-                    <input type="text" id="task-input" class="form-control" placeholder="添加新任务..." required>
-                    <button type="submit" class="btn btn-primary">添加</button>
+            <div class="nav-item active">
+                <i class="bi bi-house"></i>
+                <span>栖凤居</span>
+                <span class="count">8</span>
+            </div>
+            
+            <div class="nav-item">
+                <i class="bi bi-check2-all"></i>
+                <span>尘缘已了</span>
+                <span class="count">16</span>
+            </div>
+            
+            <div class="nav-item">
+                <i class="bi bi-person"></i>
+                <span>独往来</span>
+                <span class="count">4</span>
+            </div>
+            
+            <div class="nav-item">
+                <i class="bi bi-briefcase"></i>
+                <span>公务簿</span>
+                <span class="count">6</span>
+            </div>
+            
+            <div class="nav-item">
+                <i class="bi bi-cup-hot"></i>
+                <span>茗饮录</span>
+                <span class="count">3</span>
+            </div>
+            
+            <div class="nav-item">
+                <i class="bi bi-book"></i>
+                <span>书囊志</span>
+                <span class="count">8</span>
+            </div>
+            
+            <div class="nav-item">
+                <i class="bi bi-signpost-split"></i>
+                <span>游历记</span>
+                <span class="count">6</span>
+            </div>
+            
+            <div class="create-new">
+                <i class="bi bi-plus-circle"></i>
+                <span>开辟新径</span>
+            </div>
+            
+            <div class="sidebar-title">山水相逢</div>
+            
+            <div class="nav-item">
+                <i class="bi bi-people"></i>
+                <span>流水计</span>
+                <span class="count">5</span>
+            </div>
+            
+            <div class="nav-item">
+                <i class="bi bi-people"></i>
+                <span>明日弦</span>
+                <span class="count">4</span>
+            </div>
+            
+            <div class="create-new">
+                <i class="bi bi-plus-circle"></i>
+                <span>结庐人境</span>
+            </div>
+        </div>
+        
+        <!-- 主内容区域 -->
+        <div class="main-content">
+            <div class="header">
+                <div>
+                    <div class="header-title">一日之计在于晨</div>
+                    <div class="date-display">
+                        良辰，<span id="current-date"></span>
+                        <button class="date-dropdown">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
                 </div>
-            </form>
+                
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-sm btn-outline-secondary me-2">
+                        <i class="bi bi-justify"></i>
+                    </button>
+                </div>
+            </div>
             
-            <!-- Task List -->
-            <div id="todos-container">
-                <div class="loading">正在加载任务...</div>
+            <div class="todo-card">
+                <!-- 添加任务表单 -->
+                <form id="todo-form" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" id="task-input" class="form-control" placeholder="但存方寸地，留与子孙耕..." required>
+                        <button type="submit" class="btn-add-task">记之</button>
+                    </div>
+                </form>
+                
+                <!-- 任务列表 -->
+                <div id="todos-container">
+                    <div class="loading">山高水长，稍候片刻...</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Supabase configuration
+        // Supabase 配置
         const SUPABASE_URL = 'https://fmxddvjgkykuqwmasigo.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZteGRkdmpna3lrdXF3bWFzaWdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDMzMjcsImV4cCI6MjA1OTYxOTMyN30.XCU4-03oajGh6M2-PNiBotCZSIDn_nJXkIC0Thjjfqo';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // DOM Elements
+        // DOM 元素
         const todoForm = document.getElementById('todo-form');
         const taskInput = document.getElementById('task-input');
         const todosContainer = document.getElementById('todos-container');
+        const currentDateEl = document.getElementById('current-date');
 
-        // Load todos from Supabase
+        // 设置当前日期显示
+        function setCurrentDate() {
+            const now = new Date();
+            
+            // 中文月份和星期名称
+            const chineseMonths = [
+                "正月", "二月", "三月", "四月", "五月", "六月",
+                "七月", "八月", "九月", "十月", "冬月", "腊月"
+            ];
+            
+            const chineseWeekdays = [
+                "星期日", "星期一", "星期二", "星期三", 
+                "星期四", "星期五", "星期六"
+            ];
+            
+            // 获取农历式样的日期
+            const month = chineseMonths[now.getMonth()];
+            const day = now.getDate();
+            const weekday = chineseWeekdays[now.getDay()];
+            
+            // 格式化为诗意的中文日期
+            const dateStr = `${month}${day}日 ${weekday}`;
+            
+            currentDateEl.textContent = dateStr;
+        }
+        
+        // 加载待办事项
         async function loadTodos() {
             try {
-                console.log('开始加载任务...');
                 const { data, error } = await supabase
                     .from('todos')
                     .select('id, task, is_completed, created_at')
                     .order('created_at', { ascending: false });
                 
-                console.log('查询返回数据:', data);
-                console.log('查询返回错误:', error);
-                
                 if (error) throw error;
-
                 renderTodos(data || []);
             } catch (error) {
-                console.error('Error loading todos:', error);
+                console.error('加载任务失败:', error);
                 todosContainer.innerHTML = `<div class="alert alert-danger">加载任务失败: ${error.message}</div>`;
             }
         }
 
-        // Render todos in the DOM
+        // 渲染待办事项列表
         function renderTodos(todos) {
-            console.log('渲染任务列表，数据:', todos);
-            
-            // 确保 todos 是一个数组
             if (!todos || !Array.isArray(todos)) {
-                console.warn('渲染失败：数据不是数组', todos);
-                todosContainer.innerHTML = `<div class="text-center text-muted">无法加载任务，请刷新页面重试</div>`;
+                todosContainer.innerHTML = `<div class="text-center text-muted">水逝云散，不复可寻</div>`;
                 return;
             }
             
             if (todos.length === 0) {
-                todosContainer.innerHTML = `<div class="text-center text-muted">暂无任务，请在上方添加</div>`;
+                todosContainer.innerHTML = `<div class="text-center text-muted">宁静致远，虚怀若谷</div>`;
                 return;
             }
 
             let html = '';
             todos.forEach(todo => {
+                // 使用数据库中的created_at字段
+                const taskDate = new Date(todo.created_at);
+                
+                // 格式化日期和时间
+                const month = taskDate.getMonth() + 1;
+                const day = taskDate.getDate().toString().padStart(2, '0');
+                const hours = taskDate.getHours().toString().padStart(2, '0');
+                const minutes = taskDate.getMinutes().toString().padStart(2, '0');
+                
+                // 日期时间格式: M-DD HH:MM (与图片一致)
+                const timeStr = `${month}-${day} ${hours}:${minutes}`;
+                
+                // 随机决定是否有分类标签 (仅用于演示)
+                const hasTag = Math.random() > 0.5;
+                const tagTypes = ['work', 'personal'];
+                const tagType = tagTypes[Math.floor(Math.random() * tagTypes.length)];
+                const tagHtml = hasTag ? `<span class="category-tag tag-${tagType}">${tagType === 'work' ? '公务' : '私事'}</span>` : '';
+                
+                // 随机决定是否有头像组 (仅用于演示)
+                const hasAvatars = Math.random() > 0.7;
+                const avatarHtml = hasAvatars ? `
+                    <div class="avatar-group">
+                        <div class="avatar avatar-1">诗</div>
+                        <div class="avatar avatar-2">书</div>
+                        <div class="avatar avatar-3">画</div>
+                    </div>
+                ` : '';
+                
                 html += `
-                <div class="todo-item" data-id="${todo.id}">
-                    <input type="checkbox" ${todo.is_completed ? 'checked' : ''} 
+                <div class="task-item ${todo.is_completed ? 'task-completed' : ''}" data-id="${todo.id}">
+                    <input type="checkbox" class="task-checkbox" ${todo.is_completed ? 'checked' : ''} 
                         onchange="toggleTodoStatus(${todo.id}, this.checked)">
-                    <span class="${todo.is_completed ? 'completed' : ''}">${todo.task}</span>
-                    <button class="btn btn-sm btn-danger ms-auto" onclick="deleteTodo(${todo.id})">删除</button>
+                    <div class="task-content">
+                        <span class="task-text">${todo.task}</span>
+                        ${tagHtml}
+                        ${avatarHtml}
+                    </div>
+                    <div class="task-time">${timeStr}</div>
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="deleteTodo(${todo.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </div>
                 `;
             });
@@ -470,10 +615,9 @@
             todosContainer.innerHTML = html;
         }
 
-        // Add a new todo
+        // 添加新待办事项
         async function addTodo(task) {
             try {
-                console.log('添加新任务:', task);
                 const { data, error } = await supabase
                     .from('todos')
                     .insert([
@@ -481,66 +625,57 @@
                     ])
                     .select();
                 
-                console.log('添加任务结果:', data, '错误:', error);
-                
                 if (error) throw error;
-                
-                loadTodos(); // Refresh the list
+                loadTodos(); // 刷新列表
             } catch (error) {
-                console.error('添加任务失败:', error);
-                alert('添加任务失败: ' + error.message);
+                console.error('添加事项失败:', error);
+                alert('添加事项失败: ' + error.message);
             }
         }
 
-        // Toggle todo status (completed/not completed)
+        // 切换待办事项状态
         async function toggleTodoStatus(id, isCompleted) {
             try {
-                console.log('更新任务状态:', id, isCompleted);
                 const { error } = await supabase
                     .from('todos')
                     .update({ is_completed: isCompleted })
                     .eq('id', id);
                 
-                console.log('更新任务状态结果 - 错误:', error);
-                
                 if (error) throw error;
                 
-                const todoItem = document.querySelector(`.todo-item[data-id="${id}"] span`);
+                const todoItem = document.querySelector(`.task-item[data-id="${id}"]`);
                 if (todoItem) {
                     if (isCompleted) {
-                        todoItem.classList.add('completed');
+                        todoItem.classList.add('task-completed');
                     } else {
-                        todoItem.classList.remove('completed');
+                        todoItem.classList.remove('task-completed');
                     }
                 }
             } catch (error) {
                 console.error('更新任务状态失败:', error);
                 alert('更新任务失败: ' + error.message);
-                loadTodos(); // Reload to restore correct state
+                loadTodos(); // 重新加载以恢复正确状态
             }
         }
 
-        // Delete a todo
+        // 删除待办事项
         async function deleteTodo(id) {
             try {
-                console.log('删除任务:', id);
                 const { error } = await supabase
                     .from('todos')
                     .delete()
                     .eq('id', id);
                 
-                console.log('删除任务结果 - 错误:', error);
-                
                 if (error) throw error;
                 
-                const todoItem = document.querySelector(`.todo-item[data-id="${id}"]`);
+                const todoItem = document.querySelector(`.task-item[data-id="${id}"]`);
                 if (todoItem) {
                     todoItem.remove();
                 }
                 
-                // If no todos left, show the empty message
-                if (document.querySelectorAll('.todo-item').length === 0) {
-                    todosContainer.innerHTML = `<div class="text-center text-muted">暂无任务，请在上方添加</div>`;
+                // 如果没有任务了，显示空消息
+                if (document.querySelectorAll('.task-item').length === 0) {
+                    todosContainer.innerHTML = `<div class="text-center text-muted">竹素笺清，待君挥墨</div>`;
                 }
             } catch (error) {
                 console.error('删除任务失败:', error);
@@ -548,18 +683,21 @@
             }
         }
 
-        // Initialize database and load todos
-        async function initialize() {
-            try {
-                console.log('正在初始化应用...');
-                await loadTodos();
-            } catch (error) {
-                console.error('初始化失败:', error);
-                todosContainer.innerHTML = `<div class="alert alert-danger">初始化失败: ${error.message}</div>`;
-            }
+        // 初始化
+        function initialize() {
+            setCurrentDate();
+            loadTodos();
+            
+            // 更新侧边栏活跃状态
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
         }
 
-        // Event listeners
+        // 事件监听器
         todoForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const task = taskInput.value.trim();
@@ -569,160 +707,8 @@
             }
         });
 
-        // Initialize
+        // 当页面加载完成时初始化
         document.addEventListener('DOMContentLoaded', initialize);
-        
-        // 添加动态星星
-        function createStars() {
-            const body = document.body;
-            const numStars = 50; // 创建50颗动态星星
-            
-            for (let i = 0; i < numStars; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                
-                // 随机位置
-                const posX = Math.floor(Math.random() * window.innerWidth);
-                const posY = Math.floor(Math.random() * window.innerHeight);
-                
-                // 随机大小
-                const size = Math.random() * 3;
-                
-                // 随机动画延迟
-                const delay = Math.random() * 5;
-                
-                // 随机动画持续时间
-                const duration = 2 + Math.random() * 3;
-                
-                // 设置星星样式
-                star.style.left = `${posX}px`;
-                star.style.top = `${posY}px`;
-                star.style.width = `${size}px`;
-                star.style.height = `${size}px`;
-                star.style.animationDelay = `${delay}s`;
-                star.style.animationDuration = `${duration}s`;
-                
-                body.appendChild(star);
-            }
-            
-            // 添加发光星星 (更少量)
-            const numGlowStars = 15;
-            for (let i = 0; i < numGlowStars; i++) {
-                const star = document.createElement('div');
-                star.className = 'star star-glow';
-                
-                // 随机位置
-                const posX = Math.floor(Math.random() * window.innerWidth);
-                const posY = Math.floor(Math.random() * window.innerHeight);
-                
-                // 随机大小 (稍大)
-                const size = 1 + Math.random() * 3;
-                
-                // 随机动画延迟
-                const delay = Math.random() * 5;
-                
-                // 设置星星样式
-                star.style.left = `${posX}px`;
-                star.style.top = `${posY}px`;
-                star.style.width = `${size}px`;
-                star.style.height = `${size}px`;
-                star.style.animationDelay = `${delay}s`;
-                
-                body.appendChild(star);
-            }
-            
-            // 创建流星容器
-            const shootingStarContainer = document.createElement('div');
-            shootingStarContainer.className = 'shooting-star-container';
-            document.body.appendChild(shootingStarContainer);
-            
-            // 添加流星
-            function addShootingStar() {
-                const star = document.createElement('div');
-                star.className = 'shooting-star';
-                
-                // 添加流星头部
-                const head = document.createElement('div');
-                head.className = 'star-head';
-                star.appendChild(head);
-                
-                // 随机起始位置（屏幕上方外侧）
-                const screenWidth = window.innerWidth;
-                const posX = Math.floor(Math.random() * screenWidth * 1.5) - screenWidth * 0.25;
-                const posY = -50 - Math.floor(Math.random() * 100);
-                
-                // 随机大小
-                const size = 1 + Math.random() * 2;
-                
-                // 随机长度（尾巴）
-                const tailLength = 80 + Math.random() * 120;
-                
-                // 随机角度（真实流星更倾斜）
-                const angle = 15 + Math.random() * 30;
-                
-                // 随机速度
-                const duration = 1 + Math.random() * 2;
-                
-                // 设置流星样式
-                star.style.left = `${posX}px`;
-                star.style.top = `${posY}px`;
-                star.style.height = `${size}px`;
-                star.style.width = `${tailLength}px`;
-                star.style.transform = `rotate(${angle}deg)`;
-                
-                shootingStarContainer.appendChild(star);
-                
-                // 计算终点坐标（保证流星能完全经过屏幕）
-                const distToTravel = screenWidth * 2 + tailLength;
-                const radians = angle * Math.PI / 180;
-                const endX = posX + Math.cos(radians) * distToTravel;
-                const endY = posY + Math.sin(radians) * distToTravel;
-                
-                // 创建动画并播放
-                let startTime = null;
-                
-                function animate(timestamp) {
-                    if (!startTime) startTime = timestamp;
-                    const progress = (timestamp - startTime) / (duration * 1000);
-                    
-                    if (progress < 1) {
-                        const currentX = posX + (endX - posX) * progress;
-                        const currentY = posY + (endY - posY) * progress;
-                        
-                        star.style.left = `${currentX}px`;
-                        star.style.top = `${currentY}px`;
-                        
-                        // 淡入淡出效果
-                        if (progress < 0.1) {
-                            // 淡入
-                            star.style.opacity = progress * 10;
-                        } else if (progress > 0.8) {
-                            // 淡出
-                            star.style.opacity = (1 - progress) * 5;
-                        } else {
-                            star.style.opacity = 1;
-                        }
-                        
-                        requestAnimationFrame(animate);
-                    } else {
-                        star.remove();
-                        // 随机间隔后再生成新流星，使流星出现更自然
-                        setTimeout(addShootingStar, 1000 + Math.random() * 5000);
-                    }
-                }
-                
-                // 开始动画
-                requestAnimationFrame(animate);
-            }
-            
-            // 启动流星生成（多条流星，随机时间）
-            for (let i = 0; i < 3; i++) {
-                setTimeout(addShootingStar, 1000 + Math.random() * 3000 * i);
-            }
-        }
-        
-        // 当页面加载完成时创建星星
-        window.addEventListener('load', createStars);
     </script>
 </body>
 </html> 
