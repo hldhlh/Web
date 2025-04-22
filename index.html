@@ -168,14 +168,33 @@
         .sidebar-more {
             position: absolute;
             right: 10px;
+            top: 50%; /* 垂直居中 */
+            transform: translateY(-50%); /* 调整垂直居中 */
             color: var(--secondary-text);
             cursor: pointer;
-            opacity: 0;
+            opacity: 0; /* 初始隐藏 */
             font-size: 0.9rem;
+            width: 24px; /* 固定宽度 */
+            height: 24px; /* 固定高度 */
+            display: inline-flex; /* 使用flex布局居中图标 */
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%; /* 圆形 */
+            transition: opacity 0.15s ease-in-out; /* 保留现有的透明度过渡 */
         }
         
         .sidebar-item:hover .sidebar-more {
-            opacity: 1;
+            opacity: 1; /* 父元素悬停时显示 */
+        }
+
+        .sidebar-more:hover {
+            background-color: rgba(0, 0, 0, 0.08); /* 悬停时添加浅灰色背景 */
+        }
+
+        /* 确保内部图标对齐良好 */
+        .sidebar-more i {
+            line-height: 1;
+            display: block;
         }
 
         /* 主内容区域 */
@@ -564,7 +583,6 @@
                 font-size: 1rem;
                 text-align: left;
                 height: 40px; /* Match desktop height */
-                border-bottom: 1px solid #f0f0f0;
                 position: relative;
             }
             
@@ -573,11 +591,9 @@
                 background-color: transparent; /* Override base style */
                 color: var(--text-color); /* Reset text color */
                 font-weight: normal; /* Reset font weight */
-                border-bottom-color: #f0f0f0; /* Ensure border is visible like others */
             }
             
-            /* Remove the arrow on mobile view */
-            /*
+            /* Restore the arrow on mobile view */
             .sidebar-item::after {
                 content: '›';
                 position: absolute;
@@ -585,14 +601,12 @@
                 font-size: 1.5rem;
                 color: #c7c7cc;
             }
-            */
             
             /* Apply the hover style for mobile */
             .sidebar-item:hover {
                 /* background-color: rgba(10, 132, 255, 0.1); */
                 background-color: rgb(244, 244, 245); /* Light gray hover for Mobile */
                 border-radius: 8px;
-                border-bottom-color: transparent;
             }
             
             .sidebar-icon {
@@ -608,10 +622,21 @@
             
             /* Show the 'more' icon on mobile */
             .sidebar-more {
-                display: block; /* Make it visible */
+                display: flex;
                 opacity: 1; /* Ensure full opacity */
-                right: 15px; /* Adjust position */
+                right: 45px;
+                /* right: 15px; */ /* Adjust position */
                 /* display: none; */ /* Remove hiding rule */
+            }
+            
+            /* 在移动端，图标始终可见，不需要在父元素悬停时改变透明度 */
+             .sidebar-item:hover .sidebar-more {
+                opacity: 1;
+            }
+
+            /* 确保移动端也有悬停背景 */
+            .sidebar-more:hover {
+                 background-color: rgba(0, 0, 0, 0.08);
             }
             
             .sidebar-add {
@@ -928,8 +953,7 @@
             // 如果有实际数据，按照生日备注格式渲染
             let html = '';
             birthdays.forEach(birthday => {
-                html += `
-                <li class="task-item ${birthday.is_completed ? 'completed' : ''}" data-id="${birthday.id}">
+                html += `                <li class="task-item ${birthday.is_completed ? 'completed' : ''}" data-id="${birthday.id}">
                     <input type="checkbox" class="task-checkbox" ${birthday.is_completed ? 'checked' : ''}>
                     <div>
                         <span class="task-text">${birthday.task}</span>
