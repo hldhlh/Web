@@ -111,7 +111,7 @@
             width: 25px;
             height: 25px;
             border-radius: 50%;
-            margin-right: 8px;
+            margin-right: 15px;
             font-size: 0.8rem;
             color: white;
             text-align: center;
@@ -145,7 +145,20 @@
         }
 
         .sidebar-add i {
-            margin-right: 8px;
+            margin-right: 15px;
+            font-size: 1rem;
+            color: #007aff;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar-add span {
+            display: block;
+            font-size: 1rem;
+            color: #007aff;
         }
 
         .sidebar-more {
@@ -248,46 +261,43 @@
         }
         
         .task-checkbox.purple:checked {
-            background-color: #bf5af2;
+            /* background-color: #bf5af2; */ /* Remove background fill */
             border-color: #bf5af2;
         }
         
         .task-checkbox.blue:checked {
-            background-color: #0a84ff;
+            /* background-color: #0a84ff; */ /* Remove background fill */
             border-color: #0a84ff;
         }
         
         .task-checkbox.red:checked {
-            background-color: #ff453a;
+            /* background-color: #ff453a; */ /* Remove background fill */
             border-color: #ff453a;
         }
 
-        /* 添加新的任务选中状态的颜色 */
-        .task-item.completed .task-checkbox.purple:not(:checked) {
-            background-color: #bf5af2;
-            border-color: #bf5af2;
-        }
-        
-        .task-item.completed .task-checkbox.blue:not(:checked) {
-            background-color: #0a84ff;
-            border-color: #0a84ff;
-        }
-        
-        .task-item.completed .task-checkbox.red:not(:checked) {
-            background-color: #ff453a;
-            border-color: #ff453a;
-        }
-
+        /* Add specific ::after rules for each theme color when checked */
         .task-checkbox:checked::after {
             content: '';
             position: absolute;
-            left: 7px;
-            top: 3.5px;
-            width: 5px;
-            height: 10px;
-            border: solid white;
-            border-width: 0 2px 2px 0;
-            transform: rotate(45deg);
+            left: 50%;
+            top: 50%;
+            width: 12px; /* Increased size for the dot */
+            height: 12px; /* Increased size for the dot */
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            border: none;
+        }
+
+        .task-checkbox.purple:checked::after {
+            background-color: #bf5af2; /* Theme color dot */
+        }
+
+        .task-checkbox.blue:checked::after {
+            background-color: #0a84ff; /* Theme color dot */
+        }
+        
+        .task-checkbox.red:checked::after {
+            background-color: #ff453a; /* Theme color dot */
         }
 
         .task-text {
@@ -304,7 +314,7 @@
         }
 
         .task-item.completed .task-text {
-            text-decoration: line-through;
+            text-decoration: none;
             color: var(--secondary-text);
         }
 
@@ -449,8 +459,20 @@
         .mobile-title {
             text-align: center;
             font-size: 1.1rem;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--text-color);
+        }
+        
+        .mobile-title.purple {
+            color: #bf5af2;
+        }
+        
+        .mobile-title.blue {
+            color: #0a84ff;
+        }
+        
+        .mobile-title.red {
+            color: #ff453a;
         }
         
         .mobile-actions {
@@ -503,71 +525,178 @@
 
         @media (max-width: 768px) {
             .sidebar {
-                width: 100%;
-                height: 60px;
+                display: none; /* 在移动端隐藏列表组栏，但不删除它 */
+                width: 100%; /* 全屏宽度 */
+                height: 100vh; /* 全屏高度 */
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
                 bottom: 0;
-                top: auto;
-                flex-direction: row;
-                border-top: 1px solid var(--border-color);
-                border-right: none;
-                z-index: 50;
-            }
-            
-            .mobile-header {
-                display: block;
-            }
-            
-            .list-header {
-                display: none;
+                z-index: 300; /* 确保在移动端头部之上 */
+                overflow-y: auto; /* 允许整体滚动 */
+                background-color: white; /* 改为白色背景 */
+                padding-top: 0; /* 移除顶部内边距 */
+                display: flex;
+                flex-direction: column;
             }
             
             .sidebar-list {
-                display: flex;
+                flex-direction: column;
                 padding: 0;
-                overflow-x: auto;
+                margin: 0;
+                background-color: white;
                 flex-grow: 1;
+                overflow-y: auto;
+                border-radius: 0; /* 移除圆角 */
             }
             
             .sidebar-item {
-                padding: 5px 10px;
-                margin: 0 3px;
-                flex-direction: column;
-                font-size: 0.7rem;
-                text-align: center;
+                padding: 15px;
+                margin: 0;
+                border-radius: 0;
+                flex-direction: row;
+                font-size: 1rem;
+                text-align: left;
+                height: auto;
+                border-bottom: 1px solid #f0f0f0;
+                position: relative;
+            }
+            
+            .sidebar-item.active {
+                background-color: transparent;
+                font-weight: normal;
+            }
+            
+            .sidebar-item::after {
+                content: '›';
+                position: absolute;
+                right: 15px;
+                font-size: 1.5rem;
+                color: #c7c7cc;
             }
             
             .sidebar-icon {
-                margin-right: 0;
-                margin-bottom: 3px;
+                margin-right: 15px;
+                margin-bottom: 0;
+                width: 25px;
+                height: 25px;
+                font-size: 0.8rem;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                line-height: 1;
-                padding: 0;
             }
             
             .sidebar-more {
-                position: absolute;
-                top: 0;
-                right: 0;
-                font-size: 0.7rem;
-                padding: 2px;
+                display: none; /* 隐藏三点图标 */
             }
             
             .sidebar-add {
-                padding: 0 15px;
-                border-top: none;
-                border-left: 1px solid var(--border-color);
+                display: flex;
+                padding: 15px;
+                border-top: 1px solid #f0f0f0;
+                color: #007aff;
+                align-items: center;
+                background-color: white;
+                margin-top: auto; /* 将添加列表移至底部 */
+                position: sticky;
+                bottom: 0;
+                z-index: 10;
+                width: 100%; /* 确保宽度100% */
+            }
+            
+            .sidebar-add i {
+                margin-right: 15px;
+                font-size: 1rem;
+                color: #007aff;
+                width: 25px;
+                height: 25px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             
             .sidebar-add span {
+                display: block;
+                font-size: 1rem;
+                color: #007aff;
+            }
+            
+            .mobile-header {
                 display: none;
+            }
+            
+            .list-header {
+                display: none; /* 在移动端隐藏PC版的标题栏 */
             }
             
             .main-content {
                 margin-left: 0;
-                padding-top: 65px;
-                padding-bottom: 70px;
+                padding-top: 60px; /* 为顶部标题栏留出空间 */
+                padding-bottom: 0; /* 移除底部内边距 */
+                padding-left: 0; /* 移除左侧内边距 */
+                padding-right: 0; /* 移除右侧内边距 */
+                height: calc(100vh - 60px); /* 调整主内容区高度 */
+                overflow-y: auto;
+                background-color: white; /* 改为白色背景 */
+                max-width: 100%; /* 确保最大宽度为100% */
+            }
+            
+            .task-list {
+                background-color: white;
+                border-radius: 0; /* 移除圆角 */
+                box-shadow: none; /* 移除阴影 */
+                margin: 0; /* 移除外边距 */
+                padding: 0; /* 移除内边距 */
+            }
+            
+            .task-item {
+                padding: 15px;
+                margin: 0;
+                border-bottom: 1px solid #f0f0f0;
+            }
+            
+            .task-item:last-child {
+                border-bottom: none;
+            }
+            
+            .task-checkbox {
+                width: 22px;
+                height: 22px;
+            }
+            
+            .task-text {
+                font-size: 1rem;
+            }
+            
+            .mobile-title {
+                flex: 1;
+                text-align: center;
+                font-weight: 600;
+                font-size: 1.1rem;
+            }
+            
+            .mobile-back {
+                display: flex;
+                align-items: center;
+                padding: 8px;
+            }
+            
+            .mobile-actions {
+                display: flex;
+            }
+            
+            .mobile-action-btn {
+                padding: 8px;
+            }
+            
+            .empty-state {
+                margin: 0;
+                padding: 30px 20px;
+                text-align: center;
+                background-color: white;
+                border-radius: 0;
+                box-shadow: none;
             }
         }
 
@@ -638,13 +767,13 @@
                 <i class="bi bi-chevron-left"></i>
                 <span>列表</span>
             </div>
-            <div class="mobile-title">每日清单</div>
+            <div class="mobile-title purple">每日清单</div>
             <div class="mobile-actions">
                 <button class="mobile-action-btn purple">
                     <span class="custom-plus"></span>
                 </button>
                 <button class="mobile-action-btn purple">
-                    <i class="bi bi-three-dots-vertical"></i>
+                    <i class="bi bi-three-dots"></i>
                 </button>
             </div>
         </div>
@@ -899,16 +1028,75 @@
                 mobileBack.classList.remove('purple', 'blue', 'red');
                 mobileBack.classList.add(currentThemeColor);
             }
+            
+            // 更新移动端标题颜色
+            const mobileTitle = document.querySelector('.mobile-title');
+            if (mobileTitle) {
+                mobileTitle.classList.remove('purple', 'blue', 'red');
+                mobileTitle.classList.add(currentThemeColor);
+            }
         }
 
         // 初始化
         function initialize() {
+            // 加载任务列表
             loadBirthdays();
             
-            // 移动端返回按钮
+            // 点击文档任意区域关闭列表组栏
+            document.addEventListener('click', function(e) {
+                const sidebar = document.querySelector('.sidebar');
+                // 如果点击的不是侧边栏内的元素，且侧边栏是显示状态，并且是移动端
+                if (!sidebar.contains(e.target) && 
+                    !e.target.closest('.mobile-back') && 
+                    sidebar.style.display === 'flex' && 
+                    window.innerWidth <= 768) {
+                    sidebar.style.display = 'none';
+                }
+            });
+            
+            // 移动端返回按钮 - 显示列表组
             document.querySelector('.mobile-back').addEventListener('click', function() {
-                // 模拟返回操作，实际应用中可能需要导航到列表页
-                alert('返回到列表页');
+                // 在移动端视图下，返回按钮显示列表组栏
+                if (window.innerWidth <= 768) {
+                    const sidebar = document.querySelector('.sidebar');
+                    sidebar.style.display = 'flex'; // 使用flex而不是block，以保持flex布局
+                    
+                    // 隐藏主内容区域
+                    document.querySelector('.main-content').style.display = 'none';
+                    
+                    // 隐藏移动端头部导航
+                    document.querySelector('.mobile-header').style.display = 'none';
+                }
+            });
+            
+            // 监听窗口大小变化，以正确显示/隐藏侧边栏
+            window.addEventListener('resize', function() {
+                const sidebar = document.querySelector('.sidebar');
+                const mainContent = document.querySelector('.main-content');
+                const mobileHeader = document.querySelector('.mobile-header');
+                const mobileBack = document.querySelector('.mobile-back');
+                const mobileActions = document.querySelector('.mobile-actions');
+                
+                if (window.innerWidth > 768) {
+                    // PC端始终保持显示
+                    sidebar.style.display = '';
+                    sidebar.style.position = '';
+                    sidebar.style.top = '';
+                    sidebar.style.height = '';
+                    mainContent.style.display = '';
+                    mobileHeader.style.display = 'none';
+                    mobileBack.style.visibility = '';
+                    mobileActions.style.display = '';
+                } else {
+                    // 移动端初始隐藏
+                    if (sidebar.style.display !== 'flex') {
+                        sidebar.style.display = 'none';
+                        mainContent.style.display = 'block';
+                        mobileHeader.style.display = 'flex';
+                        mobileBack.style.visibility = 'visible';
+                        mobileActions.style.display = 'flex';
+                    }
+                }
             });
             
             // 移动端添加按钮
@@ -920,8 +1108,36 @@
             });
             
             // 移动端更多选项按钮
-            document.querySelector('.mobile-actions .bi-three-dots-vertical').closest('button').addEventListener('click', function() {
-                alert('显示更多选项');
+            document.querySelector('.mobile-actions .bi-three-dots').closest('button').addEventListener('click', function() {
+                const listTitle = document.querySelector('.mobile-title').textContent;
+                
+                // 如果当前正在显示列表组，则不执行任何操作
+                if (listTitle === '列表') return;
+                
+                const action = prompt(`${listTitle}选项：\n1. 清除已完成任务\n2. 全部标记完成\n3. 全部标记未完成\n请输入数字或取消`);
+                
+                if (action === '1') {
+                    if (confirm('确定要清除所有已完成的任务吗？')) {
+                        // 这里应该调用API来删除已完成的任务
+                        alert('清除功能待实现');
+                    }
+                } else if (action === '2') {
+                    // 将所有任务标记为已完成
+                    document.querySelectorAll('.task-checkbox:not(:checked)').forEach(checkbox => {
+                        checkbox.checked = true;
+                        const taskItem = checkbox.closest('.task-item');
+                        taskItem.classList.add('completed');
+                        // 在实际应用中，应该调用API更新任务状态
+                    });
+                } else if (action === '3') {
+                    // 将所有任务标记为未完成
+                    document.querySelectorAll('.task-checkbox:checked').forEach(checkbox => {
+                        checkbox.checked = false;
+                        const taskItem = checkbox.closest('.task-item');
+                        taskItem.classList.remove('completed');
+                        // 在实际应用中，应该调用API更新任务状态
+                    });
+                }
             });
             
             // 侧边栏选择
@@ -938,13 +1154,15 @@
                     
                     const listTitle = this.querySelector('span').textContent;
                     const titleElement = document.querySelector('.list-title');
+                    const mobileTitleElement = document.querySelector('.mobile-title');
                     
                     // 更新标题
                     titleElement.textContent = listTitle;
-                    document.querySelector('.mobile-title').textContent = listTitle;
+                    mobileTitleElement.textContent = listTitle;
                     
                     // 更新标题颜色
                     titleElement.classList.remove('purple', 'blue', 'red');
+                    mobileTitleElement.classList.remove('purple', 'blue', 'red');
                     
                     // 获取图标的颜色类并设置全局主题颜色
                     const iconElement = this.querySelector('.sidebar-icon');
@@ -952,10 +1170,13 @@
                     
                     if (iconElement.classList.contains('purple')) {
                         titleElement.classList.add('purple');
+                        mobileTitleElement.classList.add('purple');
                     } else if (iconElement.classList.contains('blue')) {
                         titleElement.classList.add('blue');
+                        mobileTitleElement.classList.add('blue');
                     } else if (iconElement.classList.contains('red')) {
                         titleElement.classList.add('red');
+                        mobileTitleElement.classList.add('red');
                     }
                     
                     // 加载对应内容
@@ -971,6 +1192,15 @@
                         currentThemeColor = 'blue';
                         loadBirthdays(); // 暂时使用相同数据展示
                         updateCheckboxColors();
+                    }
+                    
+                    // 如果是在移动端，选择后隐藏列表组，显示内容区
+                    if (window.innerWidth <= 768) {
+                        document.querySelector('.sidebar').style.display = 'none';
+                        document.querySelector('.main-content').style.display = 'block';
+                        document.querySelector('.mobile-header').style.display = 'flex';
+                        document.querySelector('.mobile-back').style.visibility = 'visible';
+                        document.querySelector('.mobile-actions').style.display = 'flex';
                     }
                 });
             });
@@ -1009,20 +1239,28 @@
             
             // 设置初始标题颜色
             const titleElement = document.querySelector('.list-title');
+            const mobileTitleElement = document.querySelector('.mobile-title');
             const iconElement = activeItem.querySelector('.sidebar-icon');
+            
             titleElement.classList.remove('purple', 'blue', 'red');
+            mobileTitleElement.classList.remove('purple', 'blue', 'red');
+            
             titleElement.textContent = '每日清单';
+            mobileTitleElement.textContent = '每日清单';
             
             // 设置初始主题颜色
             if (iconElement.classList.contains('purple')) {
                 currentThemeColor = 'purple';
                 titleElement.classList.add('purple');
+                mobileTitleElement.classList.add('purple');
             } else if (iconElement.classList.contains('blue')) {
                 currentThemeColor = 'blue';
                 titleElement.classList.add('blue');
+                mobileTitleElement.classList.add('blue');
             } else if (iconElement.classList.contains('red')) {
                 currentThemeColor = 'red';
                 titleElement.classList.add('red');
+                mobileTitleElement.classList.add('red');
             }
             
             // 立即更新所有颜色
