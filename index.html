@@ -3,37 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>现代待办事项应用</title>
+    <title>每日清单</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg-color: #f5f5f7;
+            --bg-color: #ffffff;
             --sidebar-bg: #ffffff;
+            --sidebar-hover: #e8e8e8;
+            --sidebar-active: #dedede;
             --sidebar-text: #555555;
-            --sidebar-active: #000000;
-            --sidebar-count: #888888;
-            --primary-color: #007bff;
-            --primary-hover: #0069d9;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
-            --text-color: #333333;
+            --sidebar-active-text: #000000;
+            --primary-color: #007aff;
+            --primary-hover: #0062cc;
+            --success-color: #34c759;
+            --danger-color: #ff3b30;
+            --text-color: #1d1d1f;
+            --secondary-text: #86868b;
             --card-bg: #ffffff;
             --border-color: rgba(0, 0, 0, 0.1);
-            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-            --time-color: #888888;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        @font-face {
+            font-family: 'SF Pro Text';
+            src: local('SF Pro Text'), local('SFProText-Regular');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: local('SF Pro Display'), local('SFProDisplay-Regular');
+            font-weight: normal;
+            font-style: normal;
         }
 
         body {
             background-color: var(--bg-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             color: var(--text-color);
             margin: 0;
             padding: 0;
             height: 100vh;
             overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .app-container {
@@ -44,499 +61,654 @@
 
         /* 侧边栏样式 */
         .sidebar {
-            width: 240px;
+            width: 220px;
             background-color: var(--sidebar-bg);
             border-right: 1px solid var(--border-color);
-            padding: 20px;
             height: 100%;
-            box-shadow: var(--shadow-sm);
             position: fixed;
             left: 0;
             top: 0;
-            overflow-y: auto;
             z-index: 10;
+            display: flex;
+            flex-direction: column;
         }
 
-        .sidebar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
+        .sidebar-list {
+            margin: 0;
             padding: 10px 0;
+            list-style: none;
+            overflow-y: auto;
+            flex-grow: 1;
         }
 
-        .sidebar-title {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: var(--sidebar-text);
-            margin: 15px 0 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .nav-item {
+        .sidebar-item {
+            padding: 8px 15px;
+            margin: 4px 5px;
+            border-radius: 8px;
+            cursor: pointer;
             display: flex;
             align-items: center;
-            padding: 8px 12px;
-            margin-bottom: 5px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: var(--sidebar-text);
+            justify-content: flex-start;
+            font-size: 0.93rem;
+            color: var(--text-color);
+            position: relative;
         }
 
-        .nav-item:hover {
-            background-color: rgba(0, 0, 0, 0.05);
+        .sidebar-item:hover {
+            background-color: var(--sidebar-hover);
         }
 
-        .nav-item.active {
-            background-color: rgba(0, 0, 0, 0.05);
-            color: var(--sidebar-active);
-            font-weight: 500;
-        }
-
-        .nav-item i {
-            margin-right: 10px;
-            font-size: 1.1rem;
-        }
-
-        .nav-item .count {
-            margin-left: auto;
-            background-color: transparent;
-            color: var(--sidebar-count);
-            font-size: 0.8rem;
-            padding: 2px 5px;
-            border-radius: 4px;
-        }
-
-        .nav-item.active .count {
+        .sidebar-item.active {
             background-color: var(--sidebar-active);
-            color: white;
-        }
-
-        .create-new {
-            display: flex;
-            align-items: center;
-            padding: 8px 12px;
-            background-color: rgba(0, 123, 255, 0.1);
-            color: var(--primary-color);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 15px;
+            color: var(--sidebar-active-text);
             font-weight: 500;
         }
 
-        .create-new:hover {
-            background-color: rgba(0, 123, 255, 0.2);
+        .sidebar-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            margin-right: 8px;
+            font-size: 0.8rem;
+            color: white;
+            text-align: center;
+            line-height: 1;
+            padding: 0;
         }
 
-        .create-new i {
-            margin-right: 10px;
+        .sidebar-icon.purple {
+            background-color: #bf5af2;
+        }
+
+        .sidebar-icon.blue {
+            background-color: #0a84ff;
+        }
+
+        .sidebar-icon.red {
+            background-color: #ff453a;
+        }
+
+        .sidebar-add {
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+            color: #0a84ff;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .sidebar-add:hover {
+            background-color: rgba(10, 132, 255, 0.1);
+        }
+
+        .sidebar-add i {
+            margin-right: 8px;
+        }
+
+        .sidebar-more {
+            position: absolute;
+            right: 10px;
+            color: var(--secondary-text);
+            cursor: pointer;
+            opacity: 0;
+            font-size: 0.9rem;
+        }
+        
+        .sidebar-item:hover .sidebar-more {
+            opacity: 1;
         }
 
         /* 主内容区域 */
         .main-content {
             flex: 1;
-            padding: 20px;
-            margin-left: 240px;
+            padding: 15px 20px;
+            margin-left: 220px;
             height: 100%;
             overflow-y: auto;
+            max-width: 900px;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0 20px;
-            margin-bottom: 20px;
-        }
-
-        .header-title {
-            font-size: 1.6rem;
-            font-weight: 600;
-        }
-
-        .date-display {
-            display: flex;
-            align-items: center;
-            color: var(--time-color);
-            font-size: 0.9rem;
-        }
-
-        .date-dropdown {
-            margin-left: 10px;
-            background: transparent;
-            border: none;
-            color: var(--time-color);
-            cursor: pointer;
-        }
-
-        /* 任务列表样式 */
-        .todo-card {
-            background-color: var(--card-bg);
-            border-radius: 10px;
-            padding: 15px 20px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--border-color);
-        }
-
-        .input-group {
+        .list-header {
             margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .form-control {
-            border-radius: 6px;
-            padding: 10px 15px;
-            border: 1px solid var(--border-color);
+        .list-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .list-title.purple {
+            color: #bf5af2;
+        }
+        
+        .list-title.blue {
+            color: #0a84ff;
+        }
+        
+        .list-title.red {
+            color: #ff453a;
         }
 
-        .form-control:focus {
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-            border-color: var(--primary-color);
+        /* 任务样式 */
+        .task-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
 
         .task-item {
             display: flex;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border-color);
-            position: relative;
-        }
-
-        .task-item:last-child {
-            border-bottom: none;
+            padding: 12px 5px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
 
         .task-checkbox {
-            margin-right: 15px;
-            min-width: 20px;
+            position: relative;
+            width: 20px;
             height: 20px;
+            border-radius: 50%;
+            margin-right: 15px;
+            appearance: none;
+            border: 1px solid #c7c7cc;
+            outline: none;
             cursor: pointer;
+            flex-shrink: 0;
+            background-color: white;
+        }
+        
+        .task-checkbox:hover {
+            border-color: currentColor;
+        }
+        
+        .task-checkbox.purple:hover {
+            border-color: #bf5af2;
+            background-color: rgba(191, 90, 242, 0.1);
+        }
+        
+        .task-checkbox.blue:hover {
+            border-color: #0a84ff;
+            background-color: rgba(10, 132, 255, 0.1);
+        }
+        
+        .task-checkbox.red:hover {
+            border-color: #ff453a;
+            background-color: rgba(255, 69, 58, 0.1);
         }
 
-        .task-content {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            padding-right: 100px;
+        .task-checkbox:checked {
+            border-color: var(--primary-color);
+        }
+        
+        .task-checkbox.purple:checked {
+            background-color: #bf5af2;
+            border-color: #bf5af2;
+        }
+        
+        .task-checkbox.blue:checked {
+            background-color: #0a84ff;
+            border-color: #0a84ff;
+        }
+        
+        .task-checkbox.red:checked {
+            background-color: #ff453a;
+            border-color: #ff453a;
+        }
+
+        /* 添加新的任务选中状态的颜色 */
+        .task-item.completed .task-checkbox.purple:not(:checked) {
+            background-color: #bf5af2;
+            border-color: #bf5af2;
+        }
+        
+        .task-item.completed .task-checkbox.blue:not(:checked) {
+            background-color: #0a84ff;
+            border-color: #0a84ff;
+        }
+        
+        .task-item.completed .task-checkbox.red:not(:checked) {
+            background-color: #ff453a;
+            border-color: #ff453a;
+        }
+
+        .task-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 3.5px;
+            width: 5px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
         }
 
         .task-text {
-            font-size: 1rem;
-            padding: 0 10px;
+            flex-grow: 1;
+            margin-left: 5px;
+            color: var(--text-color);
+            font-size: 0.95rem;
+        }
+        
+        .task-note {
+            font-size: 0.85rem;
+            color: var(--secondary-text);
+            margin-top: 3px;
         }
 
-        .task-completed .task-text {
+        .task-item.completed .task-text {
             text-decoration: line-through;
-            color: var(--success-color);
+            color: var(--secondary-text);
         }
 
-        .task-time {
-            color: var(--time-color);
-            font-size: 0.8rem;
-            position: absolute;
-            right: 50px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 80px;
-            text-align: right;
-            font-family: monospace, 'Courier New', Courier;
-        }
-
-        .task-actions {
-            opacity: 0;
-            transition: all 0.2s;
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .task-item:hover .task-actions {
-            opacity: 1;
-        }
-
-        .task-action-btn {
-            background: transparent;
-            border: none;
-            color: var(--time-color);
-            cursor: pointer;
-            padding: 0 5px;
-            font-size: 1rem;
-        }
-
-        .task-action-btn:hover {
-            color: var(--danger-color);
-        }
-
-        .avatar-group {
-            display: flex;
-        }
-
-        .avatar {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            margin-left: -8px;
-            border: 2px solid white;
-            background-color: #f0f0f0;
-            color: #666;
-            font-size: 12px;
+        .header-actions {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-weight: bold;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        
+        .action-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: inherit;
+            padding: 6px 15px;
+            border-radius: 6px;
+            margin: 0;
+        }
+        
+        .action-button:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .action-button.purple {
+            color: #bf5af2;
+        }
+        
+        .action-button.purple:hover {
+            background-color: rgba(191, 90, 242, 0.1);
+        }
+        
+        .action-button.blue {
+            color: #0a84ff;
+        }
+        
+        .action-button.blue:hover {
+            background-color: rgba(10, 132, 255, 0.1);
+        }
+        
+        .action-button.red {
+            color: #ff453a;
+        }
+        
+        .action-button.red:hover {
+            background-color: rgba(255, 69, 58, 0.1);
         }
 
-        .avatar:first-child {
-            margin-left: 0;
+        .add-task-form {
+            display: flex;
+            margin-top: 15px;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
         }
 
-        .avatar-1 { background-color: #FFD700; }
-        .avatar-2 { background-color: #FF7F50; }
-        .avatar-3 { background-color: #6A5ACD; }
-
-        .category-tag {
-            font-size: 0.8rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-            margin-left: 10px;
+        .add-task-input {
+            flex-grow: 1;
+            border: none;
+            padding: 12px 15px;
+            font-size: 0.95rem;
+            outline: none;
         }
 
-        .tag-work {
-            background-color: rgba(0, 123, 255, 0.2);
-            color: var(--primary-color);
-        }
-
-        .tag-personal {
-            background-color: rgba(220, 53, 69, 0.2);
-            color: var(--danger-color);
-        }
-
-        .btn-add-task {
+        .add-task-btn {
             background-color: var(--primary-color);
             color: white;
             border: none;
-            padding: 10px 15px;
-            border-radius: 6px;
+            padding: 0 20px;
+            font-size: 0.9rem;
             cursor: pointer;
-            transition: all 0.2s;
         }
 
-        .btn-add-task:hover {
+        .add-task-btn:hover {
             background-color: var(--primary-hover);
         }
 
-        .loading {
+        .empty-state {
             text-align: center;
-            padding: 20px;
-            color: var(--time-color);
+            padding: 30px 0;
+            color: var(--secondary-text);
+        }
+
+        /* 移动端头部样式 */
+        .mobile-header {
+            display: none;
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
         }
         
-        /* 根据窗口大小调整布局 */
+        .mobile-back {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            color: inherit;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .mobile-back:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .mobile-back.purple {
+            color: #bf5af2;
+        }
+        
+        .mobile-back.purple:hover {
+            background-color: rgba(191, 90, 242, 0.1);
+        }
+        
+        .mobile-back.blue {
+            color: #0a84ff;
+        }
+        
+        .mobile-back.blue:hover {
+            background-color: rgba(10, 132, 255, 0.1);
+        }
+        
+        .mobile-back.red {
+            color: #ff453a;
+        }
+        
+        .mobile-back.red:hover {
+            background-color: rgba(255, 69, 58, 0.1);
+        }
+        
+        .mobile-title {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        
+        .mobile-actions {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+        }
+        
+        .mobile-action-btn {
+            border: none;
+            background: none;
+            font-size: 1.2rem;
+            padding: 6px 15px;
+            margin: 0;
+            cursor: pointer;
+            color: inherit;
+            border-radius: 6px;
+        }
+        
+        .mobile-action-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .mobile-action-btn.purple {
+            color: #bf5af2;
+        }
+        
+        .mobile-action-btn.purple:hover {
+            background-color: rgba(191, 90, 242, 0.1);
+        }
+        
+        .mobile-action-btn.blue {
+            color: #0a84ff;
+        }
+        
+        .mobile-action-btn.blue:hover {
+            background-color: rgba(10, 132, 255, 0.1);
+        }
+        
+        .mobile-action-btn.red {
+            color: #ff453a;
+        }
+        
+        .mobile-action-btn.red:hover {
+            background-color: rgba(255, 69, 58, 0.1);
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                top: auto;
                 height: 60px;
-                padding: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: space-around;
-                z-index: 100;
+                bottom: 0;
+                top: auto;
+                flex-direction: row;
+                border-top: 1px solid var(--border-color);
+                border-right: none;
+                z-index: 50;
             }
             
-            .sidebar-title, .sidebar-header {
+            .mobile-header {
+                display: block;
+            }
+            
+            .list-header {
                 display: none;
             }
             
-            .nav-item {
+            .sidebar-list {
+                display: flex;
+                padding: 0;
+                overflow-x: auto;
+                flex-grow: 1;
+            }
+            
+            .sidebar-item {
+                padding: 5px 10px;
+                margin: 0 3px;
                 flex-direction: column;
-                padding: 5px;
-                margin: 0;
-                text-align: center;
                 font-size: 0.7rem;
+                text-align: center;
             }
             
-            .nav-item i {
+            .sidebar-icon {
                 margin-right: 0;
-                margin-bottom: 2px;
+                margin-bottom: 3px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+                padding: 0;
             }
             
-            .nav-item .count {
+            .sidebar-more {
                 position: absolute;
-                top: 5px;
-                right: 5px;
-                margin-left: 0;
+                top: 0;
+                right: 0;
+                font-size: 0.7rem;
+                padding: 2px;
+            }
+            
+            .sidebar-add {
+                padding: 0 15px;
+                border-top: none;
+                border-left: 1px solid var(--border-color);
+            }
+            
+            .sidebar-add span {
+                display: none;
             }
             
             .main-content {
                 margin-left: 0;
+                padding-top: 65px;
                 padding-bottom: 70px;
             }
+        }
+
+        /* 自定义加号样式 */
+        .custom-plus {
+            position: relative;
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+        }
+        
+        .custom-plus::before,
+        .custom-plus::after {
+            content: '';
+            position: absolute;
+            background-color: currentColor;
+            border-radius: 1px;
+        }
+        
+        .custom-plus::before {
+            width: 16px;
+            height: 2px;
+            top: 7px;
+            left: 0;
+        }
+        
+        .custom-plus::after {
+            height: 16px;
+            width: 2px;
+            left: 7px;
+            top: 0;
+        }
+
+        .action-button.add-btn {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 1.3rem;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .action-button.add-btn:hover {
+            box-shadow: none;
+        }
+
+        .mobile-action-btn.add-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            padding: 0;
+            box-shadow: none;
         }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <!-- 侧边栏 -->
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h5>清风小阁</h5>
-                <button class="btn btn-sm" id="expand-btn">
-                    <i class="bi bi-arrows-angle-expand"></i>
+        <!-- 移动端顶部导航 -->
+        <div class="mobile-header">
+            <div class="mobile-back purple">
+                <i class="bi bi-chevron-left"></i>
+                <span>列表</span>
+            </div>
+            <div class="mobile-title">每日清单</div>
+            <div class="mobile-actions">
+                <button class="mobile-action-btn purple">
+                    <span class="custom-plus"></span>
+                </button>
+                <button class="mobile-action-btn purple">
+                    <i class="bi bi-three-dots-vertical"></i>
                 </button>
             </div>
-            
-            <div class="nav-item active">
-                <i class="bi bi-house"></i>
-                <span>栖凤居</span>
-                <span class="count">8</span>
-            </div>
-            
-            <div class="nav-item">
-                <i class="bi bi-check2-all"></i>
-                <span>尘缘已了</span>
-                <span class="count">16</span>
-            </div>
-            
-            <div class="nav-item">
-                <i class="bi bi-person"></i>
-                <span>独往来</span>
-                <span class="count">4</span>
-            </div>
-            
-            <div class="nav-item">
-                <i class="bi bi-briefcase"></i>
-                <span>公务簿</span>
-                <span class="count">6</span>
-            </div>
-            
-            <div class="nav-item">
-                <i class="bi bi-cup-hot"></i>
-                <span>茗饮录</span>
-                <span class="count">3</span>
-            </div>
-            
-            <div class="nav-item">
-                <i class="bi bi-book"></i>
-                <span>书囊志</span>
-                <span class="count">8</span>
-            </div>
-            
-            <div class="nav-item">
-                <i class="bi bi-signpost-split"></i>
-                <span>游历记</span>
-                <span class="count">6</span>
-            </div>
-            
-            <div class="create-new">
+        </div>
+        
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <ul class="sidebar-list">
+                <li class="sidebar-item active">
+                    <div class="sidebar-icon purple">每</div>
+                    <span>每日清单</span>
+                    <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                </li>
+                <li class="sidebar-item">
+                    <div class="sidebar-icon blue">心</div>
+                    <span>心情</span>
+                    <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                </li>
+                <li class="sidebar-item">
+                    <div class="sidebar-icon red">生</div>
+                    <span>生日备注</span>
+                    <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                </li>
+            </ul>
+            <div class="sidebar-add">
                 <i class="bi bi-plus-circle"></i>
-                <span>开辟新径</span>
-            </div>
-            
-            <div class="sidebar-title">山水相逢</div>
-            
-            <div class="nav-item">
-                <i class="bi bi-people"></i>
-                <span>流水计</span>
-                <span class="count">5</span>
-            </div>
-            
-            <div class="nav-item">
-                <i class="bi bi-people"></i>
-                <span>明日弦</span>
-                <span class="count">4</span>
-            </div>
-            
-            <div class="create-new">
-                <i class="bi bi-plus-circle"></i>
-                <span>结庐人境</span>
+                <span>添加列表</span>
             </div>
         </div>
         
         <!-- 主内容区域 -->
         <div class="main-content">
-            <div class="header">
-                <div>
-                    <div class="header-title">一日之计在于晨</div>
-                    <div class="date-display">
-                        良辰，<span id="current-date"></span>
-                        <button class="date-dropdown">
-                            <i class="bi bi-chevron-down"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="d-flex align-items-center">
-                    <button class="btn btn-sm btn-outline-secondary me-2">
-                        <i class="bi bi-justify"></i>
+            <div class="list-header">
+                <h1 class="list-title red">生日备注</h1>
+                <div class="header-actions">
+                    <button class="action-button purple">
+                        <span class="custom-plus"></span>
+                    </button>
+                    <button class="action-button purple">
+                        <i class="bi bi-three-dots"></i>
                     </button>
                 </div>
             </div>
             
-            <div class="todo-card">
-                <!-- 添加任务表单 -->
-                <form id="todo-form" class="mb-3">
-                    <div class="input-group">
-                        <input type="text" id="task-input" class="form-control" placeholder="但存方寸地，留与子孙耕..." required>
-                        <button type="submit" class="btn-add-task">记之</button>
-                    </div>
-                </form>
-                
-                <!-- 任务列表 -->
-                <div id="todos-container">
-                    <div class="loading">山高水长，稍候片刻...</div>
-                </div>
-            </div>
+            <ul class="task-list" id="task-list">
+                <!-- 生日备注将由JavaScript动态加载 -->
+                <div class="empty-state">载入中...</div>
+            </ul>
         </div>
     </div>
 
     <script>
-        // Supabase 配置
+        // Supabase 配置 - 保持不变
         const SUPABASE_URL = 'https://fmxddvjgkykuqwmasigo.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZteGRkdmpna3lrdXF3bWFzaWdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDMzMjcsImV4cCI6MjA1OTYxOTMyN30.XCU4-03oajGh6M2-PNiBotCZSIDn_nJXkIC0Thjjfqo';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // DOM 元素
-        const todoForm = document.getElementById('todo-form');
-        const taskInput = document.getElementById('task-input');
-        const todosContainer = document.getElementById('todos-container');
-        const currentDateEl = document.getElementById('current-date');
+        const taskList = document.getElementById('task-list');
 
-        // 设置当前日期显示
-        function setCurrentDate() {
-            const now = new Date();
-            
-            // 中文月份和星期名称
-            const chineseMonths = [
-                "正月", "二月", "三月", "四月", "五月", "六月",
-                "七月", "八月", "九月", "十月", "冬月", "腊月"
-            ];
-            
-            const chineseWeekdays = [
-                "星期日", "星期一", "星期二", "星期三", 
-                "星期四", "星期五", "星期六"
-            ];
-            
-            // 获取农历式样的日期
-            const month = chineseMonths[now.getMonth()];
-            const day = now.getDate();
-            const weekday = chineseWeekdays[now.getDay()];
-            
-            // 格式化为诗意的中文日期
-            const dateStr = `${month}${day}日 ${weekday}`;
-            
-            currentDateEl.textContent = dateStr;
-        }
-        
-        // 加载待办事项
-        async function loadTodos() {
+        // 全局变量存储当前主题颜色
+        let currentThemeColor = 'red'; // 默认为红色（生日备注）
+
+        // 加载生日备注
+        async function loadBirthdays() {
             try {
                 const { data, error } = await supabase
                     .from('todos')
@@ -544,97 +716,124 @@
                     .order('created_at', { ascending: false });
                 
                 if (error) throw error;
-                renderTodos(data || []);
+
+                // 这里我们会将任务数据转换为生日备注格式
+                // 在真实应用中，你应该使用专门用于生日备注的数据表
+                renderBirthdays(data || []);
             } catch (error) {
-                console.error('加载任务失败:', error);
-                todosContainer.innerHTML = `<div class="alert alert-danger">加载任务失败: ${error.message}</div>`;
+                console.error('加载生日备注失败:', error);
+                taskList.innerHTML = `<div class="empty-state">加载失败，请重试</div>`;
             }
         }
 
-        // 渲染待办事项列表
-        function renderTodos(todos) {
-            if (!todos || !Array.isArray(todos)) {
-                todosContainer.innerHTML = `<div class="text-center text-muted">水逝云散，不复可寻</div>`;
-                return;
-            }
-            
-            if (todos.length === 0) {
-                todosContainer.innerHTML = `<div class="text-center text-muted">宁静致远，虚怀若谷</div>`;
+        // 渲染生日备注列表
+        function renderBirthdays(birthdays) {
+            if (!birthdays || !Array.isArray(birthdays) || birthdays.length === 0) {
+                // 为了演示，我们添加一些静态数据
+                const mockData = [
+                    { id: 1, name: "分组", note: "", is_completed: false },
+                    { id: 2, name: "代码管理改为GitHub界面", note: "", is_completed: true },
+                    { id: 3, name: "写一个云词的灵感点子结构图布记录器", note: "", is_completed: false },
+                    { id: 4, name: "查询J金价", note: "", is_completed: true },
+                    { id: 5, name: "写个主页", note: "", is_completed: false },
+                    { id: 6, name: "添加时间线", note: "", is_completed: false },
+                    { id: 7, name: "谷歌2.5a代码能力做个工程测试", note: "", is_completed: true },
+                    { id: 8, name: "HTML转WXML的解决方案实现", note: "", is_completed: false }
+                ];
+                
+                let html = '';
+                mockData.forEach(item => {
+                    html += `
+                    <li class="task-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
+                        <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
+                        <div style="flex-grow: 1;">
+                            <span class="task-text">${item.name}</span>
+                            ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
+                        </div>
+                    </li>
+                    `;
+                });
+                
+                taskList.innerHTML = html;
+                addCheckboxListeners();
+                // 更新所有复选框颜色
+                updateCheckboxColors();
                 return;
             }
 
+            // 如果有实际数据，按照生日备注格式渲染
             let html = '';
-            todos.forEach(todo => {
-                // 使用数据库中的created_at字段
-                const taskDate = new Date(todo.created_at);
-                
-                // 格式化日期和时间
-                const month = taskDate.getMonth() + 1;
-                const day = taskDate.getDate().toString().padStart(2, '0');
-                const hours = taskDate.getHours().toString().padStart(2, '0');
-                const minutes = taskDate.getMinutes().toString().padStart(2, '0');
-                
-                // 日期时间格式: M-DD HH:MM (与图片一致)
-                const timeStr = `${month}-${day} ${hours}:${minutes}`;
-                
-                // 随机决定是否有分类标签 (仅用于演示)
-                const hasTag = Math.random() > 0.5;
-                const tagTypes = ['work', 'personal'];
-                const tagType = tagTypes[Math.floor(Math.random() * tagTypes.length)];
-                const tagHtml = hasTag ? `<span class="category-tag tag-${tagType}">${tagType === 'work' ? '公务' : '私事'}</span>` : '';
-                
-                // 随机决定是否有头像组 (仅用于演示)
-                const hasAvatars = Math.random() > 0.7;
-                const avatarHtml = hasAvatars ? `
-                    <div class="avatar-group">
-                        <div class="avatar avatar-1">诗</div>
-                        <div class="avatar avatar-2">书</div>
-                        <div class="avatar avatar-3">画</div>
-                    </div>
-                ` : '';
-                
+            birthdays.forEach(birthday => {
                 html += `
-                <div class="task-item ${todo.is_completed ? 'task-completed' : ''}" data-id="${todo.id}">
-                    <input type="checkbox" class="task-checkbox" ${todo.is_completed ? 'checked' : ''} 
-                        onchange="toggleTodoStatus(${todo.id}, this.checked)">
-                    <div class="task-content">
-                        <span class="task-text">${todo.task}</span>
-                        ${tagHtml}
-                        ${avatarHtml}
+                <li class="task-item ${birthday.is_completed ? 'completed' : ''}" data-id="${birthday.id}">
+                    <input type="checkbox" class="task-checkbox" ${birthday.is_completed ? 'checked' : ''}>
+                    <div>
+                        <span class="task-text">${birthday.task}</span>
                     </div>
-                    <div class="task-time">${timeStr}</div>
-                    <div class="task-actions">
-                        <button class="task-action-btn" onclick="deleteTodo(${todo.id})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
+                </li>
                 `;
             });
             
-            todosContainer.innerHTML = html;
+            taskList.innerHTML = html;
+            addCheckboxListeners();
+            // 更新所有复选框颜色
+            updateCheckboxColors();
         }
 
-        // 添加新待办事项
-        async function addTodo(task) {
+        // 根据侧边栏图标颜色设置主题
+        function setThemeColor(iconElement) {
+            if (iconElement.classList.contains('purple')) {
+                currentThemeColor = 'purple';
+            } else if (iconElement.classList.contains('blue')) {
+                currentThemeColor = 'blue';
+            } else if (iconElement.classList.contains('red')) {
+                currentThemeColor = 'red';
+            }
+            // 更新所有复选框颜色
+            updateCheckboxColors();
+        }
+
+        // 添加复选框事件监听器
+        function addCheckboxListeners() {
+            document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const taskItem = this.closest('.task-item');
+                    const id = taskItem.dataset.id;
+                    const isCompleted = this.checked;
+                    
+                    // 更新UI
+                    if (isCompleted) {
+                        taskItem.classList.add('completed');
+                    } else {
+                        taskItem.classList.remove('completed');
+                    }
+                    
+                    // 调用API更新数据库
+                    toggleTaskStatus(id, isCompleted);
+                });
+            });
+        }
+
+        // 添加新任务
+        async function addTask(taskText) {
             try {
                 const { data, error } = await supabase
                     .from('todos')
                     .insert([
-                        { task, is_completed: false }
+                        { task: taskText, is_completed: false }
                     ])
                     .select();
                 
                 if (error) throw error;
-                loadTodos(); // 刷新列表
+                loadBirthdays(); // 刷新列表
             } catch (error) {
-                console.error('添加事项失败:', error);
-                alert('添加事项失败: ' + error.message);
+                console.error('添加任务失败:', error);
+                alert('添加失败: ' + error.message);
             }
         }
 
-        // 切换待办事项状态
-        async function toggleTodoStatus(id, isCompleted) {
+        // 切换任务状态
+        async function toggleTaskStatus(id, isCompleted) {
             try {
                 const { error } = await supabase
                     .from('todos')
@@ -643,23 +842,22 @@
                 
                 if (error) throw error;
                 
-                const todoItem = document.querySelector(`.task-item[data-id="${id}"]`);
-                if (todoItem) {
+                const taskItem = document.querySelector(`.task-item[data-id="${id}"]`);
+                if (taskItem) {
                     if (isCompleted) {
-                        todoItem.classList.add('task-completed');
+                        taskItem.classList.add('completed');
                     } else {
-                        todoItem.classList.remove('task-completed');
+                        taskItem.classList.remove('completed');
                     }
                 }
             } catch (error) {
                 console.error('更新任务状态失败:', error);
-                alert('更新任务失败: ' + error.message);
-                loadTodos(); // 重新加载以恢复正确状态
+                loadBirthdays(); // 重新加载以恢复正确状态
             }
         }
 
-        // 删除待办事项
-        async function deleteTodo(id) {
+        // 删除任务（保留但未在界面使用，以防需要）
+        async function deleteTask(id) {
             try {
                 const { error } = await supabase
                     .from('todos')
@@ -667,48 +865,176 @@
                     .eq('id', id);
                 
                 if (error) throw error;
-                
-                const todoItem = document.querySelector(`.task-item[data-id="${id}"]`);
-                if (todoItem) {
-                    todoItem.remove();
-                }
-                
-                // 如果没有任务了，显示空消息
-                if (document.querySelectorAll('.task-item').length === 0) {
-                    todosContainer.innerHTML = `<div class="text-center text-muted">竹素笺清，待君挥墨</div>`;
-                }
+                loadBirthdays(); // 刷新列表
             } catch (error) {
                 console.error('删除任务失败:', error);
-                alert('删除任务失败: ' + error.message);
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        // 更新所有复选框颜色
+        function updateCheckboxColors() {
+            document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                // 先移除所有颜色类
+                checkbox.classList.remove('purple', 'blue', 'red');
+                // 添加当前主题颜色类
+                checkbox.classList.add(currentThemeColor);
+            });
+            
+            // 更新按钮颜色
+            document.querySelectorAll('.action-button').forEach(btn => {
+                btn.classList.remove('purple', 'blue', 'red');
+                btn.classList.add(currentThemeColor);
+            });
+            
+            // 更新移动端按钮颜色
+            document.querySelectorAll('.mobile-action-btn').forEach(btn => {
+                btn.classList.remove('purple', 'blue', 'red');
+                btn.classList.add(currentThemeColor);
+            });
+            
+            // 更新移动端返回按钮颜色
+            const mobileBack = document.querySelector('.mobile-back');
+            if (mobileBack) {
+                mobileBack.classList.remove('purple', 'blue', 'red');
+                mobileBack.classList.add(currentThemeColor);
             }
         }
 
         // 初始化
         function initialize() {
-            setCurrentDate();
-            loadTodos();
+            loadBirthdays();
             
-            // 更新侧边栏活跃状态
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            // 移动端返回按钮
+            document.querySelector('.mobile-back').addEventListener('click', function() {
+                // 模拟返回操作，实际应用中可能需要导航到列表页
+                alert('返回到列表页');
+            });
+            
+            // 移动端添加按钮
+            document.querySelector('.mobile-actions .custom-plus').closest('button').addEventListener('click', function() {
+                const taskText = prompt('请输入新任务:');
+                if (taskText && taskText.trim() !== '') {
+                    addTask(taskText);
+                }
+            });
+            
+            // 移动端更多选项按钮
+            document.querySelector('.mobile-actions .bi-three-dots-vertical').closest('button').addEventListener('click', function() {
+                alert('显示更多选项');
+            });
+            
+            // 侧边栏选择
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    // 如果点击的是更多按钮，不进行列表切换
+                    if (e.target.closest('.sidebar-more')) {
+                        e.stopPropagation();
+                        return;
+                    }
+                    
+                    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
                     this.classList.add('active');
+                    
+                    const listTitle = this.querySelector('span').textContent;
+                    const titleElement = document.querySelector('.list-title');
+                    
+                    // 更新标题
+                    titleElement.textContent = listTitle;
+                    document.querySelector('.mobile-title').textContent = listTitle;
+                    
+                    // 更新标题颜色
+                    titleElement.classList.remove('purple', 'blue', 'red');
+                    
+                    // 获取图标的颜色类并设置全局主题颜色
+                    const iconElement = this.querySelector('.sidebar-icon');
+                    setThemeColor(iconElement);
+                    
+                    if (iconElement.classList.contains('purple')) {
+                        titleElement.classList.add('purple');
+                    } else if (iconElement.classList.contains('blue')) {
+                        titleElement.classList.add('blue');
+                    } else if (iconElement.classList.contains('red')) {
+                        titleElement.classList.add('red');
+                    }
+                    
+                    // 加载对应内容
+                    if (listTitle === '生日备注') {
+                        loadBirthdays();
+                    } else if (listTitle === '每日清单') {
+                        // 加载每日清单
+                        currentThemeColor = 'purple';
+                        loadBirthdays(); // 暂时使用相同数据展示
+                        updateCheckboxColors();
+                    } else if (listTitle === '心情') {
+                        // 加载心情
+                        currentThemeColor = 'blue';
+                        loadBirthdays(); // 暂时使用相同数据展示
+                        updateCheckboxColors();
+                    }
                 });
             });
-        }
-
-        // 事件监听器
-        todoForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const task = taskInput.value.trim();
-            if (task) {
-                addTodo(task);
-                taskInput.value = '';
+            
+            // 侧边栏更多按钮点击事件
+            document.querySelectorAll('.sidebar-more').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // 阻止事件冒泡
+                    const listItem = this.closest('.sidebar-item');
+                    const listName = listItem.querySelector('span').textContent;
+                    
+                    // 这里可以添加显示下拉菜单或执行其他操作的代码
+                    console.log('打开列表更多选项:', listName);
+                    
+                    // 简单示例：弹出操作选项
+                    const action = prompt(`请选择对"${listName}"的操作：\n1. 编辑名称\n2. 删除列表\n请输入数字`);
+                    
+                    if (action === '1') {
+                        const newName = prompt('请输入新名称:', listName);
+                        if (newName && newName.trim() !== '') {
+                            listItem.querySelector('span').textContent = newName;
+                        }
+                    } else if (action === '2') {
+                        if (confirm(`确定要删除"${listName}"列表吗？`)) {
+                            // 在实际应用中，您应该调用API删除数据
+                            alert('列表删除功能待实现');
+                        }
+                    }
+                });
+            });
+            
+            // 初始化时，确保每日清单处于活跃状态
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            const activeItem = document.querySelector('.sidebar-item:nth-child(1)');
+            activeItem.classList.add('active');
+            
+            // 设置初始标题颜色
+            const titleElement = document.querySelector('.list-title');
+            const iconElement = activeItem.querySelector('.sidebar-icon');
+            titleElement.classList.remove('purple', 'blue', 'red');
+            titleElement.textContent = '每日清单';
+            
+            // 设置初始主题颜色
+            if (iconElement.classList.contains('purple')) {
+                currentThemeColor = 'purple';
+                titleElement.classList.add('purple');
+            } else if (iconElement.classList.contains('blue')) {
+                currentThemeColor = 'blue';
+                titleElement.classList.add('blue');
+            } else if (iconElement.classList.contains('red')) {
+                currentThemeColor = 'red';
+                titleElement.classList.add('red');
             }
-        });
+            
+            // 立即更新所有颜色
+            updateCheckboxColors();
+        }
 
         // 当页面加载完成时初始化
         document.addEventListener('DOMContentLoaded', initialize);
+
+        // 全局函数
+        window.toggleTaskStatus = toggleTaskStatus;
+        window.deleteTask = deleteTask;
     </script>
 </body>
 </html> 
