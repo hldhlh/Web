@@ -88,6 +88,7 @@
             cursor: pointer;
             display: flex;
             align-items: center;
+            height: 40px;
             justify-content: flex-start;
             font-size: 0.93rem;
             color: var(--text-color);
@@ -95,12 +96,15 @@
         }
 
         .sidebar-item:hover {
-            background-color: var(--sidebar-hover);
+            /* background-color: rgba(10, 132, 255, 0.1); */ /* Light blue for PC hover */
+            background-color: rgb(244, 244, 245); /* Light gray hover for PC */
         }
 
         .sidebar-item.active {
-            background-color: var(--sidebar-active);
-            color: var(--sidebar-active-text);
+            /* background-color: rgba(10, 132, 255, 0.15); */ /* Darker blue for PC active */
+            background-color: rgba(10, 132, 255, 0.2); /* Lighter blue for PC active */
+            /* color: var(--sidebar-active-text); */
+            color: var(--sidebar-active-text); /* Back to default text color */
             font-weight: 500;
         }
 
@@ -544,6 +548,7 @@
             .sidebar-list {
                 flex-direction: column;
                 padding: 0;
+                padding-top: 20px; /* Add top padding */
                 margin: 0;
                 background-color: white;
                 flex-grow: 1;
@@ -553,27 +558,41 @@
             
             .sidebar-item {
                 padding: 15px;
-                margin: 0;
+                margin: 4px 10px;
                 border-radius: 0;
                 flex-direction: row;
                 font-size: 1rem;
                 text-align: left;
-                height: auto;
+                height: 40px; /* Match desktop height */
                 border-bottom: 1px solid #f0f0f0;
                 position: relative;
             }
             
+            /* Explicitly reset active item style for mobile */
             .sidebar-item.active {
-                background-color: transparent;
-                font-weight: normal;
+                background-color: transparent; /* Override base style */
+                color: var(--text-color); /* Reset text color */
+                font-weight: normal; /* Reset font weight */
+                border-bottom-color: #f0f0f0; /* Ensure border is visible like others */
             }
             
+            /* Remove the arrow on mobile view */
+            /*
             .sidebar-item::after {
                 content: '›';
                 position: absolute;
                 right: 15px;
                 font-size: 1.5rem;
                 color: #c7c7cc;
+            }
+            */
+            
+            /* Apply the hover style for mobile */
+            .sidebar-item:hover {
+                /* background-color: rgba(10, 132, 255, 0.1); */
+                background-color: rgb(244, 244, 245); /* Light gray hover for Mobile */
+                border-radius: 8px;
+                border-bottom-color: transparent;
             }
             
             .sidebar-icon {
@@ -587,8 +606,12 @@
                 justify-content: center;
             }
             
+            /* Show the 'more' icon on mobile */
             .sidebar-more {
-                display: none; /* 隐藏三点图标 */
+                display: block; /* Make it visible */
+                opacity: 1; /* Ensure full opacity */
+                right: 15px; /* Adjust position */
+                /* display: none; */ /* Remove hiding rule */
             }
             
             .sidebar-add {
@@ -680,6 +703,18 @@
                 display: flex;
                 align-items: center;
                 padding: 8px;
+                left: 7px; /* Adjusted left position for alignment */
+            }
+            
+            .mobile-back i {
+                margin-right: 6px; /* Add space between icon and text */
+                font-size: 1rem; /* Adjust icon size */
+                line-height: 1; /* Ensure icon aligns well vertically */
+            }
+            
+            .mobile-back span {
+                font-size: 1rem; /* Adjust text size */
+                line-height: 1; /* Ensure text aligns well vertically */
             }
             
             .mobile-actions {
