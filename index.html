@@ -758,6 +758,27 @@
                 border-radius: 0;
                 box-shadow: none;
             }
+
+            /* 新增：确保移动端标题栏在全屏时可见 */
+            :fullscreen .mobile-header {
+                display: flex !important; /* 强制显示 */
+                position: fixed !important; /* 保持固定定位 */
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                z-index: 100 !important; /* 确保在顶层 */
+            }
+
+            /* 新增：调整全屏时主内容区域的内边距和高度 */
+            :fullscreen .main-content {
+                padding-top: 60px !important; /* 保持为标题栏留出的空间 */
+                height: calc(100vh - 60px) !important; /* 相应调整高度 */
+            }
+
+            /* 新增：在全屏时隐藏全屏按钮 */
+            :fullscreen #fullscreen-btn {
+                display: none !important;
+            }
         }
 
         /* 自定义加号样式 */
@@ -821,7 +842,6 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- 移动端顶部导航 -->
         <div class="mobile-header">
             <div class="mobile-back purple">
                 <i class="bi bi-chevron-left"></i>
@@ -838,7 +858,6 @@
             </div>
         </div>
         
-        <!-- 侧边栏 -->
         <div class="sidebar">
             <ul class="sidebar-list">
                 <li class="sidebar-item active">
@@ -863,7 +882,6 @@
             </div>
         </div>
         
-        <!-- 主内容区域 -->
         <div class="main-content">
             <div class="list-header">
                 <h1 class="list-title red">生日备注</h1>
@@ -878,30 +896,23 @@
             </div>
             
             <ul class="task-list" id="task-list">
-                <!-- 生日备注将由JavaScript动态加载 -->
                 <div class="empty-state">载入中...</div>
             </ul>
         </div>
     </div>
 
-    <!-- 添加一个进入全屏的按钮 -->
     <button id="fullscreen-btn" style="position: fixed; bottom: 10px; right: 10px; z-index: 999; padding: 8px 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer;">
         进入全屏
     </button>
 
     <script>
-        // Supabase 配置 - 保持不变
         const SUPABASE_URL = 'https://fmxddvjgkykuqwmasigo.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZteGRkdmpna3lrdXF3bWFzaWdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDMzMjcsImV4cCI6MjA1OTYxOTMyN30.XCU4-03oajGh6M2-PNiBotCZSIDn_nJXkIC0Thjjfqo';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // DOM 元素
         const taskList = document.getElementById('task-list');
+        let currentThemeColor = 'red';
 
-        // 全局变量存储当前主题颜色
-        let currentThemeColor = 'red'; // 默认为红色（生日备注）
-
-        // 加载生日备注
         async function loadBirthdays() {
             try {
                 const { data, error } = await supabase
@@ -911,8 +922,6 @@
                 
                 if (error) throw error;
 
-                // 这里我们会将任务数据转换为生日备注格式
-                // 在真实应用中，你应该使用专门用于生日备注的数据表
                 renderBirthdays(data || []);
             } catch (error) {
                 console.error('加载生日备注失败:', error);
@@ -920,10 +929,8 @@
             }
         }
 
-        // 渲染生日备注列表
         function renderBirthdays(birthdays) {
             if (!birthdays || !Array.isArray(birthdays) || birthdays.length === 0) {
-                // 为了演示，我们添加一些静态数据
                 const mockData = [
                     { id: 1, name: "分组", note: "", is_completed: false },
                     { id: 2, name: "代码管理改为GitHub界面", note: "", is_completed: true },
@@ -950,12 +957,10 @@
                 
                 taskList.innerHTML = html;
                 addCheckboxListeners();
-                // 更新所有复选框颜色
                 updateCheckboxColors();
                 return;
             }
 
-            // 如果有实际数据，按照生日备注格式渲染
             let html = '';
             birthdays.forEach(birthday => {
                 html += `                <li class="task-item ${birthday.is_completed ? 'completed' : ''}" data-id="${birthday.id}">
@@ -969,11 +974,9 @@
             
             taskList.innerHTML = html;
             addCheckboxListeners();
-            // 更新所有复选框颜色
             updateCheckboxColors();
         }
 
-        // 根据侧边栏图标颜色设置主题
         function setThemeColor(iconElement) {
             if (iconElement.classList.contains('purple')) {
                 currentThemeColor = 'purple';
@@ -982,11 +985,9 @@
             } else if (iconElement.classList.contains('red')) {
                 currentThemeColor = 'red';
             }
-            // 更新所有复选框颜色
             updateCheckboxColors();
         }
 
-        // 添加复选框事件监听器
         function addCheckboxListeners() {
             document.querySelectorAll('.task-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
@@ -994,20 +995,17 @@
                     const id = taskItem.dataset.id;
                     const isCompleted = this.checked;
                     
-                    // 更新UI
                     if (isCompleted) {
                         taskItem.classList.add('completed');
                     } else {
                         taskItem.classList.remove('completed');
                     }
                     
-                    // 调用API更新数据库
                     toggleTaskStatus(id, isCompleted);
                 });
             });
         }
 
-        // 添加新任务
         async function addTask(taskText) {
             try {
                 const { data, error } = await supabase
@@ -1018,14 +1016,13 @@
                     .select();
                 
                 if (error) throw error;
-                loadBirthdays(); // 刷新列表
+                loadBirthdays();
             } catch (error) {
                 console.error('添加任务失败:', error);
                 alert('添加失败: ' + error.message);
             }
         }
 
-        // 切换任务状态
         async function toggleTaskStatus(id, isCompleted) {
             try {
                 const { error } = await supabase
@@ -1045,11 +1042,10 @@
                 }
             } catch (error) {
                 console.error('更新任务状态失败:', error);
-                loadBirthdays(); // 重新加载以恢复正确状态
+                loadBirthdays();
             }
         }
 
-        // 删除任务（保留但未在界面使用，以防需要）
         async function deleteTask(id) {
             try {
                 const { error } = await supabase
@@ -1058,42 +1054,35 @@
                     .eq('id', id);
                 
                 if (error) throw error;
-                loadBirthdays(); // 刷新列表
+                loadBirthdays();
             } catch (error) {
                 console.error('删除任务失败:', error);
                 alert('删除失败: ' + error.message);
             }
         }
 
-        // 更新所有复选框颜色
         function updateCheckboxColors() {
             document.querySelectorAll('.task-checkbox').forEach(checkbox => {
-                // 先移除所有颜色类
                 checkbox.classList.remove('purple', 'blue', 'red');
-                // 添加当前主题颜色类
                 checkbox.classList.add(currentThemeColor);
             });
             
-            // 更新按钮颜色
             document.querySelectorAll('.action-button').forEach(btn => {
                 btn.classList.remove('purple', 'blue', 'red');
                 btn.classList.add(currentThemeColor);
             });
             
-            // 更新移动端按钮颜色
             document.querySelectorAll('.mobile-action-btn').forEach(btn => {
                 btn.classList.remove('purple', 'blue', 'red');
                 btn.classList.add(currentThemeColor);
             });
             
-            // 更新移动端返回按钮颜色
             const mobileBack = document.querySelector('.mobile-back');
             if (mobileBack) {
                 mobileBack.classList.remove('purple', 'blue', 'red');
                 mobileBack.classList.add(currentThemeColor);
             }
             
-            // 更新移动端标题颜色
             const mobileTitle = document.querySelector('.mobile-title');
             if (mobileTitle) {
                 mobileTitle.classList.remove('purple', 'blue', 'red');
@@ -1101,15 +1090,11 @@
             }
         }
 
-        // 初始化
         function initialize() {
-            // 加载任务列表
             loadBirthdays();
             
-            // 点击文档任意区域关闭列表组栏
             document.addEventListener('click', function(e) {
                 const sidebar = document.querySelector('.sidebar');
-                // 如果点击的不是侧边栏内的元素，且侧边栏是显示状态，并且是移动端
                 if (!sidebar.contains(e.target) && 
                     !e.target.closest('.mobile-back') && 
                     sidebar.style.display === 'flex' && 
@@ -1118,22 +1103,17 @@
                 }
             });
             
-            // 移动端返回按钮 - 显示列表组
             document.querySelector('.mobile-back').addEventListener('click', function() {
-                // 在移动端视图下，返回按钮显示列表组栏
                 if (window.innerWidth <= 768) {
                     const sidebar = document.querySelector('.sidebar');
-                    sidebar.style.display = 'flex'; // 使用flex而不是block，以保持flex布局
+                    sidebar.style.display = 'flex';
                     
-                    // 隐藏主内容区域
                     document.querySelector('.main-content').style.display = 'none';
                     
-                    // 隐藏移动端头部导航
                     document.querySelector('.mobile-header').style.display = 'none';
                 }
             });
             
-            // 监听窗口大小变化，以正确显示/隐藏侧边栏
             window.addEventListener('resize', function() {
                 const sidebar = document.querySelector('.sidebar');
                 const mainContent = document.querySelector('.main-content');
@@ -1142,7 +1122,6 @@
                 const mobileActions = document.querySelector('.mobile-actions');
                 
                 if (window.innerWidth > 768) {
-                    // PC端始终保持显示
                     sidebar.style.display = '';
                     sidebar.style.position = '';
                     sidebar.style.top = '';
@@ -1152,7 +1131,6 @@
                     mobileBack.style.visibility = '';
                     mobileActions.style.display = '';
                 } else {
-                    // 移动端初始隐藏
                     if (sidebar.style.display !== 'flex') {
                         sidebar.style.display = 'none';
                         mainContent.style.display = 'block';
@@ -1163,7 +1141,6 @@
                 }
             });
             
-            // 移动端添加按钮
             document.querySelector('.mobile-actions .custom-plus').closest('button').addEventListener('click', function() {
                 const taskText = prompt('请输入新任务:');
                 if (taskText && taskText.trim() !== '') {
@@ -1171,43 +1148,34 @@
                 }
             });
             
-            // 移动端更多选项按钮
             document.querySelector('.mobile-actions .bi-three-dots').closest('button').addEventListener('click', function() {
                 const listTitle = document.querySelector('.mobile-title').textContent;
                 
-                // 如果当前正在显示列表组，则不执行任何操作
                 if (listTitle === '列表') return;
                 
                 const action = prompt(`${listTitle}选项：\n1. 清除已完成任务\n2. 全部标记完成\n3. 全部标记未完成\n请输入数字或取消`);
                 
                 if (action === '1') {
                     if (confirm('确定要清除所有已完成的任务吗？')) {
-                        // 这里应该调用API来删除已完成的任务
                         alert('清除功能待实现');
                     }
                 } else if (action === '2') {
-                    // 将所有任务标记为已完成
                     document.querySelectorAll('.task-checkbox:not(:checked)').forEach(checkbox => {
                         checkbox.checked = true;
                         const taskItem = checkbox.closest('.task-item');
                         taskItem.classList.add('completed');
-                        // 在实际应用中，应该调用API更新任务状态
                     });
                 } else if (action === '3') {
-                    // 将所有任务标记为未完成
                     document.querySelectorAll('.task-checkbox:checked').forEach(checkbox => {
                         checkbox.checked = false;
                         const taskItem = checkbox.closest('.task-item');
                         taskItem.classList.remove('completed');
-                        // 在实际应用中，应该调用API更新任务状态
                     });
                 }
             });
             
-            // 侧边栏选择
             document.querySelectorAll('.sidebar-item').forEach(item => {
                 item.addEventListener('click', function(e) {
-                    // 如果点击的是更多按钮，不进行列表切换
                     if (e.target.closest('.sidebar-more')) {
                         e.stopPropagation();
                         return;
@@ -1220,15 +1188,12 @@
                     const titleElement = document.querySelector('.list-title');
                     const mobileTitleElement = document.querySelector('.mobile-title');
                     
-                    // 更新标题
                     titleElement.textContent = listTitle;
                     mobileTitleElement.textContent = listTitle;
                     
-                    // 更新标题颜色
                     titleElement.classList.remove('purple', 'blue', 'red');
                     mobileTitleElement.classList.remove('purple', 'blue', 'red');
                     
-                    // 获取图标的颜色类并设置全局主题颜色
                     const iconElement = this.querySelector('.sidebar-icon');
                     setThemeColor(iconElement);
                     
@@ -1243,22 +1208,18 @@
                         mobileTitleElement.classList.add('red');
                     }
                     
-                    // 加载对应内容
                     if (listTitle === '生日备注') {
                         loadBirthdays();
                     } else if (listTitle === '每日清单') {
-                        // 加载每日清单
                         currentThemeColor = 'purple';
-                        loadBirthdays(); // 暂时使用相同数据展示
+                        loadBirthdays();
                         updateCheckboxColors();
                     } else if (listTitle === '心情') {
-                        // 加载心情
                         currentThemeColor = 'blue';
-                        loadBirthdays(); // 暂时使用相同数据展示
+                        loadBirthdays();
                         updateCheckboxColors();
                     }
                     
-                    // 如果是在移动端，选择后隐藏列表组，显示内容区
                     if (window.innerWidth <= 768) {
                         document.querySelector('.sidebar').style.display = 'none';
                         document.querySelector('.main-content').style.display = 'block';
@@ -1269,17 +1230,14 @@
                 });
             });
             
-            // 侧边栏更多按钮点击事件
             document.querySelectorAll('.sidebar-more').forEach(btn => {
                 btn.addEventListener('click', function(e) {
-                    e.stopPropagation(); // 阻止事件冒泡
+                    e.stopPropagation();
                     const listItem = this.closest('.sidebar-item');
                     const listName = listItem.querySelector('span').textContent;
                     
-                    // 这里可以添加显示下拉菜单或执行其他操作的代码
                     console.log('打开列表更多选项:', listName);
                     
-                    // 简单示例：弹出操作选项
                     const action = prompt(`请选择对"${listName}"的操作：\n1. 编辑名称\n2. 删除列表\n请输入数字`);
                     
                     if (action === '1') {
@@ -1289,19 +1247,16 @@
                         }
                     } else if (action === '2') {
                         if (confirm(`确定要删除"${listName}"列表吗？`)) {
-                            // 在实际应用中，您应该调用API删除数据
                             alert('列表删除功能待实现');
                         }
                     }
                 });
             });
             
-            // 初始化时，确保每日清单处于活跃状态
             document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
             const activeItem = document.querySelector('.sidebar-item:nth-child(1)');
             activeItem.classList.add('active');
             
-            // 设置初始标题颜色
             const titleElement = document.querySelector('.list-title');
             const mobileTitleElement = document.querySelector('.mobile-title');
             const iconElement = activeItem.querySelector('.sidebar-icon');
@@ -1312,7 +1267,6 @@
             titleElement.textContent = '每日清单';
             mobileTitleElement.textContent = '每日清单';
             
-            // 设置初始主题颜色
             if (iconElement.classList.contains('purple')) {
                 currentThemeColor = 'purple';
                 titleElement.classList.add('purple');
@@ -1327,12 +1281,10 @@
                 mobileTitleElement.classList.add('red');
             }
             
-            // 立即更新所有颜色
             updateCheckboxColors();
 
-            // --- 新增：全屏功能 ---
             const fullscreenBtn = document.getElementById('fullscreen-btn');
-            const elem = document.documentElement; // 获取 HTML 根元素
+            const elem = document.documentElement;
 
             if (fullscreenBtn) {
                 fullscreenBtn.addEventListener('click', () => {
@@ -1341,44 +1293,37 @@
                             console.error(`请求全屏失败: ${err.message} (${err.name})`);
                             alert('无法进入全屏模式，可能需要用户交互或浏览器不支持。');
                         });
-                    } else if (elem.webkitRequestFullscreen) { /* Safari */
+                    } else if (elem.webkitRequestFullscreen) {
                         elem.webkitRequestFullscreen().catch(err => {
                             console.error(`请求全屏失败: ${err.message} (${err.name})`);
                             alert('无法进入全屏模式，可能需要用户交互或浏览器不支持。');
                         });
-                    } else if (elem.msRequestFullscreen) { /* IE11 */
-                        elem.msRequestFullscreen(); // IE 不返回 Promise
+                    } else if (elem.msRequestFullscreen) {
+                        elem.msRequestFullscreen();
                     }
                 });
 
-                // 监听进入/退出全屏事件
                 document.addEventListener('fullscreenchange', handleFullscreenChange);
-                document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // Safari
-                document.addEventListener('msfullscreenchange', handleFullscreenChange); // IE11
+                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+                document.addEventListener('msfullscreenchange', handleFullscreenChange);
 
                 function handleFullscreenChange() {
                     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-                        // 进入全屏后隐藏按钮
-                        fullscreenBtn.style.display = 'none';
+                        console.log('已进入全屏模式');
                     } else {
-                        // 退出全屏后显示按钮
-                        fullscreenBtn.style.display = 'block'; // 或 'inline-block' 等
+                        console.log('已退出全屏模式');
                     }
                 }
 
-                // 初始检查是否支持全屏，不支持则隐藏按钮
                 if (!document.fullscreenEnabled && !document.webkitFullscreenEnabled && !document.msFullscreenEnabled) {
                     fullscreenBtn.style.display = 'none';
                     console.warn('此浏览器不支持全屏 API。');
                 }
             }
-            // --- 全屏功能结束 ---
         }
 
-        // 当页面加载完成时初始化
         document.addEventListener('DOMContentLoaded', initialize);
 
-        // 全局函数
         window.toggleTaskStatus = toggleTaskStatus;
         window.deleteTask = deleteTask;
     </script>
