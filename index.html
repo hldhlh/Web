@@ -11,52 +11,139 @@
         :root {
             --bg-color: #ffffff;
             --sidebar-bg: #ffffff;
-            --sidebar-hover: #e8e8e8;
-            --sidebar-active: #dedede;
+            --sidebar-hover: rgb(244, 244, 245);
+            --sidebar-active: rgba(10, 132, 255, 0.2);
             --sidebar-text: #555555;
             --sidebar-active-text: #000000;
             --primary-color: #007aff;
             --primary-hover: #0062cc;
-            --success-color: #34c759;
-            --danger-color: #ff3b30;
             --text-color: #1d1d1f;
             --secondary-text: #86868b;
-            --card-bg: #ffffff;
             --border-color: rgba(0, 0, 0, 0.1);
             --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05);
+
+            /* 主题颜色 */
+            --theme-purple: #bf5af2;
+            --theme-blue: #0a84ff;
+            --theme-red: #ff453a;
+            --current-theme-color: var(--theme-purple);
+            --current-theme-hover-bg: rgba(191, 90, 242, 0.1);
+            --divider-color: rgba(0, 0, 0, 0.15);
+            --mobile-divider-color: #d0d0d0;
+        }
+
+        /* 根据主题设置颜色 */
+        body[data-theme="purple"] {
+            --current-theme-color: var(--theme-purple);
+            --current-theme-hover-bg: rgba(191, 90, 242, 0.1);
+        }
+        body[data-theme="blue"] {
+            --current-theme-color: var(--theme-blue);
+            --current-theme-hover-bg: rgba(10, 132, 255, 0.1);
+        }
+        body[data-theme="red"] {
+            --current-theme-color: var(--theme-red);
+            --current-theme-hover-bg: rgba(255, 69, 58, 0.1);
         }
 
         @font-face {
             font-family: 'SF Pro Text';
             src: local('SF Pro Text'), local('SFProText-Regular');
             font-weight: normal;
-            font-style: normal;
         }
 
         @font-face {
             font-family: 'SF Pro Display';
             src: local('SF Pro Display'), local('SFProDisplay-Regular');
             font-weight: normal;
-            font-style: normal;
         }
 
+        /* 基础样式 */
         body {
             background-color: var(--bg-color);
-            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: var(--text-color);
             margin: 0;
             padding: 0;
             height: 100vh;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            /* 添加滚动条样式 */
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+
+        /* 自定义滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            border: 2px solid transparent;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+
+        /* 美化滚动体验 */
+        .sidebar-list, .main-content, .task-list {
+            -webkit-overflow-scrolling: touch; /* 在iOS上提供更流畅的滚动 */
+            scroll-behavior: smooth; /* 平滑滚动 */
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            /* 只在支持悬停的非触摸设备上应用自动隐藏 */
+            .sidebar-list, .main-content, .task-list {
+                scrollbar-width: thin;
+                scrollbar-color: transparent transparent;
+                transition: scrollbar-color 0.3s ease;
+            }
+
+            .sidebar-list::-webkit-scrollbar-thumb, 
+            .main-content::-webkit-scrollbar-thumb,
+            .task-list::-webkit-scrollbar-thumb {
+                background-color: transparent;
+                transition: background-color 0.3s ease;
+            }
+
+            .sidebar-list:hover, .main-content:hover, .task-list:hover {
+                scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+            }
+
+            .sidebar-list:hover::-webkit-scrollbar-thumb, 
+            .main-content:hover::-webkit-scrollbar-thumb,
+            .task-list:hover::-webkit-scrollbar-thumb {
+                background-color: rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        @media (hover: none) or (pointer: coarse) {
+            /* 在触摸设备上保持滚动条始终可见但更轻量 */
+            .sidebar-list, .main-content, .task-list {
+                scrollbar-width: thin;
+                scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+            }
+
+            .sidebar-list::-webkit-scrollbar-thumb, 
+            .main-content::-webkit-scrollbar-thumb,
+            .task-list::-webkit-scrollbar-thumb {
+                background-color: rgba(0, 0, 0, 0.1);
+            }
         }
 
         .app-container {
             display: flex;
             height: 100vh;
             width: 100%;
+            overflow-x: hidden;
         }
 
         /* 侧边栏样式 */
@@ -89,22 +176,18 @@
             display: flex;
             align-items: center;
             height: 40px;
-            justify-content: flex-start;
             font-size: 0.93rem;
             color: var(--text-color);
             position: relative;
         }
 
         .sidebar-item:hover {
-            /* background-color: rgba(10, 132, 255, 0.1); */ /* Light blue for PC hover */
-            background-color: rgb(244, 244, 245); /* Light gray hover for PC */
+            background-color: var(--sidebar-hover);
         }
 
         .sidebar-item.active {
-            /* background-color: rgba(10, 132, 255, 0.15); */ /* Darker blue for PC active */
-            background-color: rgba(10, 132, 255, 0.2); /* Lighter blue for PC active */
-            /* color: var(--sidebar-active-text); */
-            color: var(--sidebar-active-text); /* Back to default text color */
+            background-color: var(--sidebar-active);
+            color: var(--sidebar-active-text);
             font-weight: 500;
         }
 
@@ -118,27 +201,17 @@
             margin-right: 15px;
             font-size: 0.8rem;
             color: white;
-            text-align: center;
             line-height: 1;
-            padding: 0;
         }
 
-        .sidebar-icon.purple {
-            background-color: #bf5af2;
-        }
-
-        .sidebar-icon.blue {
-            background-color: #0a84ff;
-        }
-
-        .sidebar-icon.red {
-            background-color: #ff453a;
-        }
+        .sidebar-icon.purple { background-color: var(--theme-purple); }
+        .sidebar-icon.blue { background-color: var(--theme-blue); }
+        .sidebar-icon.red { background-color: var(--theme-red); }
 
         .sidebar-add {
             padding: 15px;
             border-top: 1px solid var(--border-color);
-            color: #0a84ff;
+            color: var(--theme-blue);
             display: flex;
             align-items: center;
             cursor: pointer;
@@ -148,102 +221,138 @@
             background-color: rgba(10, 132, 255, 0.1);
         }
 
-        .sidebar-add i {
-            margin-right: 15px;
-            font-size: 1rem;
-            color: #007aff;
-            width: 25px;
-            height: 25px;
+        .sidebar-add i, .sidebar-more i {
             display: flex;
             align-items: center;
             justify-content: center;
+            line-height: 1;
+        }
+
+        .sidebar-add i {
+            margin-right: 15px;
+            font-size: 1rem;
+            color: var(--primary-color);
+            width: 25px;
+            height: 25px;
         }
 
         .sidebar-add span {
-            display: block;
             font-size: 1rem;
-            color: #007aff;
+            color: var(--primary-color);
         }
 
         .sidebar-more {
             position: absolute;
             right: 10px;
-            top: 50%; /* 垂直居中 */
-            transform: translateY(-50%); /* 调整垂直居中 */
+            top: 50%;
+            transform: translateY(-50%);
             color: var(--secondary-text);
             cursor: pointer;
-            opacity: 0; /* 初始隐藏 */
+            opacity: 0;
             font-size: 0.9rem;
-            width: 24px; /* 固定宽度 */
-            height: 24px; /* 固定高度 */
-            display: inline-flex; /* 使用flex布局居中图标 */
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 50%; /* 圆形 */
-            transition: opacity 0.15s ease-in-out; /* 保留现有的透明度过渡 */
+            border-radius: 50%;
+            transition: opacity 0.15s ease-in-out;
         }
         
         .sidebar-item:hover .sidebar-more {
-            opacity: 1; /* 父元素悬停时显示 */
+            opacity: 1;
         }
 
         .sidebar-more:hover {
-            background-color: rgba(0, 0, 0, 0.08); /* 悬停时添加浅灰色背景 */
-        }
-
-        /* 确保内部图标对齐良好 */
-        .sidebar-more i {
-            line-height: 1;
-            display: block;
+            background-color: rgba(0, 0, 0, 0.08);
         }
 
         /* 主内容区域 */
         .main-content {
             flex: 1;
-            padding: 15px 20px;
+            padding: 15px 0;
             margin-left: 220px;
             height: 100%;
             overflow-y: auto;
-            max-width: 900px;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            width: calc(100% - 220px);
+        }
+
+        /* 增加内部容器来添加水平内边距 */
+        .content-inner {
+            padding: 0;
+            max-width: none;
+            width: 100%;
+            position: relative;
         }
 
         .list-header {
             margin-bottom: 15px;
-            padding-bottom: 10px;
+            padding: 0 20px 10px 20px;
             border-bottom: 1px solid var(--border-color);
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .list-title {
             font-size: 1.8rem;
             font-weight: 600;
             margin-bottom: 5px;
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        
-        .list-title.purple {
-            color: #bf5af2;
-        }
-        
-        .list-title.blue {
-            color: #0a84ff;
-        }
-        
-        .list-title.red {
-            color: #ff453a;
+            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            color: var(--current-theme-color);
         }
 
         /* 任务样式 */
         .task-list {
             list-style: none;
-            padding: 0;
+            padding: 0 20px;
             margin: 0;
+            width: 100%;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+            transition: scrollbar-color 0.3s ease;
         }
 
         .task-item {
             display: flex;
             align-items: center;
-            padding: 12px 5px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 12px 0;
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        .task-content {
+            flex: 1;
+            padding: 0 15px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* 分割线 */
+        .task-item::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            height: 1px;
+            background-color: var(--divider-color);
+            width: 100%;
+            box-sizing: content-box;
+            padding-left: 20px;
+            margin-left: -20px;
+            right: auto;
+        }
+
+        .task-item:last-child::after {
+            display: none;
         }
 
         .task-checkbox {
@@ -251,7 +360,8 @@
             width: 20px;
             height: 20px;
             border-radius: 50%;
-            margin-right: 15px;
+            margin-left: 15px;
+            margin-right: 5px;
             appearance: none;
             border: 1px solid #c7c7cc;
             outline: none;
@@ -261,66 +371,24 @@
         }
         
         .task-checkbox:hover {
-            border-color: currentColor;
+            border-color: var(--current-theme-color);
+            background-color: var(--current-theme-hover-bg);
         }
         
-        .task-checkbox.purple:hover {
-            border-color: #bf5af2;
-            background-color: rgba(191, 90, 242, 0.1);
-        }
-        
-        .task-checkbox.blue:hover {
-            border-color: #0a84ff;
-            background-color: rgba(10, 132, 255, 0.1);
-        }
-        
-        .task-checkbox.red:hover {
-            border-color: #ff453a;
-            background-color: rgba(255, 69, 58, 0.1);
-        }
-
         .task-checkbox:checked {
-            border-color: var(--primary-color);
-        }
-        
-        .task-checkbox.purple:checked {
-            /* background-color: #bf5af2; */ /* Remove background fill */
-            border-color: #bf5af2;
-        }
-        
-        .task-checkbox.blue:checked {
-            /* background-color: #0a84ff; */ /* Remove background fill */
-            border-color: #0a84ff;
-        }
-        
-        .task-checkbox.red:checked {
-            /* background-color: #ff453a; */ /* Remove background fill */
-            border-color: #ff453a;
+            border-color: var(--current-theme-color);
         }
 
-        /* Add specific ::after rules for each theme color when checked */
         .task-checkbox:checked::after {
             content: '';
             position: absolute;
             left: 50%;
             top: 50%;
-            width: 12px; /* Increased size for the dot */
-            height: 12px; /* Increased size for the dot */
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            border: none;
-        }
-
-        .task-checkbox.purple:checked::after {
-            background-color: #bf5af2; /* Theme color dot */
-        }
-
-        .task-checkbox.blue:checked::after {
-            background-color: #0a84ff; /* Theme color dot */
-        }
-        
-        .task-checkbox.red:checked::after {
-            background-color: #ff453a; /* Theme color dot */
+            background-color: var(--current-theme-color);
         }
 
         .task-text {
@@ -328,6 +396,10 @@
             margin-left: 5px;
             color: var(--text-color);
             font-size: 0.95rem;
+            width: 100%;
+            cursor: text;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
         
         .task-note {
@@ -337,97 +409,64 @@
         }
 
         .task-item.completed .task-text {
-            text-decoration: none;
             color: var(--secondary-text);
+        }
+
+        .task-text.editing {
+            outline: none;
+            border-bottom: 1px dashed var(--current-theme-color);
+            padding-bottom: 2px;
+            min-height: 1.2em;
         }
 
         .header-actions {
             display: flex;
             align-items: center;
-            position: absolute;
-            top: 20px;
-            right: 20px;
+            margin-left: auto;
         }
         
-        .action-button {
+        .action-button, .mobile-action-btn {
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 1.2rem;
-            color: inherit;
-            padding: 6px 15px;
+            color: var(--current-theme-color);
             border-radius: 6px;
             margin: 0;
-        }
-        
-        .action-button:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
-        
-        .action-button.purple {
-            color: #bf5af2;
-        }
-        
-        .action-button.purple:hover {
-            background-color: rgba(191, 90, 242, 0.1);
-        }
-        
-        .action-button.blue {
-            color: #0a84ff;
-        }
-        
-        .action-button.blue:hover {
-            background-color: rgba(10, 132, 255, 0.1);
-        }
-        
-        .action-button.red {
-            color: #ff453a;
-        }
-        
-        .action-button.red:hover {
-            background-color: rgba(255, 69, 58, 0.1);
+            font-size: 1.2rem;
+            padding: 6px 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
         }
 
-        .add-task-form {
-            display: flex;
-            margin-top: 15px;
-            border-radius: 8px;
-            background-color: white;
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
+        .action-button i, .mobile-action-btn i {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 24px;
+            width: 24px;
         }
-
-        .add-task-input {
-            flex-grow: 1;
-            border: none;
-            padding: 12px 15px;
-            font-size: 0.95rem;
-            outline: none;
+        
+        .action-button:last-child, .mobile-action-btn:last-child {
+            padding-right: 0;
         }
-
-        .add-task-btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0 20px;
-            font-size: 0.9rem;
-            cursor: pointer;
+        
+        .action-button:hover, .mobile-action-btn:hover {
+            background-color: var(--current-theme-hover-bg);
         }
-
-        .add-task-btn:hover {
-            background-color: var(--primary-hover);
-        }
-
+        
         .empty-state {
             text-align: center;
             padding: 30px 0;
             color: var(--secondary-text);
         }
 
-        /* 移动端头部样式 */
+        /* 移动端头部 */
         .mobile-header {
             display: none;
-            padding: 15px;
+            padding: 15px 0;
             border-bottom: 1px solid var(--border-color);
             background-color: var(--bg-color);
             position: fixed;
@@ -437,351 +476,43 @@
             z-index: 100;
         }
         
-        .mobile-back {
+        .mobile-back, .mobile-actions {
             position: absolute;
-            left: 15px;
             top: 50%;
             transform: translateY(-50%);
-            font-size: 1.1rem;
             display: flex;
             align-items: center;
-            color: inherit;
+        }
+
+        .mobile-back {
+            left: 15px;
+            font-size: 1.1rem;
+            color: var(--current-theme-color);
             padding: 6px 10px;
             border-radius: 6px;
             cursor: pointer;
         }
         
         .mobile-back:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
-        
-        .mobile-back.purple {
-            color: #bf5af2;
-        }
-        
-        .mobile-back.purple:hover {
-            background-color: rgba(191, 90, 242, 0.1);
-        }
-        
-        .mobile-back.blue {
-            color: #0a84ff;
-        }
-        
-        .mobile-back.blue:hover {
-            background-color: rgba(10, 132, 255, 0.1);
-        }
-        
-        .mobile-back.red {
-            color: #ff453a;
-        }
-        
-        .mobile-back.red:hover {
-            background-color: rgba(255, 69, 58, 0.1);
+            background-color: var(--current-theme-hover-bg);
         }
         
         .mobile-title {
             text-align: center;
             font-size: 1.1rem;
             font-weight: 600;
-            color: var(--text-color);
-        }
-        
-        .mobile-title.purple {
-            color: #bf5af2;
-        }
-        
-        .mobile-title.blue {
-            color: #0a84ff;
-        }
-        
-        .mobile-title.red {
-            color: #ff453a;
+            color: var(--current-theme-color);
         }
         
         .mobile-actions {
-            position: absolute;
             right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            align-items: center;
         }
         
-        .mobile-action-btn {
-            border: none;
-            background: none;
-            font-size: 1.2rem;
-            padding: 6px 15px;
-            margin: 0;
-            cursor: pointer;
-            color: inherit;
-            border-radius: 6px;
-        }
-        
-        .mobile-action-btn:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
-        
-        .mobile-action-btn.purple {
-            color: #bf5af2;
-        }
-        
-        .mobile-action-btn.purple:hover {
-            background-color: rgba(191, 90, 242, 0.1);
-        }
-        
-        .mobile-action-btn.blue {
-            color: #0a84ff;
-        }
-        
-        .mobile-action-btn.blue:hover {
-            background-color: rgba(10, 132, 255, 0.1);
-        }
-        
-        .mobile-action-btn.red {
-            color: #ff453a;
-        }
-        
-        .mobile-action-btn.red:hover {
-            background-color: rgba(255, 69, 58, 0.1);
+        .mobile-action-btn:last-child {
+            padding-right: 0;
         }
 
-        @media (max-width: 768px) {
-            .sidebar {
-                display: none; /* 在移动端隐藏列表组栏，但不删除它 */
-                width: 100%; /* 全屏宽度 */
-                height: 100vh; /* 全屏高度 */
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                z-index: 300; /* 确保在移动端头部之上 */
-                overflow-y: auto; /* 允许整体滚动 */
-                background-color: white; /* 改为白色背景 */
-                padding-top: 0; /* 移除顶部内边距 */
-                display: flex;
-                flex-direction: column;
-            }
-            
-            .sidebar-list {
-                flex-direction: column;
-                padding: 0;
-                padding-top: 20px; /* Add top padding */
-                margin: 0;
-                background-color: white;
-                flex-grow: 1;
-                overflow-y: auto;
-                border-radius: 0; /* 移除圆角 */
-            }
-            
-            .sidebar-item {
-                padding: 15px;
-                margin: 4px 10px;
-                border-radius: 0;
-                flex-direction: row;
-                font-size: 1rem;
-                text-align: left;
-                height: 40px; /* Match desktop height */
-                position: relative;
-            }
-            
-            /* Explicitly reset active item style for mobile */
-            .sidebar-item.active {
-                background-color: transparent; /* Override base style */
-                color: var(--text-color); /* Reset text color */
-                font-weight: normal; /* Reset font weight */
-            }
-            
-            /* Restore the arrow on mobile view */
-            .sidebar-item::after {
-                content: '›';
-                position: absolute;
-                right: 15px;
-                font-size: 1.5rem;
-                color: #c7c7cc;
-            }
-            
-            /* Apply the hover style for mobile */
-            .sidebar-item:hover {
-                /* background-color: rgba(10, 132, 255, 0.1); */
-                background-color: rgb(244, 244, 245); /* Light gray hover for Mobile */
-                border-radius: 8px;
-            }
-            
-            .sidebar-icon {
-                margin-right: 15px;
-                margin-bottom: 0;
-                width: 25px;
-                height: 25px;
-                font-size: 0.8rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            
-            /* Show the 'more' icon on mobile */
-            .sidebar-more {
-                display: flex;
-                opacity: 1; /* Ensure full opacity */
-                right: 45px;
-                /* right: 15px; */ /* Adjust position */
-                /* display: none; */ /* Remove hiding rule */
-            }
-            
-            /* 在移动端，图标始终可见，不需要在父元素悬停时改变透明度 */
-             .sidebar-item:hover .sidebar-more {
-                opacity: 1;
-            }
-
-            /* 确保移动端也有悬停背景 */
-            .sidebar-more:hover {
-                 background-color: rgba(0, 0, 0, 0.08);
-            }
-            
-            .sidebar-add {
-                display: flex;
-                padding: 15px;
-                border-top: 1px solid #f0f0f0;
-                color: #007aff;
-                align-items: center;
-                background-color: white;
-                margin-top: auto; /* 将添加列表移至底部 */
-                position: sticky;
-                bottom: 0;
-                z-index: 10;
-                width: 100%; /* 确保宽度100% */
-            }
-            
-            .sidebar-add i {
-                margin-right: 15px;
-                font-size: 1rem;
-                color: #007aff;
-                width: 25px;
-                height: 25px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            
-            .sidebar-add span {
-                display: block;
-                font-size: 1rem;
-                color: #007aff;
-            }
-            
-            .mobile-header {
-                display: none;
-            }
-            
-            .list-header {
-                display: none; /* 在移动端隐藏PC版的标题栏 */
-            }
-            
-            .main-content {
-                margin-left: 0;
-                padding-top: 60px; /* 为顶部标题栏留出空间 */
-                padding-bottom: 0; /* 移除底部内边距 */
-                padding-left: 0; /* 移除左侧内边距 */
-                padding-right: 0; /* 移除右侧内边距 */
-                height: calc(100vh - 60px); /* 调整主内容区高度 */
-                overflow-y: auto;
-                background-color: white; /* 改为白色背景 */
-                max-width: 100%; /* 确保最大宽度为100% */
-            }
-            
-            .task-list {
-                background-color: white;
-                border-radius: 0; /* 移除圆角 */
-                box-shadow: none; /* 移除阴影 */
-                margin: 0; /* 移除外边距 */
-                padding: 0; /* 移除内边距 */
-            }
-            
-            .task-item {
-                padding: 15px;
-                margin: 0;
-                border-bottom: 1px solid #f0f0f0;
-            }
-            
-            .task-item:last-child {
-                border-bottom: none;
-            }
-            
-            .task-checkbox {
-                width: 22px;
-                height: 22px;
-            }
-            
-            .task-text {
-                font-size: 1rem;
-            }
-            
-            .mobile-title {
-                flex: 1;
-                text-align: center;
-                font-weight: 600;
-                font-size: 1.1rem;
-            }
-            
-            .mobile-back {
-                display: flex;
-                align-items: center;
-                padding: 8px;
-                left: 7px; /* Adjusted left position for alignment */
-            }
-            
-            .mobile-back i {
-                margin-right: 6px; /* Add space between icon and text */
-                font-size: 1rem; /* Adjust icon size */
-                line-height: 1; /* Ensure icon aligns well vertically */
-            }
-            
-            .mobile-back span {
-                font-size: 1rem; /* Adjust text size */
-                line-height: 1; /* Ensure text aligns well vertically */
-            }
-            
-            .mobile-actions {
-                display: flex;
-            }
-            
-            .mobile-action-btn {
-                padding: 8px;
-            }
-            
-            .empty-state {
-                margin: 0;
-                padding: 30px 20px;
-                text-align: center;
-                background-color: white;
-                border-radius: 0;
-                box-shadow: none;
-            }
-
-            /* 新增：确保移动端标题栏在全屏时可见 */
-            :fullscreen .mobile-header {
-                display: flex !important; /* 强制显示 */
-                position: fixed !important; /* 保持固定定位 */
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                z-index: 100 !important; /* 确保在顶层 */
-            }
-
-            /* 新增：调整全屏时主内容区域的内边距和高度 */
-            :fullscreen .main-content {
-                padding-top: 60px !important; /* 保持为标题栏留出的空间 */
-                height: calc(100vh - 60px) !important; /* 相应调整高度 */
-            }
-
-            /* 新增：在全屏时隐藏全屏按钮 */
-            :fullscreen #fullscreen-btn {
-                display: none !important;
-            }
-        }
-
-        /* 自定义加号样式 */
+        /* 自定义加号 */
         .custom-plus {
             position: relative;
             display: inline-block;
@@ -811,48 +542,223 @@
             top: 0;
         }
 
-        .action-button.add-btn {
-            width: 38px;
-            height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            font-size: 1.3rem;
-            padding: 0;
-            box-shadow: none;
-        }
+        /* 移动端样式 */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+                width: 100%;
+                height: 100vh;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 300;
+                overflow-y: auto;
+                background-color: white;
+                padding-top: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .sidebar-list {
+                flex-direction: column;
+                padding: 0;
+                padding-top: 20px;
+                margin: 0;
+                background-color: white;
+                flex-grow: 1;
+                overflow-y: auto;
+                border-radius: 0;
+            }
+            
+            .sidebar-item {
+                padding: 15px;
+                margin: 4px 10px;
+                border-radius: 0;
+                font-size: 1rem;
+                text-align: left;
+                height: 40px;
+                position: relative;
+            }
+            
+            .sidebar-item.active {
+                background-color: transparent;
+                color: var(--text-color);
+                font-weight: normal;
+            }
+            
+            .sidebar-item::after {
+                content: '›';
+                position: absolute;
+                right: 15px;
+                font-size: 1.5rem;
+                color: #c7c7cc;
+            }
+            
+            .sidebar-item:hover {
+                background-color: var(--sidebar-hover);
+                border-radius: 8px;
+            }
+            
+            .sidebar-more {
+                display: flex;
+                opacity: 1;
+                right: 45px;
+            }
+            
+            .sidebar-more:hover {
+                background-color: rgba(0, 0, 0, 0.08);
+            }
+            
+            .sidebar-icon {
+                margin-right: 15px;
+                margin-bottom: 0;
+            }
+            
+            .sidebar-add {
+                border-top: 1px solid #f0f0f0;
+                margin-top: auto;
+                position: sticky;
+                bottom: 0;
+                z-index: 10;
+                width: 100%;
+                background-color: white;
+            }
+            
+            .mobile-header {
+                padding: 15px 0;
+            }
+            
+            .list-header {
+                display: none;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 60px 0 0 0;
+                height: calc(100vh - 60px);
+                overflow-y: auto;
+                background-color: white;
+                width: 100%;
+            }
+            
+            .task-list {
+                background-color: white;
+                border-radius: 0;
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                overflow-x: hidden;
+                overflow-y: auto;
+            }
+            
+            .task-item {
+                padding: 15px 0;
+            }
+            
+            .task-content {
+                padding: 0 15px;
+            }
+            
+            .task-item::after {
+                background-color: var(--mobile-divider-color);
+                width: 100vw;
+                left: 0;
+            }
+            
+            .task-checkbox {
+                width: 22px;
+                height: 22px;
+            }
+            
+            .task-text {
+                font-size: 1rem;
+            }
+            
+            .mobile-title {
+                flex: 1;
+                text-align: center;
+                font-weight: 600;
+                font-size: 1.1rem;
+            }
+            
+            .mobile-back {
+                padding: 8px;
+                left: 0;
+            }
+            
+            .mobile-back i {
+                margin-right: 6px;
+                font-size: 1rem;
+                line-height: 1;
+            }
+            
+            .mobile-back span {
+                font-size: 1rem;
+                line-height: 1;
+            }
+            
+            .mobile-actions {
+                right: 0;
+                display: flex;
+            }
+            
+            .empty-state {
+                margin: 0;
+                padding: 30px 20px;
+                background-color: white;
+                border-radius: 0;
+                box-shadow: none;
+            }
 
-        .action-button.add-btn:hover {
-            box-shadow: none;
-        }
+            /* 全屏模式样式 */
+            :fullscreen .mobile-header {
+                display: flex !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                z-index: 100 !important;
+            }
 
-        .mobile-action-btn.add-btn {
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            font-size: 1.2rem;
-            padding: 0;
-            box-shadow: none;
+            :fullscreen .main-content {
+                padding-top: 60px !important;
+                height: calc(100vh - 60px) !important;
+            }
+
+            :fullscreen #fullscreen-btn {
+                display: none !important;
+            }
+
+            .app-container {
+                padding: 0;
+                border-radius: 0;
+                max-height: 100%;
+                height: 100dvh;
+            }
+
+            .app-header {
+                padding: 10px 15px;
+                border-radius: 0;
+            }
         }
     </style>
 </head>
-<body>
+<body data-theme="purple">
     <div class="app-container">
         <div class="mobile-header">
-            <div class="mobile-back purple">
+            <div class="mobile-back">
                 <i class="bi bi-chevron-left"></i>
                 <span>列表</span>
             </div>
-            <div class="mobile-title purple">每日清单</div>
+            <div class="mobile-title">每日清单</div>
             <div class="mobile-actions">
-                <button class="mobile-action-btn purple">
+                <button class="mobile-action-btn">
                     <span class="custom-plus"></span>
                 </button>
-                <button class="mobile-action-btn purple">
+                <button class="mobile-action-btn">
                     <i class="bi bi-three-dots"></i>
                 </button>
             </div>
@@ -883,21 +789,23 @@
         </div>
         
         <div class="main-content">
-            <div class="list-header">
-                <h1 class="list-title red">生日备注</h1>
-                <div class="header-actions">
-                    <button class="action-button purple">
-                        <span class="custom-plus"></span>
-                    </button>
-                    <button class="action-button purple">
-                        <i class="bi bi-three-dots"></i>
-                    </button>
+            <div class="content-inner">
+                <div class="list-header">
+                    <h1 class="list-title">每日清单</h1>
+                    <div class="header-actions">
+                        <button class="action-button">
+                            <span class="custom-plus"></span>
+                        </button>
+                        <button class="action-button">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                    </div>
                 </div>
+                
+                <ul class="task-list" id="task-list">
+                    <div class="empty-state">载入中...</div>
+                </ul>
             </div>
-            
-            <ul class="task-list" id="task-list">
-                <div class="empty-state">载入中...</div>
-            </ul>
         </div>
     </div>
 
@@ -911,10 +819,45 @@
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         const taskList = document.getElementById('task-list');
-        let currentThemeColor = 'red';
+        const sidebarList = document.querySelector('.sidebar-list');
 
         async function loadBirthdays() {
             try {
+                // 设置加载标志，防止递归调用
+                if (window.isLoadingData) return;
+                window.isLoadingData = true;
+                
+                // 检查正在编辑的临时任务
+                if (window.currentEditingTempTask && window.currentEditingTempTask.parentNode) {
+                    const textElement = window.currentEditingTempTask.querySelector('.task-text');
+                    if (textElement) {
+                        const newText = textElement.textContent.trim();
+                        if (newText !== '') {
+                            // 尝试保存编辑中的任务
+                            try {
+                                await addTask(newText);
+                                // 不需要再次调用loadBirthdays，因为addTask会调用它
+                                window.currentEditingTempTask.parentNode.removeChild(window.currentEditingTempTask);
+                                window.currentEditingTempTask = null;
+                                window.isLoadingData = false;
+                                return;
+                            } catch (error) {
+                                console.error('保存临时任务失败:', error);
+                                // 继续加载数据
+                            }
+                        } else {
+                            // 移除空任务
+                            window.currentEditingTempTask.parentNode.removeChild(window.currentEditingTempTask);
+                            window.currentEditingTempTask = null;
+                        }
+                    }
+                }
+                
+                // 显示加载中状态，但保留任何正在编辑的任务
+                if (!document.querySelector('.task-item.temp-task')) {
+                    taskList.innerHTML = `<div class="empty-state">载入中...</div>`;
+                }
+                
                 const { data, error } = await supabase
                     .from('todos')
                     .select('id, task, is_completed, created_at')
@@ -924,8 +867,13 @@
 
                 renderBirthdays(data || []);
             } catch (error) {
-                console.error('加载生日备注失败:', error);
+                console.error('加载数据失败:', error);
                 taskList.innerHTML = `<div class="empty-state">加载失败，请重试</div>`;
+            } finally {
+                // 重置加载标志
+                setTimeout(() => {
+                    window.isLoadingData = false;
+                }, 300);
             }
         }
 
@@ -942,107 +890,433 @@
                     { id: 8, name: "HTML转WXML的解决方案实现", note: "", is_completed: false }
                 ];
                 
-                let html = '';
-                mockData.forEach(item => {
-                    html += `
-                    <li class="task-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
-                        <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
-                        <div style="flex-grow: 1;">
-                            <span class="task-text">${item.name}</span>
-                            ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
-                        </div>
-                    </li>
-                    `;
-                });
-                
-                taskList.innerHTML = html;
-                addCheckboxListeners();
-                updateCheckboxColors();
+                renderTaskItems(mockData, 'name');
                 return;
             }
 
+            renderTaskItems(birthdays, 'task');
+        }
+
+        function renderTaskItems(items, textProperty) {
+            // 保存当前正在编辑的临时任务(如果有)
+            const tempTask = window.currentEditingTempTask;
+            
             let html = '';
-            birthdays.forEach(birthday => {
-                html += `                <li class="task-item ${birthday.is_completed ? 'completed' : ''}" data-id="${birthday.id}">
-                    <input type="checkbox" class="task-checkbox" ${birthday.is_completed ? 'checked' : ''}>
-                    <div>
-                        <span class="task-text">${birthday.task}</span>
-                    </div>
-                </li>
-                `;
+            items.forEach(item => {
+                html += `<li class="task-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
+    <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
+    <div class="task-content">
+        <span class="task-text" contenteditable="false">${item[textProperty]}</span>
+        ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
+    </div>
+</li>`;
             });
             
-            taskList.innerHTML = html;
-            addCheckboxListeners();
-            updateCheckboxColors();
-        }
-
-        function setThemeColor(iconElement) {
-            if (iconElement.classList.contains('purple')) {
-                currentThemeColor = 'purple';
-            } else if (iconElement.classList.contains('blue')) {
-                currentThemeColor = 'blue';
-            } else if (iconElement.classList.contains('red')) {
-                currentThemeColor = 'red';
-            }
-            updateCheckboxColors();
-        }
-
-        function addCheckboxListeners() {
-            document.querySelectorAll('.task-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const taskItem = this.closest('.task-item');
-                    const id = taskItem.dataset.id;
-                    const isCompleted = this.checked;
-                    
-                    if (isCompleted) {
-                        taskItem.classList.add('completed');
+            // 如果当前没有临时任务，直接渲染
+            if (!tempTask || !tempTask.parentNode) {
+                taskList.innerHTML = html;
+            } else {
+                // 保留临时任务，先移除它
+                tempTask.parentNode.removeChild(tempTask);
+                
+                // 渲染新的任务列表
+                taskList.innerHTML = html;
+                
+                // 如果临时任务仍在编辑中，将它重新添加到顶部
+                if (tempTask.querySelector('.task-text').textContent.trim() !== '') {
+                    if (taskList.firstChild) {
+                        taskList.insertBefore(tempTask, taskList.firstChild);
                     } else {
-                        taskItem.classList.remove('completed');
+                        taskList.appendChild(tempTask);
                     }
                     
-                    toggleTaskStatus(id, isCompleted);
-                });
-            });
+                    // 重新聚焦到临时任务
+                    const textElement = tempTask.querySelector('.task-text');
+                    if (textElement) {
+                        textElement.focus();
+                        
+                        // 将光标放到文本的末尾
+                        const range = document.createRange();
+                        const selection = window.getSelection();
+                        range.selectNodeContents(textElement);
+                        range.collapse(false); // 折叠到末尾
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                    }
+                } else {
+                    // 如果临时任务为空，不再保留它
+                    window.currentEditingTempTask = null;
+                }
+            }
+            
+            setupTaskListeners();
+        }
+
+        function setupTaskListeners() {
+            taskList.removeEventListener('change', handleTaskChange);
+            taskList.addEventListener('change', handleTaskChange);
+            
+            // 移除旧的事件监听器，防止重复绑定
+            taskList.removeEventListener('click', handleTaskClick);
+            taskList.addEventListener('click', handleTaskClick);
+            
+            // 监听键盘事件，处理编辑完成
+            taskList.removeEventListener('keydown', handleTaskKeydown);
+            taskList.addEventListener('keydown', handleTaskKeydown);
+            
+            // 监听失去焦点事件，保存编辑内容
+            taskList.removeEventListener('focusout', handleTaskFocusOut);
+            taskList.addEventListener('focusout', handleTaskFocusOut);
+        }
+
+        function handleTaskChange(event) {
+            if (event.target.classList.contains('task-checkbox')) {
+                const checkbox = event.target;
+                const taskItem = checkbox.closest('.task-item');
+                if (!taskItem) return;
+
+                const id = taskItem.dataset.id;
+                const isCompleted = checkbox.checked;
+
+                taskItem.classList.toggle('completed', isCompleted);
+                toggleTaskStatus(id, isCompleted);
+            }
+        }
+
+        function handleTaskClick(event) {
+            // 如果有正在编辑的临时任务，先处理它
+            if (window.currentEditingTempTask) {
+                const textElement = window.currentEditingTempTask.querySelector('.task-text');
+                if (textElement && !window.currentEditingTempTask.contains(event.target)) {
+                    const newText = textElement.textContent.trim();
+                    if (newText !== '') {
+                        addTask(newText);
+                    }
+                    
+                    // 移除临时任务
+                    if (window.currentEditingTempTask.parentNode) {
+                        window.currentEditingTempTask.parentNode.removeChild(window.currentEditingTempTask);
+                    }
+                    
+                    window.currentEditingTempTask = null;
+                }
+            }
+            
+            // 如果点击的是文本元素
+            if (event.target.classList.contains('task-text')) {
+                const textElement = event.target;
+                const taskItem = textElement.closest('.task-item');
+                
+                // 如果任务已完成，不允许编辑
+                if (taskItem.classList.contains('completed')) return;
+                
+                // 设置为可编辑状态
+                textElement.contentEditable = "true";
+                textElement.classList.add('editing');
+                textElement.focus();
+                
+                // 添加编辑提示（如果还没有）
+                if (!textElement.getAttribute('data-tooltip')) {
+                    textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
+                    textElement.title = '按回车换行，按Ctrl+Enter完成编辑';
+                }
+            }
+        }
+
+        function handleTaskKeydown(event) {
+            if (event.target.classList.contains('task-text') && event.target.contentEditable === 'true') {
+                // 按下Ctrl+Enter组合键完成编辑
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    finishEditing(event.target);
+                }
+                // 按下Escape键取消编辑
+                else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    cancelEditing(event.target);
+                }
+                // 普通回车键，不拦截，让浏览器实现默认的换行行为
+            }
+        }
+
+        function handleTaskFocusOut(event) {
+            if (event.target.classList.contains('task-text') && event.target.contentEditable === 'true') {
+                finishEditing(event.target);
+            }
+        }
+
+        function finishEditing(textElement) {
+            const taskItem = textElement.closest('.task-item');
+            const taskId = taskItem.dataset.id;
+            const newText = textElement.textContent.trim();
+            
+            // 确保内容不为空
+            if (newText === '') {
+                cancelEditing(textElement);
+                return;
+            }
+            
+            // 更新UI
+            textElement.contentEditable = "false";
+            textElement.classList.remove('editing');
+            
+            // 检查是否为临时任务
+            if (taskItem.classList.contains('temp-task') || (typeof taskId === 'string' && taskId.startsWith('temp-'))) {
+                // 如果是临时任务，直接添加为新任务
+                addTask(newText);
+                if (taskItem && taskItem.parentNode) {
+                    taskItem.parentNode.removeChild(taskItem);
+                }
+            } else {
+                // 更新现有任务
+                updateTaskText(taskId, newText);
+            }
+        }
+
+        function cancelEditing(textElement) {
+            const taskItem = textElement.closest('.task-item');
+            
+            // 检查是否为临时任务
+            if (taskItem.classList.contains('temp-task') || taskItem.dataset.tempFlag) {
+                // 如果是临时任务，直接移除
+                if (taskItem && taskItem.parentNode) {
+                    taskItem.parentNode.removeChild(taskItem);
+                }
+                return;
+            }
+            
+            const taskId = taskItem.dataset.id;
+            
+            // 通过重新加载数据来取消编辑
+            loadBirthdays();
+        }
+
+        async function updateTaskText(id, newText) {
+            try {
+                // 检查ID类型，防止类型错误
+                if (typeof id === 'string' && (id.startsWith('temp-') || id.startsWith('new-task-'))) {
+                    console.warn('尝试更新临时任务，将作为新任务添加');
+                    addTask(newText);
+                    return;
+                }
+                
+                const { error } = await supabase
+                    .from('todos')
+                    .update({ task: newText })
+                    .eq('id', id);
+                
+                if (error) throw error;
+            } catch (error) {
+                console.error('更新任务内容失败:', error);
+                alert('更新失败: ' + error.message);
+                loadBirthdays(); // 出错时重新加载
+            }
         }
 
         async function addTask(taskText) {
             try {
                 const { data, error } = await supabase
                     .from('todos')
-                    .insert([
-                        { task: taskText, is_completed: false }
-                    ])
+                    .insert([{ task: taskText, is_completed: false }])
                     .select();
                 
                 if (error) throw error;
                 loadBirthdays();
+                return data; // 返回新创建的任务数据，以便可能的后续处理
             } catch (error) {
                 console.error('添加任务失败:', error);
                 alert('添加失败: ' + error.message);
+                return null;
+            }
+        }
+
+        // 添加新方法: 创建一个空白的可编辑任务
+        function createEmptyEditableTask() {
+            // 如果已经存在正在编辑的临时任务，先聚焦到它
+            if (window.currentEditingTempTask) {
+                const existingTextElement = window.currentEditingTempTask.querySelector('.task-text');
+                if (existingTextElement) {
+                    existingTextElement.focus();
+                    return; // 如果已经存在则直接返回，不创建新的
+                }
+            }
+
+            // 使用一个标志来标识这是一个临时任务
+            const tempFlag = 'new-task-' + Date.now();
+            
+            // 创建新的任务项HTML元素
+            const newTaskItem = document.createElement('li');
+            newTaskItem.className = 'task-item temp-task';
+            // 不使用数字ID，而是使用一个特殊标识
+            newTaskItem.dataset.tempFlag = tempFlag;
+            newTaskItem.innerHTML = `
+                <input type="checkbox" class="task-checkbox">
+                <div class="task-content">
+                    <span class="task-text editing" contenteditable="true"></span>
+                </div>
+            `;
+            
+            // 插入到任务列表顶部
+            const taskList = document.getElementById('task-list');
+            
+            // 清除可能存在的"载入中..."信息
+            if (taskList.querySelector('.empty-state')) {
+                taskList.innerHTML = '';
+            }
+            
+            if (taskList.firstChild) {
+                taskList.insertBefore(newTaskItem, taskList.firstChild);
+            } else {
+                taskList.appendChild(newTaskItem);
+            }
+            
+            // 设置焦点并添加事件监听
+            const textElement = newTaskItem.querySelector('.task-text');
+            textElement.focus();
+            
+            // 添加编辑提示
+            textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
+            textElement.title = '按回车换行，按Ctrl+Enter完成编辑';
+            
+            // 标记全局状态，表示当前有临时任务正在编辑
+            window.currentEditingTempTask = newTaskItem;
+            
+            // 为新任务添加特殊的完成编辑处理
+            textElement.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    finishTempTask(this);
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    removeTempTask(newTaskItem);
+                    window.currentEditingTempTask = null;
+                }
+            });
+            
+            // 失去焦点时保存，使用一个延时来避免和点击事件冲突
+            textElement.addEventListener('focusout', function(event) {
+                // 使用setTimeout以确保这是在所有点击事件之后处理的
+                setTimeout(() => {
+                    // 检查此元素是否仍在DOM中，可能在点击事件中已被移除
+                    if (document.contains(this) && window.currentEditingTempTask === newTaskItem) {
+                        finishTempTask(this);
+                    }
+                }, 200);
+            });
+            
+            // 处理临时任务的保存
+            async function finishTempTask(textElement) {
+                if (!document.contains(textElement)) return;
+                
+                const newText = textElement.textContent.trim();
+                if (newText !== '') {
+                    try {
+                        // 显示保存中的状态
+                        textElement.contentEditable = "false";
+                        
+                        // 调用添加任务API
+                        const result = await addTask(newText);
+                        
+                        // 移除临时元素，等待从服务器加载最新数据
+                        removeTempTask(newTaskItem);
+                        
+                        // 如果添加成功但没有自动刷新UI，手动刷新
+                        if (result && !document.querySelector(`.task-item[data-id="${result[0]?.id}"]`)) {
+                            loadBirthdays();
+                        }
+                    } catch (err) {
+                        console.error("添加任务时出错:", err);
+                        // 恢复可编辑状态，让用户重试
+                        textElement.contentEditable = "true";
+                        textElement.focus();
+                        return;
+                    }
+                } else {
+                    // 如果为空则移除此元素
+                    removeTempTask(newTaskItem);
+                }
+                
+                window.currentEditingTempTask = null;
+            }
+            
+            // 移除临时任务元素
+            function removeTempTask(taskItem) {
+                if (taskItem && taskItem.parentNode) {
+                    taskItem.parentNode.removeChild(taskItem);
+                }
+                
+                if (window.currentEditingTempTask === taskItem) {
+                    window.currentEditingTempTask = null;
+                }
+            }
+            
+            // 添加全局点击事件一次性监听，用于处理点击其他区域的情况
+            if (!window.hasAddedGlobalTempTaskHandler) {
+                window.hasAddedGlobalTempTaskHandler = true;
+                
+                document.addEventListener('click', function(event) {
+                    if (!window.currentEditingTempTask) return;
+                    
+                    // 如果点击的不是临时任务或其子元素
+                    if (!window.currentEditingTempTask.contains(event.target)) {
+                        const textElement = window.currentEditingTempTask.querySelector('.task-text');
+                        if (textElement) {
+                            // 手动触发保存
+                            const newText = textElement.textContent.trim();
+                            if (newText !== '') {
+                                addTask(newText);
+                            }
+                            
+                            // 移除临时任务
+                            if (window.currentEditingTempTask && window.currentEditingTempTask.parentNode) {
+                                window.currentEditingTempTask.parentNode.removeChild(window.currentEditingTempTask);
+                            }
+                            
+                            window.currentEditingTempTask = null;
+                        }
+                    }
+                });
             }
         }
 
         async function toggleTaskStatus(id, isCompleted) {
             try {
+                // 确保id是有效的
+                if (!id || (typeof id === 'string' && (id.startsWith('temp-') || id.startsWith('new-task-')))) {
+                    console.warn('尝试更新临时任务状态，已忽略');
+                    return;
+                }
+                
+                // 立即更新UI状态，不等待服务器响应
+                const taskItem = document.querySelector(`.task-item[data-id="${id}"]`);
+                if (taskItem) {
+                    taskItem.classList.toggle('completed', isCompleted);
+                }
+                
+                // 发送请求到服务器
                 const { error } = await supabase
                     .from('todos')
                     .update({ is_completed: isCompleted })
                     .eq('id', id);
                 
-                if (error) throw error;
-                
-                const taskItem = document.querySelector(`.task-item[data-id="${id}"]`);
-                if (taskItem) {
-                    if (isCompleted) {
-                        taskItem.classList.add('completed');
-                    } else {
-                        taskItem.classList.remove('completed');
-                    }
+                if (error) {
+                    throw error;
                 }
             } catch (error) {
                 console.error('更新任务状态失败:', error);
-                loadBirthdays();
+                
+                // 如果出错，恢复UI状态
+                const taskItem = document.querySelector(`.task-item[data-id="${id}"]`);
+                if (taskItem) {
+                    taskItem.classList.toggle('completed', !isCompleted);
+                    const checkbox = taskItem.querySelector('.task-checkbox');
+                    if (checkbox) {
+                        checkbox.checked = !isCompleted;
+                    }
+                }
+                
+                // 显示错误消息
+                alert(`更新失败: ${error.message || '服务器错误'}`);
             }
         }
 
@@ -1061,241 +1335,224 @@
             }
         }
 
-        function updateCheckboxColors() {
-            document.querySelectorAll('.task-checkbox').forEach(checkbox => {
-                checkbox.classList.remove('purple', 'blue', 'red');
-                checkbox.classList.add(currentThemeColor);
-            });
-            
-            document.querySelectorAll('.action-button').forEach(btn => {
-                btn.classList.remove('purple', 'blue', 'red');
-                btn.classList.add(currentThemeColor);
-            });
-            
-            document.querySelectorAll('.mobile-action-btn').forEach(btn => {
-                btn.classList.remove('purple', 'blue', 'red');
-                btn.classList.add(currentThemeColor);
-            });
-            
-            const mobileBack = document.querySelector('.mobile-back');
-            if (mobileBack) {
-                mobileBack.classList.remove('purple', 'blue', 'red');
-                mobileBack.classList.add(currentThemeColor);
+        // 添加清除所有已完成任务的功能
+        async function clearCompletedTasks() {
+            try {
+                // 获取所有已完成的任务ID
+                const completedItems = document.querySelectorAll('.task-item.completed');
+                if (completedItems.length === 0) {
+                    alert('没有已完成的任务需要清除');
+                    return;
+                }
+                
+                // 显示加载状态
+                document.body.style.cursor = 'wait';
+                
+                // 从数据库中删除所有已完成的任务
+                const { error } = await supabase
+                    .from('todos')
+                    .delete()
+                    .eq('is_completed', true);
+                
+                if (error) throw error;
+                
+                // 重新加载任务列表
+                loadBirthdays();
+                
+                // 恢复正常光标
+                document.body.style.cursor = 'default';
+            } catch (error) {
+                console.error('清除已完成任务失败:', error);
+                alert('清除失败: ' + error.message);
+                document.body.style.cursor = 'default';
             }
-            
-            const mobileTitle = document.querySelector('.mobile-title');
-            if (mobileTitle) {
-                mobileTitle.classList.remove('purple', 'blue', 'red');
-                mobileTitle.classList.add(currentThemeColor);
+        }
+
+        function getThemeFromIcon(iconElement) {
+            if (!iconElement) return 'purple';
+            return iconElement.classList.contains('blue') ? 'blue' :
+                   iconElement.classList.contains('red') ? 'red' : 'purple';
+        }
+
+        function updateThemeAndTitle(listItem) {
+            const listTitleText = listItem.querySelector('span').textContent;
+            const iconElement = listItem.querySelector('.sidebar-icon');
+            const themeColor = getThemeFromIcon(iconElement);
+
+            document.querySelector('.list-title').textContent = listTitleText;
+            document.querySelector('.mobile-title').textContent = listTitleText;
+            document.body.dataset.theme = themeColor;
+
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            listItem.classList.add('active');
+
+            loadBirthdays();
+
+            if (window.innerWidth <= 768) {
+                document.querySelector('.sidebar').style.display = 'none';
+                document.querySelector('.main-content').style.display = 'block';
+                document.querySelector('.mobile-header').style.display = 'flex';
+                document.querySelector('.mobile-back').style.visibility = 'visible';
+                document.querySelector('.mobile-actions').style.display = 'flex';
             }
         }
 
         function initialize() {
-            loadBirthdays();
-            
+            setupTaskListeners();
+
+            const initialActiveItem = document.querySelector('.sidebar-item.active') || document.querySelector('.sidebar-item');
+            if (initialActiveItem) {
+                updateThemeAndTitle(initialActiveItem);
+            } else {
+                loadBirthdays();
+            }
+
+            // 全局点击事件处理
             document.addEventListener('click', function(e) {
                 const sidebar = document.querySelector('.sidebar');
-                if (!sidebar.contains(e.target) && 
-                    !e.target.closest('.mobile-back') && 
-                    sidebar.style.display === 'flex' && 
+                if (sidebar && sidebar.style.display === 'flex' &&
+                    !sidebar.contains(e.target) &&
+                    !e.target.closest('.mobile-back') &&
                     window.innerWidth <= 768) {
                     sidebar.style.display = 'none';
+                    document.querySelector('.main-content').style.display = 'block';
+                    document.querySelector('.mobile-header').style.display = 'flex';
                 }
             });
-            
+
+            // 移动端返回按钮
             document.querySelector('.mobile-back').addEventListener('click', function() {
                 if (window.innerWidth <= 768) {
                     const sidebar = document.querySelector('.sidebar');
                     sidebar.style.display = 'flex';
-                    
                     document.querySelector('.main-content').style.display = 'none';
-                    
                     document.querySelector('.mobile-header').style.display = 'none';
                 }
             });
-            
+
+            // 窗口大小调整
             window.addEventListener('resize', function() {
                 const sidebar = document.querySelector('.sidebar');
                 const mainContent = document.querySelector('.main-content');
                 const mobileHeader = document.querySelector('.mobile-header');
-                const mobileBack = document.querySelector('.mobile-back');
-                const mobileActions = document.querySelector('.mobile-actions');
-                
+
                 if (window.innerWidth > 768) {
                     sidebar.style.display = '';
-                    sidebar.style.position = '';
-                    sidebar.style.top = '';
-                    sidebar.style.height = '';
                     mainContent.style.display = '';
                     mobileHeader.style.display = 'none';
-                    mobileBack.style.visibility = '';
-                    mobileActions.style.display = '';
+                } else if (sidebar.style.display !== 'flex') {
+                    sidebar.style.display = 'none';
+                    mainContent.style.display = 'block';
+                    mobileHeader.style.display = 'flex';
                 } else {
-                    if (sidebar.style.display !== 'flex') {
-                        sidebar.style.display = 'none';
-                        mainContent.style.display = 'block';
-                        mobileHeader.style.display = 'flex';
-                        mobileBack.style.visibility = 'visible';
-                        mobileActions.style.display = 'flex';
-                    }
+                    mainContent.style.display = 'none';
+                    mobileHeader.style.display = 'none';
                 }
             });
-            
+
+            // 移动端添加任务按钮
             document.querySelector('.mobile-actions .custom-plus').closest('button').addEventListener('click', function() {
-                const taskText = prompt('请输入新任务:');
-                if (taskText && taskText.trim() !== '') {
-                    addTask(taskText);
-                }
+                createEmptyEditableTask();
             });
-            
+
+            // 移动端更多操作按钮
             document.querySelector('.mobile-actions .bi-three-dots').closest('button').addEventListener('click', function() {
                 const listTitle = document.querySelector('.mobile-title').textContent;
-                
                 if (listTitle === '列表') return;
+
+                const action = prompt(`${listTitle}选项：\n1. 清除已完成任务\n2. 全部标记完成\n3. 全部标记未完成\n请输入数字或取消`);
+
+                if (action === '1') {
+                    if (confirm('确定要清除所有已完成的任务吗？')) {
+                        clearCompletedTasks();
+                    }
+                } else if (action === '2' || action === '3') {
+                    const markAsCompleted = action === '2';
+                    const selector = markAsCompleted ? '.task-checkbox:not(:checked)' : '.task-checkbox:checked';
+                    document.querySelectorAll(selector).forEach(checkbox => {
+                        checkbox.checked = markAsCompleted;
+                        const taskItem = checkbox.closest('.task-item');
+                        if (taskItem) {
+                            taskItem.classList.toggle('completed', markAsCompleted);
+                            toggleTaskStatus(taskItem.dataset.id, markAsCompleted);
+                        }
+                    });
+                }
+            });
+
+            // PC端添加任务按钮
+            document.querySelector('.header-actions .custom-plus').closest('button').addEventListener('click', function() {
+                createEmptyEditableTask();
+            });
+            
+            // PC端更多操作按钮
+            document.querySelector('.header-actions .bi-three-dots').closest('button').addEventListener('click', function() {
+                const listTitle = document.querySelector('.list-title').textContent;
                 
                 const action = prompt(`${listTitle}选项：\n1. 清除已完成任务\n2. 全部标记完成\n3. 全部标记未完成\n请输入数字或取消`);
                 
                 if (action === '1') {
                     if (confirm('确定要清除所有已完成的任务吗？')) {
-                        alert('清除功能待实现');
+                        clearCompletedTasks();
                     }
-                } else if (action === '2') {
-                    document.querySelectorAll('.task-checkbox:not(:checked)').forEach(checkbox => {
-                        checkbox.checked = true;
+                } else if (action === '2' || action === '3') {
+                    const markAsCompleted = action === '2';
+                    const selector = markAsCompleted ? '.task-checkbox:not(:checked)' : '.task-checkbox:checked';
+                    document.querySelectorAll(selector).forEach(checkbox => {
+                        checkbox.checked = markAsCompleted;
                         const taskItem = checkbox.closest('.task-item');
-                        taskItem.classList.add('completed');
-                    });
-                } else if (action === '3') {
-                    document.querySelectorAll('.task-checkbox:checked').forEach(checkbox => {
-                        checkbox.checked = false;
-                        const taskItem = checkbox.closest('.task-item');
-                        taskItem.classList.remove('completed');
+                        if (taskItem) {
+                            taskItem.classList.toggle('completed', markAsCompleted);
+                            toggleTaskStatus(taskItem.dataset.id, markAsCompleted);
+                        }
                     });
                 }
             });
-            
-            document.querySelectorAll('.sidebar-item').forEach(item => {
-                item.addEventListener('click', function(e) {
-                    if (e.target.closest('.sidebar-more')) {
-                        e.stopPropagation();
-                        return;
-                    }
-                    
-                    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    const listTitle = this.querySelector('span').textContent;
-                    const titleElement = document.querySelector('.list-title');
-                    const mobileTitleElement = document.querySelector('.mobile-title');
-                    
-                    titleElement.textContent = listTitle;
-                    mobileTitleElement.textContent = listTitle;
-                    
-                    titleElement.classList.remove('purple', 'blue', 'red');
-                    mobileTitleElement.classList.remove('purple', 'blue', 'red');
-                    
-                    const iconElement = this.querySelector('.sidebar-icon');
-                    setThemeColor(iconElement);
-                    
-                    if (iconElement.classList.contains('purple')) {
-                        titleElement.classList.add('purple');
-                        mobileTitleElement.classList.add('purple');
-                    } else if (iconElement.classList.contains('blue')) {
-                        titleElement.classList.add('blue');
-                        mobileTitleElement.classList.add('blue');
-                    } else if (iconElement.classList.contains('red')) {
-                        titleElement.classList.add('red');
-                        mobileTitleElement.classList.add('red');
-                    }
-                    
-                    if (listTitle === '生日备注') {
-                        loadBirthdays();
-                    } else if (listTitle === '每日清单') {
-                        currentThemeColor = 'purple';
-                        loadBirthdays();
-                        updateCheckboxColors();
-                    } else if (listTitle === '心情') {
-                        currentThemeColor = 'blue';
-                        loadBirthdays();
-                        updateCheckboxColors();
-                    }
-                    
-                    if (window.innerWidth <= 768) {
-                        document.querySelector('.sidebar').style.display = 'none';
-                        document.querySelector('.main-content').style.display = 'block';
-                        document.querySelector('.mobile-header').style.display = 'flex';
-                        document.querySelector('.mobile-back').style.visibility = 'visible';
-                        document.querySelector('.mobile-actions').style.display = 'flex';
-                    }
-                });
-            });
-            
-            document.querySelectorAll('.sidebar-more').forEach(btn => {
-                btn.addEventListener('click', function(e) {
+
+            // 侧边栏点击处理
+            sidebarList.addEventListener('click', function(e) {
+                const targetItem = e.target.closest('.sidebar-item');
+                const targetMore = e.target.closest('.sidebar-more');
+
+                if (targetMore) {
                     e.stopPropagation();
-                    const listItem = this.closest('.sidebar-item');
+                    const listItem = targetMore.closest('.sidebar-item');
                     const listName = listItem.querySelector('span').textContent;
-                    
-                    console.log('打开列表更多选项:', listName);
-                    
+
                     const action = prompt(`请选择对"${listName}"的操作：\n1. 编辑名称\n2. 删除列表\n请输入数字`);
-                    
+
                     if (action === '1') {
                         const newName = prompt('请输入新名称:', listName);
                         if (newName && newName.trim() !== '') {
-                            listItem.querySelector('span').textContent = newName;
+                            listItem.querySelector('span').textContent = newName.trim();
+                            if (listItem.classList.contains('active')) {
+                                document.querySelector('.list-title').textContent = newName.trim();
+                                document.querySelector('.mobile-title').textContent = newName.trim();
+                            }
                         }
                     } else if (action === '2') {
                         if (confirm(`确定要删除"${listName}"列表吗？`)) {
                             alert('列表删除功能待实现');
                         }
                     }
-                });
+                } else if (targetItem) {
+                    updateThemeAndTitle(targetItem);
+                }
             });
-            
-            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-            const activeItem = document.querySelector('.sidebar-item:nth-child(1)');
-            activeItem.classList.add('active');
-            
-            const titleElement = document.querySelector('.list-title');
-            const mobileTitleElement = document.querySelector('.mobile-title');
-            const iconElement = activeItem.querySelector('.sidebar-icon');
-            
-            titleElement.classList.remove('purple', 'blue', 'red');
-            mobileTitleElement.classList.remove('purple', 'blue', 'red');
-            
-            titleElement.textContent = '每日清单';
-            mobileTitleElement.textContent = '每日清单';
-            
-            if (iconElement.classList.contains('purple')) {
-                currentThemeColor = 'purple';
-                titleElement.classList.add('purple');
-                mobileTitleElement.classList.add('purple');
-            } else if (iconElement.classList.contains('blue')) {
-                currentThemeColor = 'blue';
-                titleElement.classList.add('blue');
-                mobileTitleElement.classList.add('blue');
-            } else if (iconElement.classList.contains('red')) {
-                currentThemeColor = 'red';
-                titleElement.classList.add('red');
-                mobileTitleElement.classList.add('red');
-            }
-            
-            updateCheckboxColors();
 
+            // 全屏按钮
             const fullscreenBtn = document.getElementById('fullscreen-btn');
             const elem = document.documentElement;
-
             if (fullscreenBtn) {
                 fullscreenBtn.addEventListener('click', () => {
                     if (elem.requestFullscreen) {
                         elem.requestFullscreen().catch(err => {
-                            console.error(`请求全屏失败: ${err.message} (${err.name})`);
+                            console.error(`请求全屏失败: ${err.message}`);
                             alert('无法进入全屏模式，可能需要用户交互或浏览器不支持。');
                         });
                     } else if (elem.webkitRequestFullscreen) {
                         elem.webkitRequestFullscreen().catch(err => {
-                            console.error(`请求全屏失败: ${err.message} (${err.name})`);
+                            console.error(`请求全屏失败: ${err.message}`);
                             alert('无法进入全屏模式，可能需要用户交互或浏览器不支持。');
                         });
                     } else if (elem.msRequestFullscreen) {
@@ -1303,17 +1560,15 @@
                     }
                 });
 
-                document.addEventListener('fullscreenchange', handleFullscreenChange);
-                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-                document.addEventListener('msfullscreenchange', handleFullscreenChange);
-
-                function handleFullscreenChange() {
-                    if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-                        console.log('已进入全屏模式');
-                    } else {
-                        console.log('已退出全屏模式');
-                    }
-                }
+                document.addEventListener('fullscreenchange', () => {
+                    console.log(document.fullscreenElement ? '已进入全屏模式' : '已退出全屏模式');
+                });
+                document.addEventListener('webkitfullscreenchange', () => {
+                    console.log(document.webkitFullscreenElement ? '已进入全屏模式' : '已退出全屏模式');
+                });
+                document.addEventListener('msfullscreenchange', () => {
+                    console.log(document.msFullscreenElement ? '已进入全屏模式' : '已退出全屏模式');
+                });
 
                 if (!document.fullscreenEnabled && !document.webkitFullscreenEnabled && !document.msFullscreenEnabled) {
                     fullscreenBtn.style.display = 'none';
@@ -1324,8 +1579,14 @@
 
         document.addEventListener('DOMContentLoaded', initialize);
 
+        // 全局函数
         window.toggleTaskStatus = toggleTaskStatus;
         window.deleteTask = deleteTask;
+        window.addTask = addTask;
+        window.clearCompletedTasks = clearCompletedTasks;
+        window.createEmptyEditableTask = createEmptyEditableTask;
     </script>
 </body>
 </html> 
+
+
