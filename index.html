@@ -401,6 +401,8 @@
             white-space: pre-wrap;
             word-break: break-word;
             min-height: 1.2em;
+            -webkit-user-modify: read-write;
+            overflow-wrap: break-word;
         }
         
         /* 添加placeholder样式 */
@@ -427,21 +429,6 @@
             border-bottom: 1px dashed var(--current-theme-color);
             padding-bottom: 2px;
             min-height: 1.2em;
-        }
-        
-        /* 优化移动端编辑体验 */
-        @media (max-width: 768px) {
-            .task-text.editing {
-                padding: 8px 0;
-                margin: 5px 0;
-                line-height: 1.4;
-            }
-            
-            /* 确保在触摸设备上有足够的触摸区域 */
-            .task-text {
-                padding: 5px 0;
-                min-height: 1.4em;
-            }
         }
 
         .header-actions {
@@ -768,6 +755,30 @@
                 padding: 10px 15px;
                 border-radius: 0;
             }
+
+            /* 优化移动端编辑体验 */
+            .task-text.editing {
+                padding: 8px 0;
+                margin: 5px 0;
+                line-height: 1.4;
+                background-color: rgba(0,0,0,0.03);
+                border-radius: 4px;
+                padding: 8px;
+            }
+            
+            /* 确保在触摸设备上有足够的触摸区域 */
+            .task-text {
+                padding: 5px 0;
+                min-height: 1.4em;
+                line-height: 1.4;
+            }
+            
+            /* 确保任务内容区域足够宽 */
+            .task-content {
+                flex: 1;
+                min-width: 0;
+                padding-right: 8px;
+            }
         }
     </style>
 </head>
@@ -928,13 +939,35 @@
             
             let html = '';
             items.forEach(item => {
-                html += `<li class="task-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
-    <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
-    <div class="task-content">
-        <span class="task-text" contenteditable="false" data-placeholder="输入任务..." enterkeyhint="enter" inputmode="text">${item[textProperty]}</span>
-        ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
-    </div>
-</li>`;
+                // 使用innerHTML渲染内容，确保换行符显示为<br>
+                const textContent = item[textProperty];
+                const taskTextSpan = document.createElement('span');
+                taskTextSpan.className = 'task-text';
+                taskTextSpan.contentEditable = 'false';
+                taskTextSpan.setAttribute('data-placeholder', '输入任务...');
+                taskTextSpan.setAttribute('enterkeyhint', 'enter');
+                taskTextSpan.setAttribute('inputmode', 'text');
+                
+                // 将文本内容设置到元素中，保留换行符
+                taskTextSpan.textContent = textContent;
+                
+                // 创建任务项的HTML
+                const li = document.createElement('li');
+                li.className = `task-item ${item.is_completed ? 'completed' : ''}`;
+                li.dataset.id = item.id;
+                li.innerHTML = `
+                    <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
+                    <div class="task-content">
+                        ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
+                    </div>
+                `;
+                
+                // 将文本内容元素插入到任务内容div中
+                const taskContent = li.querySelector('.task-content');
+                taskContent.insertBefore(taskTextSpan, taskContent.firstChild);
+                
+                // 添加到HTML中
+                html += li.outerHTML;
             });
             
             // 如果当前没有临时任务，直接渲染
@@ -1040,20 +1073,6 @@
                 textElement.classList.add('editing');
                 textElement.focus();
                 
-                // 针对移动设备优化
-                if (navigator.userAgent.match(/Android|iPhone|iPad|iPod|Mobile/i)) {
-                    // 确保光标位于文本末尾
-                    const range = document.createRange();
-                    const selection = window.getSelection();
-                    range.selectNodeContents(textElement);
-                    range.collapse(false); // 折叠到末尾
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                    
-                    // 弹出软键盘
-                    textElement.click();
-                }
-                
                 // 添加编辑提示（如果还没有）
                 if (!textElement.getAttribute('data-tooltip')) {
                     textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
@@ -1074,8 +1093,16 @@
                     event.preventDefault();
                     cancelEditing(event.target);
                 }
-                // 移动端处理回车键 - 在移动设备上回车键不会附带ctrlKey或metaKey
-                else if (event.key === 'Enter' && !event.shiftKey && navigator.userAgent.match(/Android|iPhone|iPad|iPod|Mobile/i)) {
+                // Android设备特殊处理
+                else if (event.key === 'Enter' && !event.shiftKey && navigator.userAgent.match(/Android/i)) {
+                    // 对于Android，手动插入换行符
+                    if (!event.isComposing) { // 确保不是在输入法组合文字时
+                        // 不阻止默认行为，但要确保正确插入换行符
+                        document.execCommand('insertText', false, '\n');
+                    }
+                }
+                // 其他移动设备处理回车键
+                else if (event.key === 'Enter' && !event.shiftKey && navigator.userAgent.match(/iPhone|iPad|iPod|Mobile/i)) {
                     // 不阻止默认行为，允许插入换行符
                     // 但是要防止表单提交
                     event.stopPropagation();
@@ -1092,7 +1119,7 @@
         function finishEditing(textElement) {
             const taskItem = textElement.closest('.task-item');
             const taskId = taskItem.dataset.id;
-            // 不再强制移除所有换行符，允许文本包含换行
+            // 使用textContent保留换行符
             const newText = textElement.textContent.trim();
             
             // 确保内容不为空
@@ -1145,6 +1172,7 @@
                     return;
                 }
                 
+                // 使用HTML编码保存换行符
                 const { error } = await supabase
                     .from('todos')
                     .update({ task: newText })
@@ -1160,6 +1188,7 @@
 
         async function addTask(taskText) {
             try {
+                // 保存原始文本，包括换行符
                 const { data, error } = await supabase
                     .from('todos')
                     .insert([{ task: taskText, is_completed: false }])
@@ -1167,7 +1196,7 @@
                 
                 if (error) throw error;
                 loadBirthdays();
-                return data; // 返回新创建的任务数据，以便可能的后续处理
+                return data;
             } catch (error) {
                 console.error('添加任务失败:', error);
                 alert('添加失败: ' + error.message);
@@ -1182,6 +1211,15 @@
                 const existingTextElement = window.currentEditingTempTask.querySelector('.task-text');
                 if (existingTextElement) {
                     existingTextElement.focus();
+                    
+                    // 将光标放到文本末尾
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    range.selectNodeContents(existingTextElement);
+                    range.collapse(false);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    
                     return; // 如果已经存在则直接返回，不创建新的
                 }
             }
@@ -1194,12 +1232,25 @@
             newTaskItem.className = 'task-item temp-task';
             // 不使用数字ID，而是使用一个特殊标识
             newTaskItem.dataset.tempFlag = tempFlag;
-            newTaskItem.innerHTML = `
-                <input type="checkbox" class="task-checkbox">
-                <div class="task-content">
-                    <span class="task-text editing" contenteditable="true" data-placeholder="输入任务..." enterkeyhint="enter" inputmode="text"></span>
-                </div>
-            `;
+            
+            // 使用DOM API创建元素以确保正确处理换行符
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'task-checkbox';
+            
+            const taskContent = document.createElement('div');
+            taskContent.className = 'task-content';
+            
+            const taskText = document.createElement('span');
+            taskText.className = 'task-text editing';
+            taskText.contentEditable = 'true';
+            taskText.setAttribute('data-placeholder', '输入任务...');
+            taskText.setAttribute('enterkeyhint', 'enter');
+            taskText.setAttribute('inputmode', 'text');
+            
+            taskContent.appendChild(taskText);
+            newTaskItem.appendChild(checkbox);
+            newTaskItem.appendChild(taskContent);
             
             // 插入到任务列表顶部
             const taskList = document.getElementById('task-list');
@@ -1216,18 +1267,19 @@
             }
             
             // 设置焦点并添加事件监听
-            const textElement = newTaskItem.querySelector('.task-text');
-            textElement.focus();
-            
-            // 添加编辑提示
-            textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
-            textElement.title = '按回车换行，按Ctrl+Enter完成编辑';
-            
-            // 标记全局状态，表示当前有临时任务正在编辑
-            window.currentEditingTempTask = newTaskItem;
+            setTimeout(() => {
+                taskText.focus();
+                
+                // 添加编辑提示
+                taskText.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
+                taskText.title = '在移动设备上，点击其他区域完成编辑；在电脑上，按Ctrl+Enter完成编辑';
+                
+                // 标记全局状态，表示当前有临时任务正在编辑
+                window.currentEditingTempTask = newTaskItem;
+            }, 50);
             
             // 为新任务添加特殊的完成编辑处理
-            textElement.addEventListener('keydown', function(event) {
+            taskText.addEventListener('keydown', function(event) {
                 if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
                     event.preventDefault();
                     finishTempTask(this);
@@ -1236,16 +1288,18 @@
                     removeTempTask(newTaskItem);
                     window.currentEditingTempTask = null;
                 }
-                // 移动端处理回车键
-                else if (event.key === 'Enter' && !event.shiftKey && navigator.userAgent.match(/Android|iPhone|iPad|iPod|Mobile/i)) {
-                    // 不阻止默认行为，允许插入换行符
-                    // 但是要防止表单提交
-                    event.stopPropagation();
+                // 移动端处理回车键 - 特殊处理Android设备
+                else if (event.key === 'Enter' && !event.shiftKey && navigator.userAgent.match(/Android/i)) {
+                    // 对于Android，添加一个实际的换行符
+                    if (!event.isComposing) { // 确保不是在输入法组合文字时
+                        // 不阻止默认行为，但要确保正确插入换行符
+                        document.execCommand('insertText', false, '\n');
+                    }
                 }
             });
             
             // 失去焦点时保存，使用一个延时来避免和点击事件冲突
-            textElement.addEventListener('focusout', function(event) {
+            taskText.addEventListener('focusout', function(event) {
                 // 使用setTimeout以确保这是在所有点击事件之后处理的
                 setTimeout(() => {
                     // 检查此元素是否仍在DOM中，可能在点击事件中已被移除
@@ -1259,7 +1313,6 @@
             async function finishTempTask(textElement) {
                 if (!document.contains(textElement)) return;
                 
-                // 不再强制移除所有换行符，允许文本包含换行
                 const newText = textElement.textContent.trim();
                 if (newText !== '') {
                     try {
