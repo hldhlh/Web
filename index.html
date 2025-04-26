@@ -400,6 +400,16 @@
             cursor: text;
             white-space: pre-wrap;
             word-break: break-word;
+            min-height: 1.2em;
+        }
+        
+        /* 添加placeholder样式 */
+        .task-text[contenteditable="true"]:empty:before {
+            content: attr(data-placeholder);
+            color: var(--secondary-text);
+            font-style: italic;
+            opacity: 0.6;
+            pointer-events: none;
         }
         
         .task-note {
@@ -417,6 +427,21 @@
             border-bottom: 1px dashed var(--current-theme-color);
             padding-bottom: 2px;
             min-height: 1.2em;
+        }
+        
+        /* 优化移动端编辑体验 */
+        @media (max-width: 768px) {
+            .task-text.editing {
+                padding: 8px 0;
+                margin: 5px 0;
+                line-height: 1.4;
+            }
+            
+            /* 确保在触摸设备上有足够的触摸区域 */
+            .task-text {
+                padding: 5px 0;
+                min-height: 1.4em;
+            }
         }
 
         .header-actions {
@@ -906,7 +931,7 @@
                 html += `<li class="task-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
     <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
     <div class="task-content">
-        <span class="task-text" contenteditable="false">${item[textProperty]}</span>
+        <span class="task-text" contenteditable="false" data-placeholder="输入任务..." enterkeyhint="enter" inputmode="text">${item[textProperty]}</span>
         ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
     </div>
 </li>`;
@@ -1015,6 +1040,20 @@
                 textElement.classList.add('editing');
                 textElement.focus();
                 
+                // 针对移动设备优化
+                if (navigator.userAgent.match(/Android|iPhone|iPad|iPod|Mobile/i)) {
+                    // 确保光标位于文本末尾
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    range.selectNodeContents(textElement);
+                    range.collapse(false); // 折叠到末尾
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    
+                    // 弹出软键盘
+                    textElement.click();
+                }
+                
                 // 添加编辑提示（如果还没有）
                 if (!textElement.getAttribute('data-tooltip')) {
                     textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
@@ -1035,7 +1074,12 @@
                     event.preventDefault();
                     cancelEditing(event.target);
                 }
-                // 普通回车键，不拦截，让浏览器实现默认的换行行为
+                // 移动端处理回车键 - 在移动设备上回车键不会附带ctrlKey或metaKey
+                else if (event.key === 'Enter' && !event.shiftKey && navigator.userAgent.match(/Android|iPhone|iPad|iPod|Mobile/i)) {
+                    // 不阻止默认行为，允许插入换行符
+                    // 但是要防止表单提交
+                    event.stopPropagation();
+                }
             }
         }
 
@@ -1048,6 +1092,7 @@
         function finishEditing(textElement) {
             const taskItem = textElement.closest('.task-item');
             const taskId = taskItem.dataset.id;
+            // 不再强制移除所有换行符，允许文本包含换行
             const newText = textElement.textContent.trim();
             
             // 确保内容不为空
@@ -1152,7 +1197,7 @@
             newTaskItem.innerHTML = `
                 <input type="checkbox" class="task-checkbox">
                 <div class="task-content">
-                    <span class="task-text editing" contenteditable="true"></span>
+                    <span class="task-text editing" contenteditable="true" data-placeholder="输入任务..." enterkeyhint="enter" inputmode="text"></span>
                 </div>
             `;
             
@@ -1191,6 +1236,12 @@
                     removeTempTask(newTaskItem);
                     window.currentEditingTempTask = null;
                 }
+                // 移动端处理回车键
+                else if (event.key === 'Enter' && !event.shiftKey && navigator.userAgent.match(/Android|iPhone|iPad|iPod|Mobile/i)) {
+                    // 不阻止默认行为，允许插入换行符
+                    // 但是要防止表单提交
+                    event.stopPropagation();
+                }
             });
             
             // 失去焦点时保存，使用一个延时来避免和点击事件冲突
@@ -1208,6 +1259,7 @@
             async function finishTempTask(textElement) {
                 if (!document.contains(textElement)) return;
                 
+                // 不再强制移除所有换行符，允许文本包含换行
                 const newText = textElement.textContent.trim();
                 if (newText !== '') {
                     try {
