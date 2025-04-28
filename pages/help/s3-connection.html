@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S3 协议连接指南 - 云盘应用</title>
+    <link rel="stylesheet" href="../styles/main.css">
+    <style>
+        .help-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .help-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            padding: 25px;
+        }
+        
+        .help-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #1a73e8;
+        }
+        
+        .help-section {
+            margin-bottom: 30px;
+        }
+        
+        .help-section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .help-text {
+            line-height: 1.6;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .code-block {
+            background: #f5f7f9;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        
+        .info-box {
+            background: #e8f4fd;
+            border-left: 4px solid #1a73e8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .warning-box {
+            background: #fff8e6;
+            border-left: 4px solid #f9a825;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .step-list {
+            padding-left: 20px;
+        }
+        
+        .step-list li {
+            margin-bottom: 12px;
+        }
+        
+        .screenshot {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        
+        th {
+            background: #f5f7f9;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <a href="../index.html" class="back-link">
+                <svg viewBox="0 0 24 24" width="24" height="24">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"></path>
+                </svg>
+                返回主页
+            </a>
+        </div>
+        <h1>帮助中心</h1>
+        <div class="header-right"></div>
+    </header>
+    
+    <main class="help-container">
+        <div class="help-card">
+            <h1 class="help-title">使用 S3 协议连接到云存储</h1>
+            
+            <div class="help-section">
+                <h2 class="help-section-title">什么是 S3 兼容协议？</h2>
+                <p class="help-text">
+                    S3（Simple Storage Service）是由亚马逊网络服务推出的对象存储服务的协议标准。随着其广泛应用，
+                    很多云存储服务都提供了与 S3 协议兼容的接口，包括 Supabase Storage。
+                </p>
+                <p class="help-text">
+                    使用 S3 协议连接到 Supabase Storage，您可以：
+                </p>
+                <ul class="step-list">
+                    <li>使用熟悉的 S3 客户端工具（如 AWS CLI、S3 Browser、Cyberduck 等）管理您的文件</li>
+                    <li>集成到支持 S3 的第三方应用程序和服务中</li>
+                    <li>编写使用标准 AWS SDK 的自动化脚本</li>
+                    <li>更高效地上传和下载大文件或大批量文件</li>
+                </ul>
+            </div>
+            
+            <div class="help-section">
+                <h2 class="help-section-title">准备工作</h2>
+                <p class="help-text">
+                    在使用 S3 协议连接到 Supabase Storage 之前，您需要：
+                </p>
+                <ol class="step-list">
+                    <li>拥有一个 Supabase 项目并启用了 Storage 功能</li>
+                    <li>在 Supabase 控制台中获取 S3 访问密钥 ID 和密钥</li>
+                    <li>在我们的应用中配置 S3 密钥</li>
+                </ol>
+                
+                <div class="info-box">
+                    <strong>提示：</strong> 您可以在<a href="../settings/storage.html">存储设置</a>页面找到 S3 连接信息和配置入口。
+                </div>
+            </div>
+            
+            <div class="help-section">
+                <h2 class="help-section-title">获取 S3 访问密钥</h2>
+                <p class="help-text">
+                    要使用 S3 协议，您需要从 Supabase 控制台获取访问密钥：
+                </p>
+                <ol class="step-list">
+                    <li>登录到 <a href="https://supabase.com" target="_blank">Supabase 控制台</a></li>
+                    <li>选择您的项目</li>
+                    <li>在左侧导航栏中，点击 "Storage"</li>
+                    <li>点击 "Settings" 标签</li>
+                    <li>在 "S3 访问密钥" 部分，您可以看到您的访问密钥 ID</li>
+                    <li>点击 "新访问密钥" 创建一个新的密钥（如果需要）</li>
+                    <li>保存显示的密钥 ID 和密钥（Secret Access Key）</li>
+                </ol>
+                
+                <div class="warning-box">
+                    <strong>警告：</strong> S3 密钥允许完全访问您的存储桶。请妥善保管，不要在公共场合或不安全的地方分享。
+                </div>
+            </div>
+            
+            <div class="help-section">
+                <h2 class="help-section-title">在我们的应用中配置 S3</h2>
+                <p class="help-text">
+                    要在我们的应用中使用 S3 功能，您需要配置您的密钥：
+                </p>
+                <ol class="step-list">
+                    <li>前往<a href="../settings/storage.html">存储设置</a>页面</li>
+                    <li>在 "S3 设置" 部分，输入您的 S3 密钥</li>
+                    <li>点击 "保存 S3 密钥" 按钮</li>
+                    <li>点击 "测试 S3 连接" 确认连接正常</li>
+                </ol>
+                
+                <div class="info-box">
+                    <strong>注意：</strong> 出于安全考虑，您的密钥仅保存在当前浏览器会话中。刷新页面或关闭浏览器后，您需要重新输入密钥。
+                </div>
+            </div>
+            
+            <div class="help-section">
+                <h2 class="help-section-title">使用 S3 客户端工具</h2>
+                <p class="help-text">
+                    您可以使用许多支持 S3 协议的客户端工具连接到您的存储桶。以下是一些常用工具和它们的配置方式：
+                </p>
+                
+                <h3>AWS CLI</h3>
+                <div class="code-block">
+<pre>aws configure
+AWS Access Key ID: 您的访问密钥ID
+AWS Secret Access Key: 您的密钥
+Default region name: ap-northeast-1
+Default output format: json
+
+# 使用示例：列出存储桶中的文件
+aws s3 ls s3://cloud-storage/ --endpoint-url=https://fmxddvjgkykuqwmasigo.supabase.co/storage/v1/s3</pre>
+                </div>
+                
+                <h3>S3 Browser</h3>
+                <p class="help-text">
+                    S3 Browser 是一个流行的 Windows 客户端工具，配置如下：
+                </p>
+                <ol class="step-list">
+                    <li>打开 S3 Browser</li>
+                    <li>点击 "Accounts" > "Add new account"</li>
+                    <li>选择 "S3 Compatible Storage" 作为账户类型</li>
+                    <li>输入账户名称（例如：Supabase Storage）</li>
+                    <li>输入 S3 端点：https://fmxddvjgkykuqwmasigo.supabase.co/storage/v1/s3</li>
+                    <li>输入您的访问密钥 ID 和密钥</li>
+                    <li>选择区域：ap-northeast-1</li>
+                    <li>点击 "Add new account" 保存</li>
+                </ol>
+                
+                <h3>Cyberduck</h3>
+                <p class="help-text">
+                    Cyberduck 是 macOS 和 Windows 的免费文件传输工具，配置如下：
+                </p>
+                <ol class="step-list">
+                    <li>打开 Cyberduck</li>
+                    <li>点击 "Open Connection"</li>
+                    <li>选择 "Amazon S3" 作为连接类型</li>
+                    <li>输入端点：fmxddvjgkykuqwmasigo.supabase.co/storage/v1/s3</li>
+                    <li>输入您的访问密钥 ID 和密钥</li>
+                    <li>点击 "Connect"</li>
+                </ol>
+            </div>
+            
+            <div class="help-section">
+                <h2 class="help-section-title">常见问题</h2>
+                
+                <h3>连接失败怎么办？</h3>
+                <p class="help-text">
+                    如果连接失败，请检查：
+                </p>
+                <ul class="step-list">
+                    <li>确认您输入的密钥 ID 和密钥是正确的</li>
+                    <li>确认您使用的是正确的端点地址</li>
+                    <li>检查网络连接是否正常</li>
+                    <li>确保您的 Supabase 项目处于活动状态</li>
+                </ul>
+                
+                <h3>我应该使用哪个存储桶？</h3>
+                <p class="help-text">
+                    默认情况下，我们的应用使用名为 "cloud-storage" 的存储桶。在使用 S3 客户端时，请确保选择或指定此存储桶。
+                </p>
+                
+                <h3>如何处理大文件上传？</h3>
+                <p class="help-text">
+                    使用 S3 协议可以更高效地上传大文件，因为它支持分片上传（multipart uploads）。大多数 S3 客户端工具都自动支持此功能，无需额外配置。
+                </p>
+                
+                <h3>S3 密钥安全吗？</h3>
+                <p class="help-text">
+                    您的 S3 密钥授予对存储桶的完全访问权限。为确保安全：
+                </p>
+                <ul class="step-list">
+                    <li>不要在公共代码或公共场合分享您的密钥</li>
+                    <li>定期更换您的密钥</li>
+                    <li>如果您怀疑密钥泄露，立即在 Supabase 控制台中删除并生成新密钥</li>
+                </ul>
+            </div>
+            
+            <div class="help-section">
+                <h2 class="help-section-title">支持与帮助</h2>
+                <p class="help-text">
+                    如果您在使用 S3 连接时遇到问题，可以：
+                </p>
+                <ul class="step-list">
+                    <li>查阅 <a href="https://supabase.com/docs/guides/storage" target="_blank">Supabase Storage 文档</a></li>
+                    <li>访问 <a href="https://supabase.com/docs/guides/storage/s3-compatibility" target="_blank">S3 兼容性文档</a></li>
+                    <li>联系我们的技术支持团队获取帮助</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+</body>
+</html> 

@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日清单</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --sidebar-bg: #ffffff;
+            --sidebar-hover: rgb(244, 244, 245);
+            --sidebar-active: rgba(10, 132, 255, 0.2);
+            --sidebar-text: #555555;
+            --sidebar-active-text: #000000;
+            --primary-color: #007aff;
+            --primary-hover: #0062cc;
+            --text-color: #1d1d1f;
+            --secondary-text: #86868b;
+            --border-color: rgba(0, 0, 0, 0.1);
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+            /* 主题颜色 */
+            --theme-purple: #bf5af2;
+            --theme-blue: #0a84ff;
+            --theme-red: #ff453a;
+            --current-theme-color: var(--theme-purple);
+            --current-theme-hover-bg: rgba(191, 90, 242, 0.1);
+            --divider-color: rgba(0, 0, 0, 0.15);
+            --mobile-divider-color: #d0d0d0;
+        }
+
+        /* 根据主题设置颜色 */
+        body[data-theme="purple"] {
+            --current-theme-color: var(--theme-purple);
+            --current-theme-hover-bg: rgba(191, 90, 242, 0.1);
+        }
+        body[data-theme="blue"] {
+            --current-theme-color: var(--theme-blue);
+            --current-theme-hover-bg: rgba(10, 132, 255, 0.1);
+        }
+        body[data-theme="red"] {
+            --current-theme-color: var(--theme-red);
+            --current-theme-hover-bg: rgba(255, 69, 58, 0.1);
+        }
+
+        @font-face {
+            font-family: 'SF Pro Text';
+            src: local('SF Pro Text'), local('SFProText-Regular');
+            font-weight: normal;
+        }
+
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: local('SF Pro Display'), local('SFProDisplay-Regular');
+            font-weight: normal;
+        }
+
+        /* 基础样式 */
+        body {
+            background-color: var(--bg-color);
+            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            /* 添加滚动条样式 */
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+
+        /* 自定义滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            border: 2px solid transparent;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(0, 0, 0, 0.3);
+        }
+
+        /* 美化滚动体验 */
+        .sidebar-list, .main-content, .task-list {
+            -webkit-overflow-scrolling: touch; /* 在iOS上提供更流畅的滚动 */
+            scroll-behavior: smooth; /* 平滑滚动 */
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            /* 只在支持悬停的非触摸设备上应用自动隐藏 */
+            .sidebar-list, .main-content, .task-list {
+                scrollbar-width: thin;
+                scrollbar-color: transparent transparent;
+                transition: scrollbar-color 0.3s ease;
+            }
+
+            .sidebar-list::-webkit-scrollbar-thumb, 
+            .main-content::-webkit-scrollbar-thumb,
+            .task-list::-webkit-scrollbar-thumb {
+                background-color: transparent;
+                transition: background-color 0.3s ease;
+            }
+
+            .sidebar-list:hover, .main-content:hover, .task-list:hover {
+                scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+            }
+
+            .sidebar-list:hover::-webkit-scrollbar-thumb, 
+            .main-content:hover::-webkit-scrollbar-thumb,
+            .task-list:hover::-webkit-scrollbar-thumb {
+                background-color: rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        @media (hover: none) or (pointer: coarse) {
+            /* 在触摸设备上保持滚动条始终可见但更轻量 */
+            .sidebar-list, .main-content, .task-list {
+                scrollbar-width: thin;
+                scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+            }
+
+            .sidebar-list::-webkit-scrollbar-thumb, 
+            .main-content::-webkit-scrollbar-thumb,
+            .task-list::-webkit-scrollbar-thumb {
+                background-color: rgba(0, 0, 0, 0.1);
+            }
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 220px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            height: 100%;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-list {
+            margin: 0;
+            padding: 10px 0;
+            list-style: none;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .sidebar-item {
+            padding: 8px 15px;
+            margin: 4px 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            height: 40px;
+            font-size: 0.93rem;
+            color: var(--text-color);
+            position: relative;
+        }
+
+        .sidebar-item:hover {
+            background-color: var(--sidebar-hover);
+        }
+
+        .sidebar-item.active {
+            background-color: var(--sidebar-active);
+            color: var(--sidebar-active-text);
+            font-weight: 500;
+        }
+
+        .sidebar-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            margin-right: 15px;
+            font-size: 0.8rem;
+            color: white;
+            line-height: 1;
+        }
+
+        .sidebar-icon.purple { background-color: var(--theme-purple); }
+        .sidebar-icon.blue { background-color: var(--theme-blue); }
+        .sidebar-icon.red { background-color: var(--theme-red); }
+
+        .sidebar-add {
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+            color: var(--theme-blue);
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .sidebar-add:hover {
+            background-color: rgba(10, 132, 255, 0.1);
+        }
+
+        .sidebar-add i, .sidebar-more i {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .sidebar-add i {
+            margin-right: 15px;
+            font-size: 1rem;
+            color: var(--primary-color);
+            width: 25px;
+            height: 25px;
+        }
+
+        .sidebar-add span {
+            font-size: 1rem;
+            color: var(--primary-color);
+        }
+
+        .sidebar-more {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--secondary-text);
+            cursor: pointer;
+            opacity: 0;
+            font-size: 0.9rem;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: opacity 0.15s ease-in-out;
+        }
+        
+        .sidebar-item:hover .sidebar-more {
+            opacity: 1;
+        }
+
+        .sidebar-more:hover {
+            background-color: rgba(0, 0, 0, 0.08);
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            flex: 1;
+            padding: 15px 0;
+            margin-left: 220px;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            width: calc(100% - 220px);
+        }
+
+        /* 增加内部容器来添加水平内边距 */
+        .content-inner {
+            padding: 0;
+            max-width: none;
+            width: 100%;
+            position: relative;
+        }
+
+        .list-header {
+            margin-bottom: 15px;
+            padding: 0 20px 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .list-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            color: var(--current-theme-color);
+        }
+
+        /* 任务样式 */
+        .task-list {
+            list-style: none;
+            padding: 0 20px;
+            margin: 0;
+            width: 100%;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+            transition: scrollbar-color 0.3s ease;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        .task-content {
+            flex: 1;
+            padding: 0 15px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* 分割线 */
+        .task-item::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            height: 1px;
+            background-color: var(--divider-color);
+            width: 100%;
+            box-sizing: content-box;
+            padding-left: 20px;
+            margin-left: -20px;
+            right: auto;
+        }
+
+        .task-item:last-child::after {
+            display: none;
+        }
+
+        .task-checkbox {
+            position: relative;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-left: 15px;
+            margin-right: 5px;
+            appearance: none;
+            border: 1px solid #c7c7cc;
+            outline: none;
+            cursor: pointer;
+            flex-shrink: 0;
+            background-color: white;
+        }
+        
+        .task-checkbox:hover {
+            border-color: var(--current-theme-color);
+            background-color: var(--current-theme-hover-bg);
+        }
+        
+        .task-checkbox:checked {
+            border-color: var(--current-theme-color);
+        }
+
+        .task-checkbox:checked::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--current-theme-color);
+        }
+
+        .task-text {
+            flex-grow: 1;
+            margin-left: 5px;
+            color: var(--text-color);
+            font-size: 0.95rem;
+            width: 100%;
+            cursor: text;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .task-note {
+            font-size: 0.85rem;
+            color: var(--secondary-text);
+            margin-top: 3px;
+        }
+
+        .task-item.completed .task-text {
+            color: var(--secondary-text);
+        }
+
+        .task-text.editing {
+            outline: none;
+            border-bottom: 1px dashed var(--current-theme-color);
+            padding-bottom: 2px;
+            min-height: 1.2em;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            margin-left: auto;
+        }
+        
+        .action-button, .mobile-action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--current-theme-color);
+            border-radius: 6px;
+            margin: 0;
+            font-size: 1.2rem;
+            padding: 6px 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+
+        .action-button i, .mobile-action-btn i {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 24px;
+            width: 24px;
+        }
+        
+        .action-button:last-child, .mobile-action-btn:last-child {
+            padding-right: 0;
+        }
+        
+        .action-button:hover, .mobile-action-btn:hover {
+            background-color: var(--current-theme-hover-bg);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 30px 0;
+            color: var(--secondary-text);
+        }
+
+        /* 移动端头部 */
+        .mobile-header {
+            display: none;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+        
+        .mobile-back, .mobile-actions {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+        }
+
+        .mobile-back {
+            left: 15px;
+            font-size: 1.1rem;
+            color: var(--current-theme-color);
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .mobile-back:hover {
+            background-color: var(--current-theme-hover-bg);
+        }
+        
+        .mobile-title {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--current-theme-color);
+        }
+        
+        .mobile-actions {
+            right: 15px;
+        }
+        
+        .mobile-action-btn:last-child {
+            padding-right: 0;
+        }
+
+        /* 自定义加号 */
+        .custom-plus {
+            position: relative;
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+        }
+        
+        .custom-plus::before,
+        .custom-plus::after {
+            content: '';
+            position: absolute;
+            background-color: currentColor;
+            border-radius: 1px;
+        }
+        
+        .custom-plus::before {
+            width: 16px;
+            height: 2px;
+            top: 7px;
+            left: 0;
+        }
+        
+        .custom-plus::after {
+            height: 16px;
+            width: 2px;
+            left: 7px;
+            top: 0;
+        }
+
+        /* 移动端样式 */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+                width: 100%;
+                height: 100vh;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 300;
+                overflow-y: auto;
+                background-color: white;
+                padding-top: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .sidebar-list {
+                flex-direction: column;
+                padding: 0;
+                padding-top: 20px;
+                margin: 0;
+                background-color: white;
+                flex-grow: 1;
+                overflow-y: auto;
+                border-radius: 0;
+            }
+            
+            .sidebar-item {
+                padding: 15px;
+                margin: 4px 10px;
+                border-radius: 0;
+                font-size: 1rem;
+                text-align: left;
+                height: 40px;
+                position: relative;
+            }
+            
+            .sidebar-item.active {
+                background-color: transparent;
+                color: var(--text-color);
+                font-weight: normal;
+            }
+            
+            .sidebar-item::after {
+                content: '›';
+                position: absolute;
+                right: 15px;
+                font-size: 1.5rem;
+                color: #c7c7cc;
+            }
+            
+            .sidebar-item:hover {
+                background-color: var(--sidebar-hover);
+                border-radius: 8px;
+            }
+            
+            .sidebar-more {
+                display: flex;
+                opacity: 1;
+                right: 45px;
+            }
+            
+            .sidebar-more:hover {
+                background-color: rgba(0, 0, 0, 0.08);
+            }
+            
+            .sidebar-icon {
+                margin-right: 15px;
+                margin-bottom: 0;
+            }
+            
+            .sidebar-add {
+                border-top: 1px solid #f0f0f0;
+                margin-top: auto;
+                position: sticky;
+                bottom: 0;
+                z-index: 10;
+                width: 100%;
+                background-color: white;
+            }
+            
+            .mobile-header {
+                padding: 15px 0;
+            }
+            
+            .list-header {
+                display: none;
+            }
+            
+            .main-content {
+                margin-left: 0;
+                padding: 60px 0 0 0;
+                height: calc(100vh - 60px);
+                overflow-y: auto;
+                background-color: white;
+                width: 100%;
+            }
+            
+            .task-list {
+                background-color: white;
+                border-radius: 0;
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                overflow-x: hidden;
+                overflow-y: auto;
+            }
+            
+            .task-item {
+                padding: 15px 0;
+            }
+            
+            .task-content {
+                padding: 0 15px;
+            }
+            
+            .task-item::after {
+                background-color: var(--mobile-divider-color);
+                width: 100vw;
+                left: 0;
+            }
+            
+            .task-checkbox {
+                width: 22px;
+                height: 22px;
+            }
+            
+            .task-text {
+                font-size: 1rem;
+            }
+            
+            .mobile-title {
+                flex: 1;
+                text-align: center;
+                font-weight: 600;
+                font-size: 1.1rem;
+            }
+            
+            .mobile-back {
+                padding: 8px;
+                left: 0;
+            }
+            
+            .mobile-back i {
+                margin-right: 6px;
+                font-size: 1rem;
+                line-height: 1;
+            }
+            
+            .mobile-back span {
+                font-size: 1rem;
+                line-height: 1;
+            }
+            
+            .mobile-actions {
+                right: 0;
+                display: flex;
+            }
+            
+            .empty-state {
+                margin: 0;
+                padding: 30px 20px;
+                background-color: white;
+                border-radius: 0;
+                box-shadow: none;
+            }
+
+            /* 全屏模式样式 */
+            :fullscreen .mobile-header {
+                display: flex !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                z-index: 100 !important;
+            }
+
+            :fullscreen .main-content {
+                padding-top: 60px !important;
+                height: calc(100vh - 60px) !important;
+            }
+
+            :fullscreen #fullscreen-btn {
+                display: none !important;
+            }
+
+            .app-container {
+                padding: 0;
+                border-radius: 0;
+                max-height: 100%;
+                height: 100dvh;
+            }
+
+            .app-header {
+                padding: 10px 15px;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body data-theme="purple">
+    <div class="app-container">
+        <div class="mobile-header">
+            <div class="mobile-back">
+                <i class="bi bi-chevron-left"></i>
+                <span>列表</span>
+            </div>
+            <div class="mobile-title">每日清单</div>
+            <div class="mobile-actions">
+                <button class="mobile-action-btn">
+                    <span class="custom-plus"></span>
+                </button>
+                <button class="mobile-action-btn">
+                    <i class="bi bi-three-dots"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <ul class="sidebar-list">
+                <li class="sidebar-item active">
+                    <div class="sidebar-icon purple">每</div>
+                    <span>每日清单</span>
+                    <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                </li>
+                <li class="sidebar-item">
+                    <div class="sidebar-icon blue">心</div>
+                    <span>心情</span>
+                    <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                </li>
+                <li class="sidebar-item">
+                    <div class="sidebar-icon red">生</div>
+                    <span>生日备注</span>
+                    <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                </li>
+            </ul>
+            <div class="sidebar-add">
+                <i class="bi bi-plus-circle"></i>
+                <span>添加列表</span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="content-inner">
+                <div class="list-header">
+                    <h1 class="list-title">每日清单</h1>
+                    <div class="header-actions">
+                        <button class="action-button">
+                            <span class="custom-plus"></span>
+                        </button>
+                        <button class="action-button">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <ul class="task-list" id="task-list">
+                    <div class="empty-state">载入中...</div>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <button id="fullscreen-btn" style="position: fixed; bottom: 10px; right: 10px; z-index: 999; padding: 8px 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer;">
+        进入全屏
+    </button>
+    
+    <!-- 添加测试按钮 -->
+    <button id="test-add-task-btn" style="position: fixed; bottom: 10px; right: 100px; z-index: 999; padding: 8px 15px; background-color: var(--theme-purple); color: white; border: none; border-radius: 5px; cursor: pointer;">
+        测试添加任务
+    </button>
+
+    <script>
+        const SUPABASE_URL = 'https://fmxddvjgkykuqwmasigo.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZteGRkdmpna3lrdXF3bWFzaWdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDMzMjcsImV4cCI6MjA1OTYxOTMyN30.XCU4-03oajGh6M2-PNiBotCZSIDn_nJXkIC0Thjjfqo';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const taskList = document.getElementById('task-list');
+        const sidebarList = document.querySelector('.sidebar-list');
+
+        // 记录最近添加的任务，用于防止重复
+        window.lastAddedTask = {
+            text: null,
+            timestamp: 0
+        };
+        
+        async function loadBirthdays() {
+            try {
+                // 设置加载标志，防止递归调用
+                if (window.isLoadingData) return;
+                window.isLoadingData = true;
+                
+                // 保存当前正在编辑的临时任务（如果有）
+                const tempTask = window.currentEditingTempTask;
+                let tempTaskText = '';
+                let shouldPreserveTempTask = false;
+                
+                // 检查正在编辑的临时任务
+                if (tempTask && tempTask.parentNode) {
+                    const textElement = tempTask.querySelector('.task-text');
+                    if (textElement) {
+                        tempTaskText = textElement.textContent.trim();
+                        shouldPreserveTempTask = (tempTaskText !== '');
+                        
+                        // 如果有文本内容，尝试保存
+                        if (tempTaskText !== '') {
+                            try {
+                                // 如果编辑中的临时任务有内容，但不想保存并重新加载
+                                // 不执行保存操作，只保留临时任务
+                            } catch (error) {
+                                console.error('保存临时任务失败:', error);
+                            }
+                        } else {
+                            // 如果临时任务为空，移除它
+                            shouldPreserveTempTask = false;
+                            if (tempTask.parentNode) {
+                                tempTask.parentNode.removeChild(tempTask);
+                            }
+                            window.currentEditingTempTask = null;
+                        }
+                    }
+                }
+                
+                // 显示加载中状态，但保留任何正在编辑的任务
+                if (!shouldPreserveTempTask && !document.querySelector('.task-item.temp-task')) {
+                    taskList.innerHTML = `<div class="empty-state">载入中...</div>`;
+                }
+                
+                const { data, error } = await supabase
+                    .from('todos')
+                    .select('id, task, is_completed, created_at')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+
+                // 渲染数据，并保留临时任务（如果需要）
+                renderBirthdays(data || [], shouldPreserveTempTask ? tempTask : null, tempTaskText);
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                // 仍然显示错误消息，除非有临时任务
+                if (!window.currentEditingTempTask) {
+                    taskList.innerHTML = `<div class="empty-state">加载失败，请重试</div>`;
+                }
+            } finally {
+                // 重置加载标志
+                setTimeout(() => {
+                    window.isLoadingData = false;
+                }, 300);
+            }
+        }
+
+        function renderBirthdays(birthdays, tempTask, tempTaskText) {
+            if (!birthdays || !Array.isArray(birthdays) || birthdays.length === 0) {
+                const mockData = [
+                    { id: 1, name: "分组", note: "", is_completed: false },
+                    { id: 2, name: "代码管理改为GitHub界面", note: "", is_completed: true },
+                    { id: 3, name: "写一个云词的灵感点子结构图布记录器", note: "", is_completed: false },
+                    { id: 4, name: "查询J金价", note: "", is_completed: true },
+                    { id: 5, name: "写个主页", note: "", is_completed: false },
+                    { id: 6, name: "添加时间线", note: "", is_completed: false },
+                    { id: 7, name: "谷歌2.5a代码能力做个工程测试", note: "", is_completed: true },
+                    { id: 8, name: "HTML转WXML的解决方案实现", note: "", is_completed: false }
+                ];
+                
+                renderTaskItems(mockData, 'name', tempTask, tempTaskText);
+                return;
+            }
+
+            renderTaskItems(birthdays, 'task', tempTask, tempTaskText);
+        }
+
+        function renderTaskItems(items, textProperty, tempTask, tempTaskText) {
+            // 保存当前正在编辑的临时任务
+            let shouldPreserveTempTask = tempTask && tempTask.parentNode && tempTaskText && tempTaskText.trim() !== '';
+            
+            let html = '';
+            items.forEach(item => {
+                html += `<li class="task-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
+    <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
+    <div class="task-content">
+        <span class="task-text" contenteditable="false">${item[textProperty]}</span>
+        ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
+    </div>
+</li>`;
+            });
+            
+            // 如果当前没有临时任务，直接渲染
+            if (!shouldPreserveTempTask) {
+                taskList.innerHTML = html;
+            } else {
+                // 保留临时任务，先移除它
+                if (tempTask.parentNode) {
+                    tempTask.parentNode.removeChild(tempTask);
+                }
+                
+                // 渲染新的任务列表
+                taskList.innerHTML = html;
+                
+                // 将临时任务重新添加到顶部
+                if (taskList.firstChild) {
+                    taskList.insertBefore(tempTask, taskList.firstChild);
+                } else {
+                    taskList.appendChild(tempTask);
+                }
+                
+                // 重新聚焦到临时任务
+                const textElement = tempTask.querySelector('.task-text');
+                if (textElement) {
+                    textElement.focus();
+                    
+                    // 将光标放到文本的末尾
+                    const range = document.createRange();
+                    const selection = window.getSelection();
+                    range.selectNodeContents(textElement);
+                    range.collapse(false); // 折叠到末尾
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            }
+            
+            setupTaskListeners();
+        }
+
+        function setupTaskListeners() {
+            taskList.removeEventListener('change', handleTaskChange);
+            taskList.addEventListener('change', handleTaskChange);
+            
+            // 移除旧的事件监听器，防止重复绑定
+            taskList.removeEventListener('click', handleTaskClick);
+            taskList.addEventListener('click', handleTaskClick);
+            
+            // 监听键盘事件，处理编辑完成
+            taskList.removeEventListener('keydown', handleTaskKeydown);
+            taskList.addEventListener('keydown', handleTaskKeydown);
+            
+            // 监听失去焦点事件，保存编辑内容
+            taskList.removeEventListener('focusout', handleTaskFocusOut);
+            taskList.addEventListener('focusout', handleTaskFocusOut);
+        }
+
+        function handleTaskChange(event) {
+            if (event.target.classList.contains('task-checkbox')) {
+                const checkbox = event.target;
+                const taskItem = checkbox.closest('.task-item');
+                if (!taskItem) return;
+
+                const id = taskItem.dataset.id;
+                const isCompleted = checkbox.checked;
+
+                taskItem.classList.toggle('completed', isCompleted);
+                toggleTaskStatus(id, isCompleted);
+            }
+        }
+
+        function handleTaskClick(event) {
+            // 如果有正在编辑的临时任务，先处理它
+            if (window.currentEditingTempTask) {
+                const textElement = window.currentEditingTempTask.querySelector('.task-text');
+                if (textElement && !window.currentEditingTempTask.contains(event.target)) {
+                    // 检查是否已经在保存过程中
+                    if (window.currentEditingTempTask.dataset.saving === "true") {
+                        console.log("任务已经在保存中，避免重复保存");
+                        return;
+                    }
+                    
+                    const newText = textElement.textContent.trim();
+                    if (newText !== '') {
+                        // 标记为正在保存
+                        window.currentEditingTempTask.dataset.saving = "true";
+                        
+                        // 将文本框设为不可编辑
+                        textElement.contentEditable = "false";
+                        textElement.classList.remove('editing');
+                        
+                        // 添加新任务
+                        addTask(newText);
+                    }
+                    
+                    // 移除临时任务
+                    if (window.currentEditingTempTask.parentNode) {
+                        window.currentEditingTempTask.parentNode.removeChild(window.currentEditingTempTask);
+                    }
+                    
+                    window.currentEditingTempTask = null;
+                }
+            }
+            
+            // 如果点击的是文本元素
+            if (event.target.classList.contains('task-text')) {
+                const textElement = event.target;
+                const taskItem = textElement.closest('.task-item');
+                
+                // 如果任务已完成，不允许编辑
+                if (taskItem.classList.contains('completed')) return;
+                
+                // 设置为可编辑状态
+                textElement.contentEditable = "true";
+                textElement.classList.add('editing');
+                textElement.focus();
+                
+                // 添加编辑提示（如果还没有）
+                if (!textElement.getAttribute('data-tooltip')) {
+                    textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
+                    textElement.title = '按回车换行，按Ctrl+Enter完成编辑';
+                }
+            }
+        }
+
+        function handleTaskKeydown(event) {
+            if (event.target.classList.contains('task-text') && event.target.contentEditable === 'true') {
+                // 按下Ctrl+Enter组合键完成编辑
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    finishEditing(event.target);
+                }
+                // 按下Escape键取消编辑
+                else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    cancelEditing(event.target);
+                }
+                // 普通回车键，不拦截，让浏览器实现默认的换行行为
+            }
+        }
+
+        function handleTaskFocusOut(event) {
+            if (event.target.classList.contains('task-text') && event.target.contentEditable === 'true') {
+                finishEditing(event.target);
+            }
+        }
+
+        function finishEditing(textElement) {
+            const taskItem = textElement.closest('.task-item');
+            const taskId = taskItem.dataset.id;
+            const newText = textElement.textContent.trim();
+            
+            // 确保内容不为空
+            if (newText === '') {
+                cancelEditing(textElement);
+                return;
+            }
+            
+            // 更新UI
+            textElement.contentEditable = "false";
+            textElement.classList.remove('editing');
+            
+            // 检查是否为临时任务
+            if (taskItem.classList.contains('temp-task') || (typeof taskId === 'string' && taskId.startsWith('temp-'))) {
+                // 如果是临时任务，直接添加为新任务
+                addTask(newText);
+                if (taskItem && taskItem.parentNode) {
+                    taskItem.parentNode.removeChild(taskItem);
+                }
+            } else {
+                // 更新现有任务
+                updateTaskText(taskId, newText);
+            }
+        }
+
+        function cancelEditing(textElement) {
+            const taskItem = textElement.closest('.task-item');
+            
+            // 检查是否为临时任务
+            if (taskItem.classList.contains('temp-task') || taskItem.dataset.tempFlag) {
+                // 如果是临时任务，直接移除
+                if (taskItem && taskItem.parentNode) {
+                    taskItem.parentNode.removeChild(taskItem);
+                }
+                return;
+            }
+            
+            const taskId = taskItem.dataset.id;
+            
+            // 通过重新加载数据来取消编辑
+            loadBirthdays();
+        }
+
+        async function updateTaskText(id, newText) {
+            try {
+                // 检查ID类型，防止类型错误
+                if (typeof id === 'string' && (id.startsWith('temp-') || id.startsWith('new-task-'))) {
+                    console.warn('尝试更新临时任务，将作为新任务添加');
+                    addTask(newText);
+                    return;
+                }
+                
+                const { error } = await supabase
+                    .from('todos')
+                    .update({ task: newText })
+                    .eq('id', id);
+                
+                if (error) throw error;
+            } catch (error) {
+                console.error('更新任务内容失败:', error);
+                alert('更新失败: ' + error.message);
+                loadBirthdays(); // 出错时重新加载
+            }
+        }
+
+        async function addTask(taskText) {
+            // 声明tempId变量在函数作用域的开头，使其在catch块中也可访问
+            let tempId = 'temp-' + Date.now();
+            try {
+                // 检查任务文本是否为空
+                if (!taskText || taskText.trim() === '') {
+                    console.warn('任务内容不能为空');
+                    return null;
+                }
+                
+                // 防止短时间内重复添加相同任务
+                const now = Date.now();
+                const timeSinceLastAdd = now - window.lastAddedTask.timestamp;
+                if (window.lastAddedTask.text === taskText && timeSinceLastAdd < 2000) {
+                    console.warn('防止重复添加相同任务:', taskText);
+                    return null;
+                }
+                
+                // 更新最近添加的任务记录
+                window.lastAddedTask = {
+                    text: taskText,
+                    timestamp: now
+                };
+                
+                // 临时在UI中显示添加的任务
+                const tempTaskHTML = `<li class="task-item" data-id="${tempId}">
+                    <input type="checkbox" class="task-checkbox">
+                    <div class="task-content">
+                        <span class="task-text" contenteditable="false">${taskText}</span>
+                    </div>
+                </li>`;
+                
+                // 如果有"载入中..."或"空列表"状态，则清除
+                const emptyState = document.querySelector('.empty-state');
+                if (emptyState) {
+                    taskList.innerHTML = '';
+                }
+                
+                // 添加到列表顶部
+                const taskListElem = document.getElementById('task-list');
+                const tempElement = document.createElement('div');
+                tempElement.innerHTML = tempTaskHTML;
+                const newTaskItem = tempElement.firstChild;
+                
+                if (taskListElem.firstChild) {
+                    taskListElem.insertBefore(newTaskItem, taskListElem.firstChild);
+                } else {
+                    taskListElem.appendChild(newTaskItem);
+                }
+                
+                // 发送到服务器
+                const { data, error } = await supabase
+                    .from('todos')
+                    .insert([{ task: taskText, is_completed: false }])
+                    .select();
+                
+                if (error) throw error;
+                
+                // 用真实ID替换临时ID
+                if (data && data.length > 0) {
+                    const newTask = data[0];
+                    const tempTask = document.querySelector(`[data-id="${tempId}"]`);
+                    if (tempTask) {
+                        tempTask.dataset.id = newTask.id;
+                    } else {
+                        // 如果找不到临时任务元素，重新加载整个列表
+                        loadBirthdays();
+                    }
+                } else {
+                    // 如果没有返回数据，重新加载整个列表
+                    loadBirthdays();
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('添加任务失败:', error);
+                // 移除临时添加的任务元素
+                const tempTask = document.querySelector(`[data-id="${tempId}"]`);
+                if (tempTask) {
+                    tempTask.parentNode.removeChild(tempTask);
+                }
+                // 显示错误消息
+                alert('添加失败: ' + error.message);
+                return null;
+            }
+        }
+
+        // 修复创建空白可编辑任务的功能
+        function createEmptyEditableTask() {
+            console.log("创建新任务函数被调用");
+            
+            try {
+                // 确保任务列表元素存在
+                const taskList = document.getElementById('task-list');
+                if (!taskList) {
+                    console.error("找不到任务列表元素!");
+                    return;
+                }
+                
+                // 如果已经存在正在编辑的临时任务，先聚焦到它
+                if (window.currentEditingTempTask) {
+                    console.log("已存在临时任务，聚焦到它");
+                    const existingTextElement = window.currentEditingTempTask.querySelector('.task-text');
+                    if (existingTextElement) {
+                        existingTextElement.focus();
+                        return; // 如果已经存在则直接返回，不创建新的
+                    }
+                }
+
+                // 使用一个标志来标识这是一个临时任务
+                const tempFlag = 'new-task-' + Date.now();
+                console.log("创建临时任务，ID:", tempFlag);
+                
+                // 创建新的任务项HTML元素
+                const newTaskItem = document.createElement('li');
+                newTaskItem.className = 'task-item temp-task';
+                // 不使用数字ID，而是使用一个特殊标识
+                newTaskItem.dataset.id = tempFlag;
+                newTaskItem.dataset.tempFlag = 'true';
+                newTaskItem.innerHTML = `
+                    <input type="checkbox" class="task-checkbox">
+                    <div class="task-content">
+                        <span class="task-text editing" contenteditable="true"></span>
+                    </div>
+                `;
+                
+                console.log("任务列表元素:", taskList);
+                
+                // 清除可能存在的"载入中..."信息
+                const emptyState = taskList.querySelector('.empty-state');
+                if (emptyState) {
+                    console.log("清除载入中状态");
+                    taskList.innerHTML = '';
+                }
+                
+                // 插入新任务到列表顶部
+                console.log("插入新任务元素到列表");
+                if (taskList.firstChild) {
+                    taskList.insertBefore(newTaskItem, taskList.firstChild);
+                } else {
+                    taskList.appendChild(newTaskItem);
+                }
+                
+                // 设置焦点并添加事件监听
+                const textElement = newTaskItem.querySelector('.task-text');
+                console.log("设置焦点到文本元素:", textElement);
+                
+                // 添加编辑提示
+                textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
+                textElement.title = '按回车换行，按Ctrl+Enter完成编辑';
+                
+                // 标记全局状态，表示当前有临时任务正在编辑
+                window.currentEditingTempTask = newTaskItem;
+                
+                // 延迟一点设置焦点，确保DOM渲染完成
+                setTimeout(() => {
+                    if (textElement) {
+                        textElement.focus();
+                        // 创建一个新的选中范围
+                        try {
+                            const range = document.createRange();
+                            const selection = window.getSelection();
+                            range.selectNodeContents(textElement);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                        } catch (err) {
+                            console.error("设置光标位置失败:", err);
+                        }
+                    }
+                }, 50);
+                
+                // 为新任务添加特殊的完成编辑处理
+                textElement.addEventListener('keydown', function(event) {
+                    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                        event.preventDefault();
+                        console.log("按下Ctrl+Enter，保存任务");
+                        finishTempTask(this);
+                    } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        console.log("按下Escape，取消编辑");
+                        removeTempTask(newTaskItem);
+                        window.currentEditingTempTask = null;
+                    }
+                });
+                
+                // 失去焦点时保存，使用一个延时来避免和点击事件冲突
+                textElement.addEventListener('focusout', function(event) {
+                    // 使用setTimeout以确保这是在所有点击事件之后处理的
+                    setTimeout(() => {
+                        // 检查此元素是否仍在DOM中，可能在点击事件中已被移除
+                        if (document.contains(this) && window.currentEditingTempTask === newTaskItem) {
+                            console.log("失去焦点，保存任务");
+                            finishTempTask(this);
+                        }
+                    }, 200);
+                });
+                
+                // 处理临时任务的保存
+                async function finishTempTask(textElement) {
+                    console.log("执行finishTempTask");
+                    if (!document.contains(textElement)) {
+                        console.log("元素已不在DOM中，取消保存");
+                        return;
+                    }
+                    
+                    // 检查是否已经在保存过程中
+                    if (newTaskItem.dataset.saving === "true") {
+                        console.log("任务已经在保存中，避免重复保存");
+                        return;
+                    }
+                    
+                    const newText = textElement.textContent.trim();
+                    console.log("任务文本:", newText);
+                    if (newText !== '') {
+                        try {
+                            // 标记为正在保存
+                            newTaskItem.dataset.saving = "true";
+                            
+                            // 显示保存中的状态
+                            textElement.contentEditable = "false";
+                            textElement.classList.remove('editing');
+                            
+                            // 调用添加任务API
+                            console.log("调用addTask添加任务");
+                            await addTask(newText);
+                            
+                            // 移除临时元素，数据会在addTask成功后重新加载
+                            console.log("移除临时元素");
+                            removeTempTask(newTaskItem);
+                        } catch (err) {
+                            console.error("添加任务时出错:", err);
+                            // 取消保存状态
+                            newTaskItem.dataset.saving = "false";
+                            // 恢复可编辑状态，让用户重试
+                            textElement.contentEditable = "true";
+                            textElement.classList.add('editing');
+                            textElement.focus();
+                            return;
+                        }
+                    } else {
+                        // 如果为空则移除此元素
+                        console.log("任务为空，移除临时元素");
+                        removeTempTask(newTaskItem);
+                    }
+                    
+                    window.currentEditingTempTask = null;
+                }
+                
+                // 移除临时任务元素
+                function removeTempTask(taskItem) {
+                    console.log("执行removeTempTask");
+                    if (taskItem && taskItem.parentNode) {
+                        taskItem.parentNode.removeChild(taskItem);
+                    }
+                    
+                    if (window.currentEditingTempTask === taskItem) {
+                        window.currentEditingTempTask = null;
+                    }
+                }
+            } catch (err) {
+                console.error("创建任务失败:", err);
+                alert("创建新任务失败，请刷新页面重试");
+            }
+        }
+
+        // 在文档加载时初始化全局点击事件处理器
+        function setupGlobalHandlers() {
+            // 确保只添加一次全局处理器
+            if (!window.hasAddedGlobalTempTaskHandler) {
+                window.hasAddedGlobalTempTaskHandler = true;
+                
+                document.addEventListener('click', function(event) {
+                    if (!window.currentEditingTempTask) return;
+                    
+                    // 如果点击的不是临时任务或其子元素
+                    if (!window.currentEditingTempTask.contains(event.target)) {
+                        const textElement = window.currentEditingTempTask.querySelector('.task-text');
+                        if (textElement) {
+                            // 检查是否已经在保存过程中
+                            if (window.currentEditingTempTask.dataset.saving === "true") {
+                                console.log("任务已经在保存中，避免重复保存");
+                                return;
+                            }
+                            
+                            // 手动触发保存
+                            const newText = textElement.textContent.trim();
+                            if (newText !== '') {
+                                // 标记为正在保存
+                                window.currentEditingTempTask.dataset.saving = "true";
+                                
+                                // 将contentEditable设为false，防止在保存过程中继续编辑
+                                textElement.contentEditable = "false";
+                                textElement.classList.remove('editing');
+                                
+                                // 异步添加任务
+                                addTask(newText).then(() => {
+                                    // 添加成功后移除临时任务
+                                    if (window.currentEditingTempTask && window.currentEditingTempTask.parentNode) {
+                                        window.currentEditingTempTask.parentNode.removeChild(window.currentEditingTempTask);
+                                        window.currentEditingTempTask = null;
+                                    }
+                                }).catch(err => {
+                                    console.error('点击其他区域保存任务失败:', err);
+                                    // 取消保存状态
+                                    if (window.currentEditingTempTask) {
+                                        window.currentEditingTempTask.dataset.saving = "false";
+                                        
+                                        // 如果失败，回到编辑状态
+                                        const textEl = window.currentEditingTempTask.querySelector('.task-text');
+                                        if (textEl) {
+                                            textEl.contentEditable = "true";
+                                            textEl.classList.add('editing');
+                                        }
+                                    }
+                                });
+                            } else {
+                                // 如果内容为空，直接移除临时任务
+                                if (window.currentEditingTempTask && window.currentEditingTempTask.parentNode) {
+                                    window.currentEditingTempTask.parentNode.removeChild(window.currentEditingTempTask);
+                                }
+                                
+                                window.currentEditingTempTask = null;
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        async function toggleTaskStatus(id, isCompleted) {
+            try {
+                // 确保id是有效的
+                if (!id || (typeof id === 'string' && (id.startsWith('temp-') || id.startsWith('new-task-')))) {
+                    console.warn('尝试更新临时任务状态，已忽略');
+                    return;
+                }
+                
+                // 立即更新UI状态，不等待服务器响应
+                const taskItem = document.querySelector(`.task-item[data-id="${id}"]`);
+                if (taskItem) {
+                    taskItem.classList.toggle('completed', isCompleted);
+                }
+                
+                // 发送请求到服务器
+                const { error } = await supabase
+                    .from('todos')
+                    .update({ is_completed: isCompleted })
+                    .eq('id', id);
+                
+                if (error) {
+                    throw error;
+                }
+            } catch (error) {
+                console.error('更新任务状态失败:', error);
+                
+                // 如果出错，恢复UI状态
+                const taskItem = document.querySelector(`.task-item[data-id="${id}"]`);
+                if (taskItem) {
+                    taskItem.classList.toggle('completed', !isCompleted);
+                    const checkbox = taskItem.querySelector('.task-checkbox');
+                    if (checkbox) {
+                        checkbox.checked = !isCompleted;
+                    }
+                }
+                
+                // 显示错误消息
+                alert(`更新失败: ${error.message || '服务器错误'}`);
+            }
+        }
+
+        async function deleteTask(id) {
+            try {
+                const { error } = await supabase
+                    .from('todos')
+                    .delete()
+                    .eq('id', id);
+                
+                if (error) throw error;
+                loadBirthdays();
+            } catch (error) {
+                console.error('删除任务失败:', error);
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        // 添加清除所有已完成任务的功能
+        async function clearCompletedTasks() {
+            try {
+                // 获取所有已完成的任务ID
+                const completedItems = document.querySelectorAll('.task-item.completed');
+                if (completedItems.length === 0) {
+                    alert('没有已完成的任务需要清除');
+                    return;
+                }
+                
+                // 显示加载状态
+                document.body.style.cursor = 'wait';
+                
+                // 从数据库中删除所有已完成的任务
+                const { error } = await supabase
+                    .from('todos')
+                    .delete()
+                    .eq('is_completed', true);
+                
+                if (error) throw error;
+                
+                // 重新加载任务列表
+                loadBirthdays();
+                
+                // 恢复正常光标
+                document.body.style.cursor = 'default';
+            } catch (error) {
+                console.error('清除已完成任务失败:', error);
+                alert('清除失败: ' + error.message);
+                document.body.style.cursor = 'default';
+            }
+        }
+
+        function getThemeFromIcon(iconElement) {
+            if (!iconElement) return 'purple';
+            return iconElement.classList.contains('blue') ? 'blue' :
+                   iconElement.classList.contains('red') ? 'red' : 'purple';
+        }
+
+        function updateThemeAndTitle(listItem) {
+            const listTitleText = listItem.querySelector('span').textContent;
+            const iconElement = listItem.querySelector('.sidebar-icon');
+            const themeColor = getThemeFromIcon(iconElement);
+
+            document.querySelector('.list-title').textContent = listTitleText;
+            document.querySelector('.mobile-title').textContent = listTitleText;
+            document.body.dataset.theme = themeColor;
+
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            listItem.classList.add('active');
+
+            loadBirthdays();
+
+            if (window.innerWidth <= 768) {
+                document.querySelector('.sidebar').style.display = 'none';
+                document.querySelector('.main-content').style.display = 'block';
+                document.querySelector('.mobile-header').style.display = 'flex';
+                document.querySelector('.mobile-back').style.visibility = 'visible';
+                document.querySelector('.mobile-actions').style.display = 'flex';
+            }
+        }
+
+        function initialize() {
+            console.log("初始化应用...");
+            setupTaskListeners();
+            setupGlobalHandlers();
+            
+            // 添加测试按钮事件
+            const testAddTaskBtn = document.getElementById('test-add-task-btn');
+            if (testAddTaskBtn) {
+                testAddTaskBtn.addEventListener('click', function() {
+                    console.log("测试按钮被点击");
+                    createEmptyEditableTask();
+                });
+            }
+            
+            const initialActiveItem = document.querySelector('.sidebar-item.active') || document.querySelector('.sidebar-item');
+            if (initialActiveItem) {
+                updateThemeAndTitle(initialActiveItem);
+            } else {
+                loadBirthdays();
+            }
+
+            // 全局点击事件处理
+            document.addEventListener('click', function(e) {
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar && sidebar.style.display === 'flex' &&
+                    !sidebar.contains(e.target) &&
+                    !e.target.closest('.mobile-back') &&
+                    window.innerWidth <= 768) {
+                    sidebar.style.display = 'none';
+                    document.querySelector('.main-content').style.display = 'block';
+                    document.querySelector('.mobile-header').style.display = 'flex';
+                }
+            });
+
+            // 移动端返回按钮
+            document.querySelector('.mobile-back').addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    const sidebar = document.querySelector('.sidebar');
+                    sidebar.style.display = 'flex';
+                    document.querySelector('.main-content').style.display = 'none';
+                    document.querySelector('.mobile-header').style.display = 'none';
+                }
+            });
+
+            // 窗口大小调整
+            window.addEventListener('resize', function() {
+                const sidebar = document.querySelector('.sidebar');
+                const mainContent = document.querySelector('.main-content');
+                const mobileHeader = document.querySelector('.mobile-header');
+
+                if (window.innerWidth > 768) {
+                    sidebar.style.display = '';
+                    mainContent.style.display = '';
+                    mobileHeader.style.display = 'none';
+                } else if (sidebar.style.display !== 'flex') {
+                    sidebar.style.display = 'none';
+                    mainContent.style.display = 'block';
+                    mobileHeader.style.display = 'flex';
+                } else {
+                    mainContent.style.display = 'none';
+                    mobileHeader.style.display = 'none';
+                }
+            });
+
+            // 移动端更多操作按钮
+            document.querySelector('.mobile-actions .bi-three-dots').closest('button').addEventListener('click', function() {
+                const listTitle = document.querySelector('.mobile-title').textContent;
+                if (listTitle === '列表') return;
+
+                const action = prompt(`${listTitle}选项：\n1. 清除已完成任务\n2. 全部标记完成\n3. 全部标记未完成\n请输入数字或取消`);
+
+                if (action === '1') {
+                    if (confirm('确定要清除所有已完成的任务吗？')) {
+                        clearCompletedTasks();
+                    }
+                } else if (action === '2' || action === '3') {
+                    const markAsCompleted = action === '2';
+                    const selector = markAsCompleted ? '.task-checkbox:not(:checked)' : '.task-checkbox:checked';
+                    document.querySelectorAll(selector).forEach(checkbox => {
+                        checkbox.checked = markAsCompleted;
+                        const taskItem = checkbox.closest('.task-item');
+                        if (taskItem) {
+                            taskItem.classList.toggle('completed', markAsCompleted);
+                            toggleTaskStatus(taskItem.dataset.id, markAsCompleted);
+                        }
+                    });
+                }
+            });
+
+            // PC端更多操作按钮
+            document.querySelector('.header-actions .bi-three-dots').closest('button').addEventListener('click', function() {
+                const listTitle = document.querySelector('.list-title').textContent;
+                
+                const action = prompt(`${listTitle}选项：\n1. 清除已完成任务\n2. 全部标记完成\n3. 全部标记未完成\n请输入数字或取消`);
+                
+                if (action === '1') {
+                    if (confirm('确定要清除所有已完成的任务吗？')) {
+                        clearCompletedTasks();
+                    }
+                } else if (action === '2' || action === '3') {
+                    const markAsCompleted = action === '2';
+                    const selector = markAsCompleted ? '.task-checkbox:not(:checked)' : '.task-checkbox:checked';
+                    document.querySelectorAll(selector).forEach(checkbox => {
+                        checkbox.checked = markAsCompleted;
+                        const taskItem = checkbox.closest('.task-item');
+                        if (taskItem) {
+                            taskItem.classList.toggle('completed', markAsCompleted);
+                            toggleTaskStatus(taskItem.dataset.id, markAsCompleted);
+                        }
+                    });
+                }
+            });
+
+            // 侧边栏点击处理
+            sidebarList.addEventListener('click', function(e) {
+                const targetItem = e.target.closest('.sidebar-item');
+                const targetMore = e.target.closest('.sidebar-more');
+
+                if (targetMore) {
+                    e.stopPropagation();
+                    const listItem = targetMore.closest('.sidebar-item');
+                    const listName = listItem.querySelector('span').textContent;
+
+                    const action = prompt(`请选择对"${listName}"的操作：\n1. 编辑名称\n2. 删除列表\n请输入数字`);
+
+                    if (action === '1') {
+                        const newName = prompt('请输入新名称:', listName);
+                        if (newName && newName.trim() !== '') {
+                            listItem.querySelector('span').textContent = newName.trim();
+                            if (listItem.classList.contains('active')) {
+                                document.querySelector('.list-title').textContent = newName.trim();
+                                document.querySelector('.mobile-title').textContent = newName.trim();
+                            }
+                        }
+                    } else if (action === '2') {
+                        if (confirm(`确定要删除"${listName}"列表吗？`)) {
+                            alert('列表删除功能待实现');
+                        }
+                    }
+                } else if (targetItem) {
+                    updateThemeAndTitle(targetItem);
+                }
+            });
+
+            // 全屏按钮
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const elem = document.documentElement;
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', () => {
+                    if (elem.requestFullscreen) {
+                        elem.requestFullscreen().catch(err => {
+                            console.error(`请求全屏失败: ${err.message}`);
+                            alert('无法进入全屏模式，可能需要用户交互或浏览器不支持。');
+                        });
+                    } else if (elem.webkitRequestFullscreen) {
+                        elem.webkitRequestFullscreen().catch(err => {
+                            console.error(`请求全屏失败: ${err.message}`);
+                            alert('无法进入全屏模式，可能需要用户交互或浏览器不支持。');
+                        });
+                    } else if (elem.msRequestFullscreen) {
+                        elem.msRequestFullscreen();
+                    }
+                });
+
+                document.addEventListener('fullscreenchange', () => {
+                    console.log(document.fullscreenElement ? '已进入全屏模式' : '已退出全屏模式');
+                });
+                document.addEventListener('webkitfullscreenchange', () => {
+                    console.log(document.webkitFullscreenElement ? '已进入全屏模式' : '已退出全屏模式');
+                });
+                document.addEventListener('msfullscreenchange', () => {
+                    console.log(document.msFullscreenElement ? '已进入全屏模式' : '已退出全屏模式');
+                });
+
+                if (!document.fullscreenEnabled && !document.webkitFullscreenEnabled && !document.msFullscreenEnabled) {
+                    fullscreenBtn.style.display = 'none';
+                    console.warn('此浏览器不支持全屏 API。');
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM已加载");
+            
+            // 先绑定添加按钮事件 - 仅在这里绑定一次
+            // 清除之前可能存在的事件处理器
+            const pcAddBtn = document.querySelector('.header-actions button:first-child');
+            if (pcAddBtn) {
+                console.log("直接绑定PC添加按钮");
+                // 移除之前可能存在的所有点击事件
+                const newPcAddBtn = pcAddBtn.cloneNode(true);
+                pcAddBtn.parentNode.replaceChild(newPcAddBtn, pcAddBtn);
+                
+                newPcAddBtn.onclick = function(e) {
+                    console.log("PC添加按钮被点击 (直接绑定)");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    createEmptyEditableTask();
+                    return false;
+                };
+            }
+            
+            const mobileAddBtn = document.querySelector('.mobile-actions button:first-child');
+            if (mobileAddBtn) {
+                console.log("直接绑定移动端添加按钮");
+                // 移除之前可能存在的所有点击事件
+                const newMobileAddBtn = mobileAddBtn.cloneNode(true);
+                mobileAddBtn.parentNode.replaceChild(newMobileAddBtn, mobileAddBtn);
+                
+                newMobileAddBtn.onclick = function(e) {
+                    console.log("移动端添加按钮被点击 (直接绑定)");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    createEmptyEditableTask();
+                    return false;
+                };
+            }
+            
+            // 然后再初始化所有其他功能，但不再绑定添加按钮
+            // 然后再初始化所有其他功能
+            initialize();
+        });
+        
+        // 确保全局函数在window对象上可用
+        window.toggleTaskStatus = toggleTaskStatus;
+        window.deleteTask = deleteTask;
+        window.addTask = addTask;
+        window.clearCompletedTasks = clearCompletedTasks;
+        window.createEmptyEditableTask = createEmptyEditableTask;
+    </script>
+</body>
+</html> 
+
+
