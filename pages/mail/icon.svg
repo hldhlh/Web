@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100%" height="100%">
+  <!-- 渐变背景 -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8F4F8" />
+      <stop offset="100%" stop-color="#D8E9E3" />
+    </linearGradient>
+  </defs>
+  
+  <circle cx="12" cy="12" r="10" fill="url(#bgGradient)" />
+  
+  <!-- 柔和信封形状 -->
+  <path d="M6 9c0-1 0.5-1.5 1.5-1.5h9c1 0 1.5 0.5 1.5 1.5v6c0 1-0.5 1.5-1.5 1.5h-9c-1 0-1.5-0.5-1.5-1.5v-6z" 
+        fill="none" stroke="#7D9E90" stroke-width="0.8" stroke-linecap="round" />
+  
+  <!-- 信封中的信件 -->
+  <path d="M7.5 9.5L12 12l4.5-2.5" fill="none" stroke="#7D9E90" stroke-width="0.8" stroke-linecap="round" />
+  
+  <!-- 左侧自然装饰元素：叶子 -->
+  <path d="M5.5 6.5c0.8,0.5 1,1.5 0.5,2s-1.5,0.3-2-0.2s-0.3-1.3 0.2-1.8 0.8-0.3 1.3,0z" 
+        fill="#A7CCBF" stroke="#7D9E90" stroke-width="0.4" />
+        
+  <!-- 顶部装饰：小树枝 -->
+  <path d="M14 5c0.3,0 0.7,0.3 1,0.7M15 5.5c0.4,0.4 0.7,0.8 0.7,1.3M16 6c0,-0.3 0.3,-0.6 0.6,-0.8" 
+        fill="none" stroke="#7D9E90" stroke-width="0.6" stroke-linecap="round" />
+  
+  <!-- 右下角装饰：水滴 -->
+  <path d="M17.5 15.5c0.5-0.8 1-0.5 1 0s-0.5 1-1 1-1-0.2-1-0.7 0.5-1 1-0.3z" 
+        fill="#A7CCBF" stroke="none" />
+  
+  <!-- 小点装饰 -->
+  <circle cx="6" cy="15" r="0.5" fill="#7D9E90" opacity="0.6" />
+  <circle cx="18" cy="8" r="0.4" fill="#7D9E90" opacity="0.6" />
+</svg> 

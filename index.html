@@ -6,407 +6,103 @@
     <title>应用导航页</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --app-primary-color: #0a84ff;
-            --app-primary-light: rgba(10, 132, 255, 0.1);
-            --app-background: #f5f5f5;
-            --app-surface: #ffffff;
-            --text-primary: #1d1d1f;
-            --text-secondary: #86868b;
-            --border-color: rgba(0, 0, 0, 0.1);
-        }
-        
-        /* 暗色主题 */
-        [data-theme="dark"] {
-            --app-primary-color: #0a84ff;
-            --app-primary-light: rgba(10, 132, 255, 0.2);
-            --app-background: #1c1c1e;
-            --app-surface: #2c2c2e;
-            --text-primary: #ffffff;
-            --text-secondary: #ebebf0;
-            --border-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        body {
-            font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--app-background);
-            color: var(--text-primary);
-            height: 100vh;
-            overflow: hidden;
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-        
-        .ios-container {
-            width: 100%;
-            max-width: 100%;
-            margin: 0 auto;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-        
-        .ios-status-bar {
-            padding: 0.5rem 1rem;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            position: absolute;
-            top: 0;
-            right: 0;
-            z-index: 10;
-        }
-        
-        .ios-grid-container {
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 2.5rem 1rem 1rem 1rem;
-            display: flex;
-            justify-content: center;
-            height: 100%;
-        }
-        
-        .ios-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 2.5rem 1.5rem;
-            width: 100%;
-            max-width: 1200px;
-            justify-content: center;
-            padding-bottom: 2rem;
-        }
-        
-        .ios-app {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-decoration: none;
-            width: 100%;
-            max-width: 80px;
-            margin: 0 auto;
-        }
-        
-        .ios-app-icon {
-            width: 76px;
-            height: 76px;
-            border-radius: 18px;
-            margin-bottom: 0.6rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        .ios-app-icon svg {
-            width: 60%;
-            height: 60%;
-            fill: white;
-            stroke: white;
-            stroke-width: 0;
-        }
-        
-        .ios-app-name {
-            font-size: 0.85rem;
-            color: var(--text-primary);
-            text-align: center;
-            max-width: 80px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            letter-spacing: -0.01em;
-        }
-        
-        .theme-toggle {
-            background: none;
-            border: none;
-            color: var(--text-primary);
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: transform 0.3s;
-            z-index: 100;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-        
-        .theme-toggle:hover {
-            transform: rotate(30deg);
-        }
-
-        /* iPad布局 - 横屏 */
-        @media (min-width: 1024px) and (orientation: landscape) {
-            .ios-grid {
-                grid-template-columns: repeat(8, 1fr);
-                gap: 3rem 2rem;
-                padding: 2rem;
-            }
-            
-            .ios-app-icon {
-                width: 80px;
-                height: 80px;
-            }
-        }
-        
-        /* iPad布局 - 竖屏 */
-        @media (min-width: 768px) and (orientation: portrait) {
-            .ios-grid {
-                grid-template-columns: repeat(6, 1fr);
-                gap: 3rem 2rem;
-            }
-            
-            .ios-app-icon {
-                width: 80px;
-                height: 80px;
-            }
-        }
-        
-        /* iPhone布局 */
-        @media (max-width: 767px) {
-            .ios-grid {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 2rem 1rem;
-            }
-            
-            .ios-app-icon {
-                width: 65px;
-                height: 65px;
-                border-radius: 16px;
-            }
-            
-            .ios-app {
-                max-width: 65px;
-            }
-            
-            .ios-app-name {
-                font-size: 0.75rem;
-            }
-        }
-        
-        /* 小型手机 */
-        @media (max-width: 374px) {
-            .ios-grid {
-                gap: 1.5rem 0.8rem;
-            }
-            
-            .ios-app-icon {
-                width: 55px;
-                height: 55px;
-                border-radius: 14px;
-            }
-            
-            .ios-app {
-                max-width: 60px;
-            }
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--app-primary-color:#0a84ff;--app-primary-light:rgba(10,132,255,.1);--app-background:#f5f5f5;--app-surface:#fff;--text-primary:#1d1d1f;--text-secondary:#86868b;--border-color:rgba(0,0,0,.1)}
+        [data-theme="dark"]{--app-primary-color:#0a84ff;--app-primary-light:rgba(10,132,255,.2);--app-background:#1c1c1e;--app-surface:#2c2c2e;--text-primary:#fff;--text-secondary:#ebebf0;--border-color:rgba(255,255,255,.1)}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:var(--app-background);color:var(--text-primary);height:100vh;overflow:hidden}
+        .container{width:100%;max-width:100%;margin:0 auto;height:100vh;display:flex;flex-direction:column;position:relative}
+        .status-bar{padding:.5rem 1rem;display:flex;justify-content:flex-end;align-items:center}
+        .app-grid-container{flex:1;overflow-y:auto;padding:1rem;display:flex;justify-content:center}
+        .app-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:1.5rem;width:100%;max-width:1200px;justify-content:center;padding-bottom:2rem}
+        .app-icon{display:flex;flex-direction:column;align-items:center;text-decoration:none;width:100%;max-width:80px;margin:0 auto}
+        .app-icon-image{width:64px;height:64px;border-radius:16px;margin-bottom:.6rem;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 8px rgba(0,0,0,.1);position:relative}
+        .app-icon-image svg{width:100%;height:100%;display:block}
+        .app-name{font-size:.85rem;color:var(--text-primary);text-align:center;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .theme-toggle{background:none;border:none;color:var(--text-primary);font-size:1.2rem;cursor:pointer;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background-color:rgba(255,255,255,.2);backdrop-filter:blur(10px)}
+        @media (max-width:768px){.app-grid{grid-template-columns:repeat(4,1fr);gap:1rem}.app-icon-image{width:55px;height:55px}}
     </style>
 </head>
 <body>
-    <div class="ios-container">
-        <div class="ios-status-bar">
+    <div class="container">
+        <div class="status-bar">
             <button id="theme-toggle" class="theme-toggle" title="切换主题">
                 <i class="bi bi-brightness-high"></i>
             </button>
         </div>
-        
-        <div class="ios-grid-container">
-            <div class="ios-grid" id="app-container">
-                <!-- 应用将通过JavaScript动态加载 -->
-            </div>
+        <div class="app-grid-container">
+            <div class="app-grid" id="app-container"></div>
         </div>
     </div>
 
     <script type="module">
-        // 导入 getAppDirectories 函数
-        import { getAppDirectories } from './apps.js';
+        import{getAppDirectories}from'./apps.js';
+        const AppTheme={getTheme(){return localStorage.getItem('app-theme')||'light'},setTheme(t){localStorage.setItem('app-theme',t);document.body.setAttribute('data-theme',t);document.querySelector('#theme-toggle i').className=t==='dark'?'bi bi-moon':'bi bi-brightness-high'},toggleTheme(){const t=this.getTheme()==='light'?'dark':'light';this.setTheme(t);return t},initialize(){this.setTheme(this.getTheme())}};
+        const appColors={mail:'#FF453A',contacts:'#FF9F0A',photos:'#30D158',calendar:'#FFD60A',todo:'#5E5CE6',cloud:'#0A84FF',default:'#BF5AF2'};
         
-        // 主题支持
-        const AppTheme = {
-            // 获取当前主题
-            getTheme() {
-                return localStorage.getItem('app-theme') || 'light';
-            },
-            
-            // 设置主题
-            setTheme(theme) {
-                localStorage.setItem('app-theme', theme);
-                document.body.setAttribute('data-theme', theme);
+        async function loadApps(){
+            const container=document.getElementById('app-container');
+            try{
+                const apps=await getAppDirectories();
                 
-                // 更新图标
-                const themeIcon = document.querySelector('#theme-toggle i');
-                if (themeIcon) {
-                    themeIcon.className = theme === 'dark' ? 'bi bi-moon' : 'bi bi-brightness-high';
-                }
-            },
-            
-            // 切换主题
-            toggleTheme() {
-                const currentTheme = this.getTheme();
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                this.setTheme(newTheme);
-                return newTheme;
-            },
-            
-            // 初始化主题
-            initialize() {
-                const theme = this.getTheme();
-                this.setTheme(theme);
-            }
-        };
-        
-        // 应用图标SVG定义
-        const appIcons = {
-            mail: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>',
-            contacts: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>',
-            photos: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>',
-            calendar: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>',
-            todo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>',
-            cloud: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>',
-            notes: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 18h12v-2H3v2zM3 6v2h18V6H3zm0 7h18v-2H3v2z"/></svg>',
-            reminders: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>',
-            pages: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>',
-            numbers: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 15h10v2H7zm0-4h10v2H7zm0-4h10v2H7zM3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2z"/></svg>',
-            keynote: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>',
-            appstore: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.06-7.44 7-7.93v15.86zm2-15.86c1.03.13 2 .45 2.87.93H13v-.93zM13 7h5.24c.25.31.48.65.68 1H13V7zm0 3h6.74c.08.33.15.66.19 1H13v-1zm0 9.93V19h2.87c-.87.48-1.84.8-2.87.93zM18.24 17H13v-1h5.92c-.2.35-.43.69-.68 1zm1.5-3H13v-1h6.93c-.04.34-.11.67-.19 1z"/></svg>'
-        };
-        
-        // 加载应用列表
-        async function loadApps() {
-            const appContainer = document.getElementById('app-container');
-            
-            try {
-                // 使用 getAppDirectories 函数获取应用列表
-                const apps = await getAppDirectories();
-                
-                // 随机颜色数组
-                const colors = [
-                    '#FF453A', '#FF9F0A', '#FFD60A', '#30D158', 
-                    '#0A84FF', '#5E5CE6', '#BF5AF2', '#FF375F'
-                ];
-                
-                // 确保云盘应用存在
-                let cloudAppExists = false;
-                
-                // 处理每个应用
-                apps.forEach(app => {
-                    if (app.id === 'cloud') {
-                        cloudAppExists = true;
+                // 创建加载图标的函数
+                const loadSvgIcon = async (appId) => {
+                    try {
+                        const response = await fetch(`./pages/${appId}/icon.svg`);
+                        if (response.ok) {
+                            return await response.text();
+                        }
+                        throw new Error(`无法加载图标: ${response.status}`);
+                    } catch (error) {
+                        console.warn(`加载${appId}图标失败:`, error);
+                        return null;
                     }
-                    
-                    // 随机选择颜色
-                    app.color = colors[Math.floor(Math.random() * colors.length)];
-                    
-                    createAppElement(app, appContainer);
-                });
-                
-                // 如果没有云盘应用，手动添加
-                if (!cloudAppExists) {
-                    const cloudApp = {
-                        id: 'cloud',
-                        name: '云盘',
-                        path: 'cloud/index.html',
-                        color: '#0A84FF' // 蓝色
-                    };
-                    
-                    createAppElement(cloudApp, appContainer);
-                }
-            } catch (error) {
-                console.error('加载应用失败:', error);
-                appContainer.innerHTML += '<p>加载应用失败，请稍后重试。</p>';
-                
-                // 如果加载失败，至少显示云盘应用
-                const cloudApp = {
-                    id: 'cloud',
-                    name: '云盘',
-                    path: 'cloud/index.html',
-                    color: '#0A84FF' // 蓝色
                 };
                 
-                createAppElement(cloudApp, appContainer);
+                // 为每个应用创建图标元素
+                for (const app of apps) {
+                    // 加载SVG图标
+                    let iconContent = await loadSvgIcon(app.id);
+                    
+                    const el = document.createElement('a');
+                    el.href = `./pages/${app.path}`;
+                    el.className = 'app-icon';
+                    
+                    // 创建图标元素
+                    if (iconContent) {
+                        // 不修改SVG内容，保留原始样式，但确保其呈现方式正确
+                        // 添加一个div包装SVG，以确保正确的大小和比例
+                        el.innerHTML = `
+                            <div class="app-icon-image">
+                                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center">
+                                    ${iconContent}
+                                </div>
+                            </div>
+                            <div class="app-name">${app.name}</div>
+                        `;
+                    } else {
+                        // 如果加载失败，使用颜色背景和首字母作为备用
+                        const color = appColors[app.id] || appColors.default;
+                        el.innerHTML = `
+                            <div class="app-icon-image" style="background-color:${color}">
+                                <div style="width:60%;height:60%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:18px">${app.name.charAt(0)}</div>
+                            </div>
+                            <div class="app-name">${app.name}</div>
+                        `;
+                    }
+                    
+                    container.appendChild(el);
+                }
+            } catch(e) {
+                console.error('加载应用失败:', e);
+                container.innerHTML = '<p>加载应用失败，请稍后重试。</p>';
             }
         }
         
-        // 创建应用元素
-        function createAppElement(app, container) {
-            // 获取图标SVG，如果不存在则使用默认图标
-            const iconSvg = appIcons[app.id] || appIcons.appstore;
-            
-            const appElement = document.createElement('a');
-            appElement.href = `./pages/${app.path}`;
-            appElement.className = 'ios-app';
-            
-            appElement.innerHTML = `
-                <div class="ios-app-icon" style="background-color: ${app.color};">
-                    ${iconSvg}
-                </div>
-                <div class="ios-app-name">${app.name}</div>
-            `;
-            
-            container.appendChild(appElement);
-        }
-        
-        // 页面加载完成后执行
-        document.addEventListener('DOMContentLoaded', () => {
-            // 初始化主题
+        document.addEventListener('DOMContentLoaded',()=>{
             AppTheme.initialize();
-            
-            // 加载应用
             loadApps();
-            
-            // 主题切换按钮事件
-            document.getElementById('theme-toggle').addEventListener('click', () => {
-                AppTheme.toggleTheme();
-            });
+            document.getElementById('theme-toggle').addEventListener('click',()=>AppTheme.toggleTheme());
         });
     </script>
-
-    <!-- 在导航菜单适当位置添加链接 -->
-    <div class="menu-section">
-        <h3 class="menu-title">存储管理</h3>
-        <ul class="menu-list">
-            <li>
-                <a href="pages/settings/storage.html" class="menu-item">
-                    <svg viewBox="0 0 24 24" width="24" height="24">
-                        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" fill="currentColor"></path>
-                    </svg>
-                    存储设置
-                </a>
-            </li>
-            <li>
-                <a href="pages/help/s3-connection.html" class="menu-item">
-                    <svg viewBox="0 0 24 24" width="24" height="24">
-                        <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" fill="currentColor"></path>
-                    </svg>
-                    S3 连接指南
-                </a>
-            </li>
-        </ul>
-    </div>
-
-    <!-- 如果页面有特性展示部分，可以添加 S3 特性卡片 -->
-    <div class="feature-card">
-        <div class="feature-icon">
-            <svg viewBox="0 0 24 24" width="40" height="40">
-                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill="#1a73e8"></path>
-            </svg>
-        </div>
-        <h3 class="feature-title">S3 兼容存储</h3>
-        <p class="feature-description">通过 S3 协议连接到您的云存储，使用更强大的工具和客户端管理文件。</p>
-        <a href="pages/settings/storage.html" class="feature-button">配置 S3</a>
-    </div>
 </body>
 </html> 
