@@ -54,18 +54,34 @@ const imageCache = {
 
     // 获取图片URL，优先从缓存获取
     async getImageUrl(fileName) {
-        // 检查内存缓存
-        if (this.storage[fileName] && this.storage[fileName].expires > Date.now()) {
-            return this.storage[fileName].url;
-        }
-
         try {
+            // 检查内存缓存
+            if (this.storage[fileName] && this.storage[fileName].expires > Date.now()) {
+                return this.storage[fileName].url;
+            }
+
             // 从Supabase获取签名URL
             const { data, error } = await supabase.storage
                 .from(BUCKET_NAME)
                 .createSignedUrl(fileName, 60 * 60); // 1小时有效期
             
-            if (error) throw error;
+            if (error) {
+                // 尝试使用公共URL作为备选
+                const publicUrl = supabase.storage
+                    .from(BUCKET_NAME)
+                    .getPublicUrl(fileName).data.publicUrl;
+                
+                // 更新缓存
+                this.storage[fileName] = {
+                    url: publicUrl,
+                    expires: Date.now() + this.cacheLifetime
+                };
+                
+                // 保存到localStorage
+                this.saveToLocalStorage();
+                
+                return publicUrl;
+            }
             
             // 更新缓存
             this.storage[fileName] = {
@@ -79,7 +95,17 @@ const imageCache = {
             return data.signedUrl;
         } catch (error) {
             console.error(`获取图片URL失败: ${fileName}`, error);
-            return null;
+            
+            // 尝试使用公共URL作为备选
+            try {
+                const publicUrl = supabase.storage
+                    .from(BUCKET_NAME)
+                    .getPublicUrl(fileName).data.publicUrl;
+                return publicUrl;
+            } catch (e) {
+                console.error(`获取公共URL也失败: ${fileName}`, e);
+                return null;
+            }
         }
     },
     
@@ -179,6 +205,29 @@ let simpleContextMenu = null; // 会在初始化时创建
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', initialize);
 
+// 简化事件绑定方法
+function on(selectorOrEl, evt, handler) {
+    const els = typeof selectorOrEl === 'string'
+        ? document.querySelectorAll(selectorOrEl)
+        : [selectorOrEl];
+    els.forEach(el => el.addEventListener(evt, handler));
+}
+
+// 统一设置页面事件
+function setupEventHandlers() {
+    on(uploadInput, 'change', e => handleFiles(e.target.files));
+    on(closeProgressBtn, 'click', () => uploadProgressContainer.classList.add('hidden'));
+    on('#search-btn', 'click', () => { searchQuery = searchInput.value.trim().toLowerCase(); filterFiles(); });
+    on('#search-input', 'keyup', e => { if (e.key === 'Enter') { searchQuery = searchInput.value.trim().toLowerCase(); filterFiles(); }});
+    on('.view-btn', 'click', e => changeView(e.currentTarget.dataset.view));
+    on('.category', 'click', e => changeCategory(e.currentTarget.dataset.category));
+    on(closeModal, 'click', () => modal.style.display = 'none');
+    on(window, 'click', e => { if (e.target === modal) modal.style.display = 'none'; });
+    on(document, 'click', hideContextMenu);
+    on(window, 'keydown', e => { if (e.key === 'Escape') hideContextMenu(); });
+    initDragAndDrop();
+}
+
 async function initialize() {
     // 初始化图片缓存
     imageCache.init();
@@ -195,8 +244,8 @@ async function initialize() {
     // 更新存储使用情况
     await updateStorageUsage();
 
-    // 添加事件监听器
-    addEventListeners();
+    // 使用新的事件绑定方法
+    setupEventHandlers();
     
     // 创建简约右键菜单
     createSimpleContextMenu();
@@ -218,68 +267,6 @@ async function createBucketIfNotExists() {
         console.error('创建存储桶失败:', error);
         showToast('创建存储桶失败，请检查网络连接');
     }
-}
-
-// 事件监听器设置
-function addEventListeners() {
-    // 文件上传相关
-    uploadInput.addEventListener('change', (e) => handleFiles(e.target.files));
-    closeProgressBtn.addEventListener('click', () => {
-        uploadProgressContainer.classList.add('hidden');
-    });
-
-    // 拖放文件上传
-    initDragAndDrop();
-
-    // 文件查看和搜索相关
-    searchBtn.addEventListener('click', () => {
-        searchQuery = searchInput.value.trim().toLowerCase();
-        filterFiles();
-    });
-    searchInput.addEventListener('keyup', (e) => {
-        if (e.key === 'Enter') {
-            searchQuery = searchInput.value.trim().toLowerCase();
-            filterFiles();
-        }
-    });
-
-    // 视图切换
-    viewButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const view = btn.getAttribute('data-view');
-            changeView(view);
-        });
-    });
-
-    // 分类过滤
-    categoryButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const category = btn.getAttribute('data-category');
-            changeCategory(category);
-        });
-    });
-
-    // 模态框关闭
-    closeModal.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-    window.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.style.display = 'none';
-        }
-    });
-
-    // 全局点击时隐藏右键菜单
-    document.addEventListener('click', () => {
-        hideContextMenu();
-    });
-
-    // 全局按下Escape键隐藏右键菜单
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            hideContextMenu();
-        }
-    });
 }
 
 // 拖放上传功能初始化
@@ -864,7 +851,40 @@ async function handleDelete() {
 
 // 辅助函数
 function getFileType(fileName) {
+    if (!fileName) return '';
+    // 优化文件扩展名提取，处理复杂文件名和特殊格式
+    const parts = fileName.split('.');
+    if (parts.length <= 1) return '';
+    return parts[parts.length - 1].toLowerCase();
+}
+
+// 处理文件类型显示
+function getFileTypeDisplay(fileName) {
+    if (!fileName) return '';
     return fileName.split('.').pop().toUpperCase();
+}
+
+// 检查文件是否为特定类型
+function isFileOfType(fileName, typeCategory) {
+    if (!fileName || !typeCategory) return false;
+    const type = getFileType(fileName);
+    
+    // 特殊处理iOS设备拍摄的照片以及下划线命名的特殊格式
+    if (typeCategory === 'images') {
+        // 检查iOS照片格式
+        if (fileName.toLowerCase().includes('_ios')) {
+            return true;
+        }
+        
+        // 检查带下划线的特殊文件名，如果文件名包含下划线，先进一步分析
+        if (fileName.includes('_')) {
+            // 检查后缀名是否为常见图片格式
+            const commonImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            return commonImageExtensions.some(ext => fileName.toLowerCase().endsWith(`.${ext}`));
+        }
+    }
+    
+    return ALLOWED_FILE_TYPES[typeCategory] && ALLOWED_FILE_TYPES[typeCategory].includes(type);
 }
 
 // 显示加载状态
@@ -914,24 +934,25 @@ function renderFiles(files) {
         
         // 获取文件信息
         const fileType = getFileType(file.name);
+        const fileTypeDisplay = getFileTypeDisplay(file.name);
         const fileTypeClass = getFileTypeClass(fileType);
         const fileIcon = getFileIcon(fileType);
         const fileSize = formatBytes(file.metadata?.size || 0);
         const fileDate = formatDate(new Date(file.metadata?.lastModified || Date.now()));
-        const isImage = ALLOWED_FILE_TYPES.images.includes(fileType.toLowerCase());
+        const isImage = isFileOfType(file.name, 'images');
         
         // 创建文件元素 - 不再在元素上添加list-view类，由父容器样式控制
         const fileEl = document.createElement('div');
         fileEl.className = 'file-item';
         fileEl.setAttribute('data-name', file.name);
-        fileEl.setAttribute('data-type', fileType);
+        fileEl.setAttribute('data-type', fileTypeDisplay);
         
         if (currentView === 'grid') {
             // 网格视图 - 卡片式布局
             fileEl.innerHTML = `
                 <div class="file-icon ${fileTypeClass}">
                     ${isImage ? '' : fileIcon}
-                    <span class="file-type-badge">${fileType}</span>
+                    <span class="file-type-badge">${fileTypeDisplay}</span>
                 </div>
                 <div class="file-name" title="${file.name}">${file.name}</div>
                 <div class="file-meta">
@@ -949,7 +970,7 @@ function renderFiles(files) {
             fileEl.innerHTML = `
                 <div class="file-icon ${fileTypeClass}">${fileIcon}</div>
                 <div class="file-name" title="${file.name}">${file.name}</div>
-                <div class="file-type">${fileType}</div>
+                <div class="file-type">${fileTypeDisplay}</div>
                 <div class="file-size">${fileSize}</div>
                 <div class="file-date">${fileDate}</div>
                 <div class="file-actions">
@@ -1031,34 +1052,107 @@ async function generateThumbnail(fileName, fileEl) {
         // 显示加载状态
         iconDiv.innerHTML = '<div class="thumbnail-loading"><div class="spinner"></div></div>';
         
-        // 从缓存获取图片URL
-        const imageUrl = await imageCache.getImageUrl(fileName);
-        if (!imageUrl) throw new Error('获取图片URL失败');
+        // 先尝试从缓存获取图片URL
+        let imageUrl = await imageCache.getImageUrl(fileName);
+        
+        // 如果获取失败，尝试使用公共URL
+        if (!imageUrl) {
+            try {
+                const publicUrlData = supabase.storage
+                    .from(BUCKET_NAME)
+                    .getPublicUrl(fileName);
+                
+                if (publicUrlData && publicUrlData.data && publicUrlData.data.publicUrl) {
+                    imageUrl = publicUrlData.data.publicUrl;
+                } else {
+                    throw new Error('获取公共URL数据失败');
+                }
+            } catch (e) {
+                console.error(`获取缩略图公共URL失败: ${fileName}`, e);
+            }
+            
+            if (!imageUrl) throw new Error('获取图片URL失败');
+        }
         
         // 创建图片对象并加载
         const img = new Image();
+        let retryCount = 0;
+        const maxRetries = 3; // 最多尝试3次
         
         img.onload = () => {
             // 图片加载完成，设置为背景
             iconDiv.style.backgroundImage = `url('${imageUrl}')`;
             iconDiv.innerHTML = '';
             
-            // 添加文件类型标签
-            const typeTag = document.createElement('span');
-            typeTag.className = 'file-type-badge';
-            typeTag.textContent = getFileType(fileName);
-            iconDiv.appendChild(typeTag);
+            // 添加文件类型标签 - 只为非预览格式添加标签
+            if (!isPreviewableImage(fileName)) {
+                const typeTag = document.createElement('span');
+                typeTag.className = 'file-type-badge';
+                typeTag.textContent = getFileTypeDisplay(fileName);
+                iconDiv.appendChild(typeTag);
+            }
         };
         
-        img.onerror = () => {
-            // 图片加载失败，显示默认图标
+        img.onerror = async () => {
+            console.error(`缩略图加载失败 (${retryCount+1}/${maxRetries}): ${fileName}`);
+            
+            if (retryCount < maxRetries) {
+                retryCount++;
+                
+                // 尝试不同的方法获取URL
+                if (retryCount === 1) {
+                    // 第一次重试：直接使用公共URL
+                    try {
+                        const publicUrlData = supabase.storage
+                            .from(BUCKET_NAME)
+                            .getPublicUrl(fileName);
+                        
+                        if (publicUrlData && publicUrlData.data && publicUrlData.data.publicUrl) {
+                            const newUrl = publicUrlData.data.publicUrl;
+                            if (newUrl !== imageUrl) {
+                                imageUrl = newUrl;
+                                img.src = imageUrl;
+                                return;
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`缩略图第${retryCount}次重试失败:`, error);
+                    }
+                } else if (retryCount === 2) {
+                    // 第二次重试：尝试获取签名URL
+                    try {
+                        const { data, error } = await supabase.storage
+                            .from(BUCKET_NAME)
+                            .createSignedUrl(fileName, 60 * 60);
+                        
+                        if (!error && data && data.signedUrl !== imageUrl) {
+                            imageUrl = data.signedUrl;
+                            img.src = imageUrl;
+                            return;
+                        }
+                    } catch (error) {
+                        console.error(`缩略图第${retryCount}次重试失败:`, error);
+                    }
+                } else if (retryCount === 3) {
+                    // 第三次重试：添加时间戳避免缓存问题
+                    try {
+                        imageUrl = imageUrl.split('?')[0] + '?t=' + Date.now();
+                        img.src = imageUrl;
+                        return;
+                    } catch (error) {
+                        console.error(`缩略图第${retryCount}次重试失败:`, error);
+                    }
+                }
+            }
+            
+            // 所有重试都失败，显示默认图标
             iconDiv.style.backgroundImage = '';
             iconDiv.innerHTML = getFileIcon(getFileType(fileName));
             
             // 添加文件类型标签
             const typeTag = document.createElement('span');
             typeTag.className = 'file-type-badge';
-            typeTag.textContent = getFileType(fileName);
+            typeTag.textContent = getFileTypeDisplay(fileName);
             iconDiv.appendChild(typeTag);
         };
         
@@ -1074,15 +1168,21 @@ async function generateThumbnail(fileName, fileEl) {
             // 添加文件类型标签
             const typeTag = document.createElement('span');
             typeTag.className = 'file-type-badge';
-            typeTag.textContent = getFileType(fileName);
+            typeTag.textContent = getFileTypeDisplay(fileName);
             iconDiv.appendChild(typeTag);
         }
     }
 }
 
+// 检查文件是否为预览类型的图片
+function isPreviewableImage(fileName) {
+    const type = getFileType(fileName);
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(type);
+}
+
 // 根据文件类型获取CSS类
 function getFileTypeClass(fileType) {
-    const type = fileType.toLowerCase();
+    const type = (fileType || '').toLowerCase();
     
     if (ALLOWED_FILE_TYPES.images.includes(type)) return 'file-image';
     if (ALLOWED_FILE_TYPES.documents.includes(type)) return 'file-document';
@@ -1096,7 +1196,7 @@ function getFileTypeClass(fileType) {
 
 // 根据文件类型获取图标
 function getFileIcon(fileType) {
-    const type = fileType.toLowerCase();
+    const type = (fileType || '').toLowerCase();
     
     if (ALLOWED_FILE_TYPES.images.includes(type)) 
         return '<i class="fas fa-file-image"></i>';
@@ -1167,234 +1267,51 @@ async function updateStorageUsage() {
     }
 }
 
-// 文件交互
+// 通用预览函数（图片/视频/音频/其他文件）
+async function previewFile(file) {
+    const type = getFileType(file.name);
+    const url = await getFileUrl(file.name);
+    let mediaHtml;
+    if (ALLOWED_FILE_TYPES.images.includes(type)) {
+        mediaHtml = `<img src="${url}" alt="${file.name}" style="max-width:100%;max-height:50vh;object-fit:contain;">`;
+    } else if (ALLOWED_FILE_TYPES.videos.includes(type)) {
+        mediaHtml = `<video controls style="max-width:100%;max-height:50vh;object-fit:contain;" src="${url}">浏览器不支持视频预览</video>`;
+    } else if (ALLOWED_FILE_TYPES.audios.includes(type)) {
+        mediaHtml = `<audio controls style="max-width:100%;max-height:50vh;object-fit:contain;" src="${url}">浏览器不支持音频预览</audio>`;
+    } else {
+        const size = formatBytes(file.metadata?.size || 0);
+        const date = file.metadata?.lastModified ? new Date(file.metadata.lastModified).toLocaleString() : '未知';
+        mediaHtml = `
+            <div class="file-details">
+                <div class="file-icon large ${getFileTypeClass(type)}">${getFileIcon(type)}</div>
+                <table>
+                    <tr><td>名称:</td><td>${file.name}</td></tr>
+                    <tr><td>类型:</td><td>${type} 文件</td></tr>
+                    <tr><td>大小:</td><td>${size}</td></tr>
+                    <tr><td>修改日期:</td><td>${date}</td></tr>
+                </table>
+            </div>`;
+    }
+    modalTitle.textContent = file.name;
+    modalBody.innerHTML = `
+        <div class="preview-container" style="text-align:center;">${mediaHtml}</div>
+        <div class="file-actions mt-3">
+            <button id="modal-download" class="btn btn-primary"><i class="fas fa-download"></i> 下载</button>
+            <button id="modal-share" class="btn btn-success"><i class="fas fa-share-alt"></i> 分享</button>
+            <button id="modal-rename" class="btn btn-info"><i class="fas fa-edit"></i> 重命名</button>
+            <button id="modal-delete" class="btn btn-danger"><i class="fas fa-trash"></i> 删除</button>
+        </div>`;
+    modal.style.display = 'block';
+    on('#modal-download','click',downloadSelectedFile);
+    on('#modal-share','click',shareSelectedFile);
+    on('#modal-rename','click',showRenameForm);
+    on('#modal-delete','click',confirmDeleteFile);
+}
+
+// 更新点击处理函数为通用 previewFile
 function handleFileClick(file) {
     selectedFile = file;
-    
-    const fileType = getFileType(file.name).toLowerCase();
-    
-    // 处理不同类型的文件
-    if (ALLOWED_FILE_TYPES.images.includes(fileType)) {
-        previewImage(file);
-    } else if (ALLOWED_FILE_TYPES.videos.includes(fileType)) {
-        previewVideo(file);
-    } else if (ALLOWED_FILE_TYPES.audios.includes(fileType)) {
-        previewAudio(file);
-    } else {
-        // 对于其他文件，显示文件信息
-        showFileInfo(file);
-    }
-}
-
-// 预览图片
-async function previewImage(file) {
-    modalTitle.textContent = file.name;
-    modalBody.innerHTML = '<div class="loading-spinner"></div>';
-    modal.style.display = 'block';
-    try {
-        // 从缓存获取图片URL
-        const imageUrl = await imageCache.getImageUrl(file.name);
-        if (!imageUrl) throw new Error('获取图片URL失败');
-        
-        modalBody.innerHTML = `
-            <div class="image-preview" style="display:flex;justify-content:center;align-items:center;max-height:60vh;overflow:auto;">
-                <img src="${imageUrl}" alt="${file.name}" style="max-width:100%;max-height:50vh;object-fit:contain;">
-            </div>
-            <div class="file-actions mt-3">
-                <button id="modal-download" class="btn btn-primary">
-                    <i class="fas fa-download"></i> 下载
-                </button>
-                <button id="modal-share" class="btn btn-success">
-                    <i class="fas fa-share-alt"></i> 分享
-                </button>
-                <button id="modal-rename" class="btn btn-info">
-                    <i class="fas fa-edit"></i> 重命名
-                </button>
-                <button id="modal-delete" class="btn btn-danger">
-                    <i class="fas fa-trash"></i> 删除
-                </button>
-            </div>
-        `;
-        // 确保selectedFile已设置
-        selectedFile = file;
-        
-        // 添加事件监听器
-        const modalDownload = document.getElementById('modal-download');
-        const modalShare = document.getElementById('modal-share');
-        const modalRename = document.getElementById('modal-rename');
-        const modalDelete = document.getElementById('modal-delete');
-        
-        if (modalDownload) modalDownload.addEventListener('click', downloadSelectedFile);
-        if (modalShare) modalShare.addEventListener('click', shareSelectedFile);
-        if (modalRename) modalRename.addEventListener('click', showRenameForm);
-        if (modalDelete) modalDelete.addEventListener('click', confirmDeleteFile);
-    } catch (error) {
-        modalBody.innerHTML = '<div class="error-message">无法预览图片</div>';
-        console.error('预览图片失败:', error);
-    }
-}
-
-// 预览视频
-async function previewVideo(file) {
-    modalTitle.textContent = file.name;
-    modalBody.innerHTML = '<div class="loading-spinner"></div>';
-    modal.style.display = 'block';
-    try {
-        const fileUrl = await getFileUrl(file.name);
-        modalBody.innerHTML = `
-            <div class="video-preview" style="display:flex;justify-content:center;align-items:center;max-height:60vh;overflow:auto;">
-                <video controls style="max-width:100%;max-height:50vh;object-fit:contain;">
-                    <source src="${fileUrl}" type="video/${getFileType(file.name).toLowerCase()}">
-                    您的浏览器不支持视频预览
-                </video>
-            </div>
-            <div class="file-actions mt-3">
-                <button id="modal-download" class="btn btn-primary">
-                    <i class="fas fa-download"></i> 下载
-                </button>
-                <button id="modal-share" class="btn btn-success">
-                    <i class="fas fa-share-alt"></i> 分享
-                </button>
-                <button id="modal-rename" class="btn btn-info">
-                    <i class="fas fa-edit"></i> 重命名
-                </button>
-                <button id="modal-delete" class="btn btn-danger">
-                    <i class="fas fa-trash"></i> 删除
-                </button>
-            </div>
-        `;
-        // 确保selectedFile已设置
-        selectedFile = file;
-        
-        // 添加事件监听器
-        const modalDownload = document.getElementById('modal-download');
-        const modalShare = document.getElementById('modal-share');
-        const modalRename = document.getElementById('modal-rename');
-        const modalDelete = document.getElementById('modal-delete');
-        
-        if (modalDownload) modalDownload.addEventListener('click', downloadSelectedFile);
-        if (modalShare) modalShare.addEventListener('click', shareSelectedFile);
-        if (modalRename) modalRename.addEventListener('click', showRenameForm);
-        if (modalDelete) modalDelete.addEventListener('click', confirmDeleteFile);
-    } catch (error) {
-        modalBody.innerHTML = '<div class="error-message">无法预览视频</div>';
-        console.error('预览视频失败:', error);
-    }
-}
-
-// 预览音频
-async function previewAudio(file) {
-    modalTitle.textContent = file.name;
-    modalBody.innerHTML = '<div class="loading-spinner"></div>';
-    modal.style.display = 'block';
-    try {
-        const fileUrl = await getFileUrl(file.name);
-        modalBody.innerHTML = `
-            <div class="audio-preview" style="display:flex;justify-content:center;align-items:center;max-height:60vh;overflow:auto;">
-                <audio controls style="max-width:100%;max-height:50vh;object-fit:contain;">
-                    <source src="${fileUrl}" type="audio/${getFileType(file.name).toLowerCase()}">
-                    您的浏览器不支持音频预览
-                </audio>
-            </div>
-            <div class="file-actions mt-3">
-                <button id="modal-download" class="btn btn-primary">
-                    <i class="fas fa-download"></i> 下载
-                </button>
-                <button id="modal-share" class="btn btn-success">
-                    <i class="fas fa-share-alt"></i> 分享
-                </button>
-                <button id="modal-rename" class="btn btn-info">
-                    <i class="fas fa-edit"></i> 重命名
-                </button>
-                <button id="modal-delete" class="btn btn-danger">
-                    <i class="fas fa-trash"></i> 删除
-                </button>
-            </div>
-        `;
-        // 确保selectedFile已设置
-        selectedFile = file;
-        
-        // 添加事件监听器
-        const modalDownload = document.getElementById('modal-download');
-        const modalShare = document.getElementById('modal-share');
-        const modalRename = document.getElementById('modal-rename');
-        const modalDelete = document.getElementById('modal-delete');
-        
-        if (modalDownload) modalDownload.addEventListener('click', downloadSelectedFile);
-        if (modalShare) modalShare.addEventListener('click', shareSelectedFile);
-        if (modalRename) modalRename.addEventListener('click', showRenameForm);
-        if (modalDelete) modalDelete.addEventListener('click', confirmDeleteFile);
-    } catch (error) {
-        modalBody.innerHTML = '<div class="error-message">无法预览音频</div>';
-        console.error('预览音频失败:', error);
-    }
-}
-
-// 显示文件信息
-function showFileInfo(file) {
-    modalTitle.textContent = file.name;
-    const fileSize = formatBytes(file.metadata?.size || 0);
-    const fileDate = file.metadata?.lastModified ? new Date(file.metadata.lastModified).toLocaleString() : '未知';
-    const fileType = getFileType(file.name);
-    
-    modalBody.innerHTML = `
-        <div class="file-details">
-            <div class="file-icon large ${getFileTypeClass(fileType)}">
-                ${getFileIcon(fileType)}
-            </div>
-            <table class="file-info-table">
-                <tr>
-                    <td>名称:</td>
-                    <td>${file.name}</td>
-                </tr>
-                <tr>
-                    <td>类型:</td>
-                    <td>${fileType} 文件</td>
-                </tr>
-                <tr>
-                    <td>大小:</td>
-                    <td>${fileSize}</td>
-                </tr>
-                <tr>
-                    <td>修改日期:</td>
-                    <td>${fileDate}</td>
-                </tr>
-            </table>
-        </div>
-        <div class="file-actions mt-3">
-            <button id="modal-download" class="btn btn-primary">
-                <i class="fas fa-download"></i> 下载
-            </button>
-            <button id="modal-share" class="btn btn-success">
-                <i class="fas fa-share-alt"></i> 分享
-            </button>
-            <button id="modal-rename" class="btn btn-info">
-                <i class="fas fa-edit"></i> 重命名
-            </button>
-            <button id="modal-delete" class="btn btn-danger">
-                <i class="fas fa-trash"></i> 删除
-            </button>
-        </div>
-    `;
-    
-    // 确保selectedFile已设置
-    selectedFile = file;
-    
-    // 添加事件监听器
-    const modalDownload = document.getElementById('modal-download');
-    const modalShare = document.getElementById('modal-share');
-    const modalRename = document.getElementById('modal-rename');
-    const modalDelete = document.getElementById('modal-delete');
-    
-    if (modalDownload) modalDownload.addEventListener('click', downloadSelectedFile);
-    if (modalShare) modalShare.addEventListener('click', shareSelectedFile);
-    if (modalRename) modalRename.addEventListener('click', showRenameForm);
-    if (modalDelete) modalDelete.addEventListener('click', confirmDeleteFile);
-}
-
-// 同样修改获取文件URL的函数
-function getFileUrl(filename) {
-    return supabase.storage.from(BUCKET_NAME).getPublicUrl(filename).data.publicUrl;
+    previewFile(file);
 }
 
 // 新增 - 创建简约右键菜单
