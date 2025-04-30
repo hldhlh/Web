@@ -1077,4 +1077,54 @@ header {
     background-position: center 20px;
     background-repeat: no-repeat;
     padding-top: 100px;
+}
+
+/* 简约右键菜单 */
+.simple-context-menu {
+    position: fixed;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    padding: 5px 0;
+    min-width: 150px;
+    z-index: 1000;
+    top: 0;
+    left: 0;
+    will-change: transform;
+    transform-origin: top left;
+}
+
+.simple-context-menu .menu-item {
+    padding: 8px 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.simple-context-menu .menu-item:hover {
+    background-color: var(--primary-light);
+}
+
+.simple-context-menu .menu-item svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-light);
+}
+
+.simple-context-menu .menu-item.delete {
+    color: var(--danger-color);
+}
+
+.simple-context-menu .menu-item.delete svg {
+    color: var(--danger-color);
+}
+
+.simple-context-menu .menu-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 5px 0;
 } 

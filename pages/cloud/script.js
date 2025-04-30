@@ -162,7 +162,6 @@ const modal = document.getElementById('modal');
 const modalTitle = document.getElementById('modal-title');
 const modalBody = document.getElementById('modal-body');
 const closeModal = document.querySelector('.close-modal');
-const contextMenu = document.getElementById('file-context-menu');
 const uploadProgressContainer = document.getElementById('upload-progress-container');
 const closeProgressBtn = document.getElementById('close-progress');
 const uploadProgressItems = document.getElementById('upload-progress-items');
@@ -173,6 +172,9 @@ const toast = document.getElementById('toast');
 const toastMessage = document.getElementById('toast-message');
 const dropArea = document.getElementById('drop-area');
 const dropOverlay = document.getElementById('drop-overlay');
+
+// 新增 - 简约右键菜单元素
+let simpleContextMenu = null; // 会在初始化时创建
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', initialize);
@@ -195,6 +197,9 @@ async function initialize() {
 
     // 添加事件监听器
     addEventListeners();
+    
+    // 创建简约右键菜单
+    createSimpleContextMenu();
 }
 
 // Supabase 存储桶创建
@@ -264,16 +269,17 @@ function addEventListeners() {
         }
     });
 
-    // 右键菜单相关
+    // 全局点击时隐藏右键菜单
     document.addEventListener('click', () => {
-        contextMenu.style.display = 'none';
+        hideContextMenu();
     });
 
-    // 右键菜单项
-    document.getElementById('context-download').addEventListener('click', downloadSelectedFile);
-    document.getElementById('context-share').addEventListener('click', shareSelectedFile);
-    document.getElementById('context-rename').addEventListener('click', showRenameForm);
-    document.getElementById('context-delete').addEventListener('click', confirmDeleteFile);
+    // 全局按下Escape键隐藏右键菜单
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            hideContextMenu();
+        }
+    });
 }
 
 // 拖放上传功能初始化
@@ -970,7 +976,8 @@ function renderFiles(files) {
         // 右键菜单
         fileEl.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            showContextMenu(e, file);
+            selectedFile = file;
+            showSimpleContextMenu(e, file);
         });
 
         // 添加到文件列表
@@ -1388,4 +1395,133 @@ function showFileInfo(file) {
 // 同样修改获取文件URL的函数
 function getFileUrl(filename) {
     return supabase.storage.from(BUCKET_NAME).getPublicUrl(filename).data.publicUrl;
+}
+
+// 新增 - 创建简约右键菜单
+function createSimpleContextMenu() {
+    // 如果已存在，先移除
+    if (simpleContextMenu) {
+        document.body.removeChild(simpleContextMenu);
+        simpleContextMenu = null;
+    }
+}
+
+// 新增 - 显示简约右键菜单
+function showSimpleContextMenu(e, file) {
+    e.preventDefault();
+    
+    // 如果已存在菜单，先移除
+    if (simpleContextMenu) {
+        document.body.removeChild(simpleContextMenu);
+        simpleContextMenu = null;
+    }
+    
+    // 创建菜单容器
+    simpleContextMenu = document.createElement('div');
+    simpleContextMenu.className = 'simple-context-menu';
+    
+    // 创建菜单项
+    simpleContextMenu.innerHTML = `
+        <div class="menu-item download-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            下载
+        </div>
+        <div class="menu-item share-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            分享链接
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item rename-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            重命名
+        </div>
+        <div class="menu-item delete-item delete">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            删除
+        </div>
+    `;
+    
+    // 添加到文档
+    document.body.appendChild(simpleContextMenu);
+    
+    // 先设置初始位置，确保元素可见
+    simpleContextMenu.style.left = `${e.pageX}px`;
+    simpleContextMenu.style.top = `${e.pageY}px`;
+    
+    // 确保菜单不超出视口边界
+    const menuRect = simpleContextMenu.getBoundingClientRect();
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    // 调整位置
+    if (menuRect.right > windowWidth) {
+        simpleContextMenu.style.left = `${windowWidth - menuRect.width}px`;
+    }
+    
+    if (menuRect.bottom > windowHeight) {
+        simpleContextMenu.style.top = `${windowHeight - menuRect.height}px`;
+    }
+    
+    // 防止点击菜单时触发全局点击事件
+    simpleContextMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+    
+    // 设置菜单项事件处理
+    const downloadItem = simpleContextMenu.querySelector('.download-item');
+    const shareItem = simpleContextMenu.querySelector('.share-item');
+    const renameItem = simpleContextMenu.querySelector('.rename-item');
+    const deleteItem = simpleContextMenu.querySelector('.delete-item');
+    
+    // 下载文件
+    downloadItem.addEventListener('click', () => {
+        selectedFile = file;
+        downloadSelectedFile();
+        hideContextMenu();
+    });
+    
+    // 分享文件
+    shareItem.addEventListener('click', () => {
+        selectedFile = file;
+        shareSelectedFile();
+        hideContextMenu();
+    });
+    
+    // 重命名文件
+    renameItem.addEventListener('click', () => {
+        selectedFile = file;
+        showRenameForm();
+        hideContextMenu();
+    });
+    
+    // 删除文件
+    deleteItem.addEventListener('click', () => {
+        selectedFile = file;
+        confirmDeleteFile();
+        hideContextMenu();
+    });
+}
+
+// 添加隐藏上下文菜单的辅助函数
+function hideContextMenu() {
+    if (simpleContextMenu) {
+        document.body.removeChild(simpleContextMenu);
+        simpleContextMenu = null;
+    }
 }
