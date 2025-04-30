@@ -6,12 +6,133 @@ const BUCKET_NAME = 'cloud-storage';
 // 初始化 Supabase 客户端
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// 辅助函数 - 显示提示消息
+function showToast(message, duration = 3000) {
+    if (!toast || !toastMessage) return;
+    
+    // 设置消息
+    toastMessage.textContent = message;
+    
+    // 显示提示
+    toast.classList.remove('hidden');
+    
+    // 设置自动隐藏
+    clearTimeout(window.toastTimeout);
+    window.toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+    }, duration);
+}
+
 // 全局变量
 let currentCategory = 'all';
 let currentView = 'grid';
 let currentFiles = [];
 let selectedFile = null;
 let searchQuery = '';
+// 图片缓存系统
+const imageCache = {
+    storage: {}, // 内存缓存
+    localStorageKey: 'cloud_image_cache', // localStorage 键名
+    cacheLifetime: 24 * 60 * 60 * 1000, // 缓存有效期（24小时）
+
+    // 初始化缓存
+    init() {
+        try {
+            // 从 localStorage 读取缓存数据
+            const storedCache = localStorage.getItem(this.localStorageKey);
+            if (storedCache) {
+                const parsedCache = JSON.parse(storedCache);
+                // 清理过期缓存
+                this.cleanExpiredCache(parsedCache);
+                this.storage = parsedCache;
+            }
+        } catch (error) {
+            console.warn('初始化图片缓存失败:', error);
+            this.storage = {};
+        }
+    },
+
+    // 获取图片URL，优先从缓存获取
+    async getImageUrl(fileName) {
+        // 检查内存缓存
+        if (this.storage[fileName] && this.storage[fileName].expires > Date.now()) {
+            return this.storage[fileName].url;
+        }
+
+        try {
+            // 从Supabase获取签名URL
+            const { data, error } = await supabase.storage
+                .from(BUCKET_NAME)
+                .createSignedUrl(fileName, 60 * 60); // 1小时有效期
+            
+            if (error) throw error;
+            
+            // 更新缓存
+            this.storage[fileName] = {
+                url: data.signedUrl,
+                expires: Date.now() + this.cacheLifetime
+            };
+            
+            // 保存到localStorage
+            this.saveToLocalStorage();
+            
+            return data.signedUrl;
+        } catch (error) {
+            console.error(`获取图片URL失败: ${fileName}`, error);
+            return null;
+        }
+    },
+    
+    // 保存缓存到localStorage
+    saveToLocalStorage() {
+        try {
+            localStorage.setItem(this.localStorageKey, JSON.stringify(this.storage));
+        } catch (error) {
+            console.warn('保存缓存到localStorage失败:', error);
+            
+            // 如果是存储空间不足，尝试清理一半的缓存
+            if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+                this.cleanOldestHalf();
+                try {
+                    localStorage.setItem(this.localStorageKey, JSON.stringify(this.storage));
+                } catch (innerError) {
+                    console.error('清理后仍无法保存缓存:', innerError);
+                }
+            }
+        }
+    },
+    
+    // 清理过期缓存
+    cleanExpiredCache(cacheObj) {
+        const now = Date.now();
+        for (const key in cacheObj) {
+            if (cacheObj[key].expires < now) {
+                delete cacheObj[key];
+            }
+        }
+    },
+    
+    // 清理一半最旧的缓存
+    cleanOldestHalf() {
+        const entries = Object.entries(this.storage);
+        if (entries.length === 0) return;
+        
+        // 按过期时间排序
+        entries.sort((a, b) => a[1].expires - b[1].expires);
+        
+        // 删除前一半的条目
+        const halfLength = Math.floor(entries.length / 2);
+        for (let i = 0; i < halfLength; i++) {
+            delete this.storage[entries[i][0]];
+        }
+    },
+    
+    // 清空缓存
+    clear() {
+        this.storage = {};
+        localStorage.removeItem(this.localStorageKey);
+    }
+};
 
 // 文件上传配置
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -57,8 +178,14 @@ const dropOverlay = document.getElementById('drop-overlay');
 document.addEventListener('DOMContentLoaded', initialize);
 
 async function initialize() {
+    // 初始化图片缓存
+    imageCache.init();
+    
     // 创建存储桶（如果不存在）
     await createBucketIfNotExists();
+
+    // 设置初始视图样式
+    fileList.className = `file-list ${currentView}-view`;
 
     // 加载文件列表
     await loadFiles();
@@ -301,7 +428,7 @@ function addFileToUploadQueue(file, fileId) {
     progressItem.innerHTML = `
         <span class="upload-file-name">${file.name}</span>
         <div class="upload-progress-bar">
-            <div id="${fileId}" class="upload-progress"></div>
+            <div id="${fileId}" class="upload-progress" style="width: 0%;"></div>
         </div>
         <div class="upload-status">
             <span id="${fileId}-status">准备上传...</span>
@@ -309,9 +436,17 @@ function addFileToUploadQueue(file, fileId) {
         </div>
     `;
     uploadProgressItems.appendChild(progressItem);
+    
+    // 显示上传进度容器
+    uploadProgressContainer.classList.remove('hidden');
 }
 
 // 处理文件上传
+function sanitizeFileName(name) {
+    // 只允许字母、数字、点、下划线、短横线
+    return name.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
 async function processFileUpload(file, fileId) {
     // 检查文件大小
     if (file.size > MAX_FILE_SIZE) {
@@ -334,8 +469,9 @@ async function processFileUpload(file, fileId) {
     }
     
     // 检查文件名是否已存在
+    const safeName = sanitizeFileName(file.name);
     const fileExists = currentFiles.some(existingFile => 
-        existingFile.name.toLowerCase() === file.name.toLowerCase());
+        existingFile.name.toLowerCase() === safeName.toLowerCase());
     
     // 如果文件已存在，询问是否覆盖
     if (fileExists) {
@@ -351,28 +487,103 @@ async function processFileUpload(file, fileId) {
     }
     
     try {
+        // 获取DOM元素引用
+        const progressEl = document.getElementById(fileId);
+        const percentEl = document.getElementById(`${fileId}-percent`);
+        const statusEl = document.getElementById(`${fileId}-status`);
+        
         // 更新状态为上传中
-        document.getElementById(`${fileId}-status`).textContent = '上传中...';
+        if (statusEl) {
+            statusEl.textContent = '上传中...';
+        }
+        
+        // 添加进度条脉冲动画
+        if (progressEl) {
+            progressEl.classList.add('uploading');
+        }
+        
+        // 创建一个用于显示模拟进度的变量和标志
+        let simulatedPercent = 0;
+        let isUploading = true;
+        let lastRealPercent = 0;
+        
+        // 创建模拟进度更新的定时器，即使服务器没有实时返回进度也能看到进度条动画
+        const progressSimulator = setInterval(() => {
+            if (!isUploading) {
+                clearInterval(progressSimulator);
+                return;
+            }
+            
+            // 模拟进度，最多到95%，剩下的5%留给实际完成时
+            // 进度增量逐渐减小，模拟真实上传速度变化
+            const increment = Math.max(0.5, (95 - simulatedPercent) / 20);
+            simulatedPercent = Math.min(95, simulatedPercent + increment);
+            
+            // 如果有真实进度且大于模拟进度，则使用真实进度
+            const displayPercent = Math.max(lastRealPercent, Math.floor(simulatedPercent));
+            
+            // 更新UI
+            if (progressEl) {
+                progressEl.style.width = `${displayPercent}%`;
+            }
+            
+            if (percentEl) {
+                percentEl.textContent = `${displayPercent}%`;
+            }
+        }, 200); // 每200毫秒更新一次模拟进度
+        
+        // 创建一个处理实际进度更新的函数
+        const updateProgress = (progress) => {
+            const percent = Math.round((progress.loaded / progress.total) * 100);
+            lastRealPercent = percent; // 保存实际进度
+            
+            // 如果实际进度达到100%，停止模拟
+            if (percent >= 100) {
+                isUploading = false;
+                
+                if (progressEl) {
+                    progressEl.classList.remove('uploading');
+                    progressEl.style.width = '100%';
+                }
+                
+                if (percentEl) {
+                    percentEl.textContent = '100%';
+                }
+            }
+        };
         
         // 上传文件到Supabase
         const { data, error } = await supabase.storage
             .from(BUCKET_NAME)
-            .upload(file.name, file, {
+            .upload(safeName, file, {
                 cacheControl: '3600',
                 upsert: true, // 允许覆盖已有文件
-                onUploadProgress: (progress) => {
-                    const percent = Math.round((progress.loaded / progress.total) * 100);
-                    document.getElementById(fileId).style.width = `${percent}%`;
-                    document.getElementById(`${fileId}-percent`).textContent = `${percent}%`;
-                }
+                contentType: file.type || 'application/octet-stream',
+                onUploadProgress: updateProgress
             });
+            
+        // 标记上传完成，停止模拟器
+        isUploading = false;
+        clearInterval(progressSimulator);
 
         if (error) throw error;
         
         // 更新状态为完成
-        document.getElementById(fileId).classList.add('complete');
-        document.getElementById(`${fileId}-status`).textContent = '上传完成';
-        document.getElementById(`${fileId}-percent`).textContent = '100%';
+        if (progressEl) {
+            progressEl.classList.remove('uploading');
+            progressEl.classList.add('complete');
+            progressEl.style.width = '100%';
+            // 添加完成时的动画效果
+            progressEl.classList.add('complete-animation');
+        }
+        
+        if (statusEl) {
+            statusEl.textContent = '上传完成';
+        }
+        
+        if (percentEl) {
+            percentEl.textContent = '100%';
+        }
         
         // 更新文件列表
         await loadFiles();
@@ -382,9 +593,25 @@ async function processFileUpload(file, fileId) {
         
     } catch (error) {
         console.error(`上传文件 ${file.name} 失败:`, error);
-        document.getElementById(fileId).classList.add('error');
-        document.getElementById(`${fileId}-status`).textContent = '上传失败';
-        document.getElementById(`${fileId}-percent`).textContent = '错误';
+        const progressEl = document.getElementById(fileId);
+        const statusEl = document.getElementById(`${fileId}-status`);
+        const percentEl = document.getElementById(`${fileId}-percent`);
+        
+        if (progressEl) {
+            progressEl.classList.remove('uploading');
+            progressEl.classList.add('error');
+            // 添加错误时的动画效果
+            progressEl.classList.add('error-animation');
+        }
+        
+        if (statusEl) {
+            statusEl.textContent = '上传失败';
+        }
+        
+        if (percentEl) {
+            percentEl.textContent = '错误';
+        }
+        
         showToast(`上传文件 ${file.name} 失败: ${error.message}`);
     }
 }
@@ -397,7 +624,13 @@ function changeView(view) {
     // 给当前选中的视图按钮添加active类
     document.querySelector(`.view-btn[data-view="${view}"]`).classList.add('active');
     
+    // 更新当前视图模式
     currentView = view;
+    
+    // 更新文件列表容器的类
+    fileList.className = `file-list ${view}-view`;
+    
+    // 重新过滤和渲染文件
     filterFiles();
 }
 
@@ -648,39 +881,65 @@ function renderFiles(files) {
         return;
     }
 
+    // 确保文件列表容器有正确的类名
+    fileList.className = `file-list ${currentView}-view`;
+    
+    // 清空文件列表
     fileList.innerHTML = '';
+    
+    // 添加列表视图的表头
+    if (currentView === 'list') {
+        const header = document.createElement('div');
+        header.className = 'file-list-header';
+        header.innerHTML = `
+            <div></div>
+            <div>文件名</div>
+            <div>类型</div>
+            <div>大小</div>
+            <div>日期</div>
+            <div>操作</div>
+        `;
+        fileList.appendChild(header);
+    }
 
+    // 渲染每个文件
     files.forEach(file => {
         if (file.name === '.emptyFolderPlaceholder') return; // 忽略占位文件
         
-        // 获取文件扩展名和类型
+        // 获取文件信息
         const fileType = getFileType(file.name);
         const fileTypeClass = getFileTypeClass(fileType);
         const fileIcon = getFileIcon(fileType);
         const fileSize = formatBytes(file.metadata?.size || 0);
-        const fileUrl = getFileUrl(file.name);
-        const fileDate = file.metadata?.lastModified ? new Date(file.metadata.lastModified).toLocaleString() : '未知';
-
-        // 创建文件元素
+        const fileDate = formatDate(new Date(file.metadata?.lastModified || Date.now()));
+        const isImage = ALLOWED_FILE_TYPES.images.includes(fileType.toLowerCase());
+        
+        // 创建文件元素 - 不再在元素上添加list-view类，由父容器样式控制
         const fileEl = document.createElement('div');
-        fileEl.className = `file-item ${currentView === 'list' ? 'list-view' : ''}`;
+        fileEl.className = 'file-item';
         fileEl.setAttribute('data-name', file.name);
         fileEl.setAttribute('data-type', fileType);
-        fileEl.setAttribute('data-size', file.metadata?.size || 0);
-        fileEl.setAttribute('data-url', fileUrl);
         
         if (currentView === 'grid') {
+            // 网格视图 - 卡片式布局
             fileEl.innerHTML = `
                 <div class="file-icon ${fileTypeClass}">
-                    ${fileIcon}
-                    <span class="file-type-tag">${fileType}</span>
+                    ${isImage ? '' : fileIcon}
+                    <span class="file-type-badge">${fileType}</span>
                 </div>
-                <div class="file-info">
-                    <div class="file-name" title="${file.name}">${file.name}</div>
-                    <div class="file-meta">${fileSize}</div>
+                <div class="file-name" title="${file.name}">${file.name}</div>
+                <div class="file-meta">
+                    <span>${fileSize}</span>
+                    <span>${fileDate.split(' ')[0]}</span>
                 </div>
             `;
+            
+            // 为图片类型文件生成缩略图
+            if (isImage) {
+                generateThumbnail(file.name, fileEl);
+            }
         } else {
+            // 列表视图 - 表格式布局
             fileEl.innerHTML = `
                 <div class="file-icon ${fileTypeClass}">${fileIcon}</div>
                 <div class="file-name" title="${file.name}">${file.name}</div>
@@ -701,13 +960,12 @@ function renderFiles(files) {
             `;
         }
 
-        // 图片文件显示缩略图
-        if (ALLOWED_FILE_TYPES.images.includes(fileType.toLowerCase())) {
-            generateThumbnail(file.name, fileEl);
-        }
-
-        // 添加事件监听器
-        fileEl.addEventListener('click', () => handleFileClick(file));
+        // 文件点击事件
+        fileEl.addEventListener('click', (e) => {
+            if (!e.target.closest('.action-btn')) {
+                handleFileClick(file);
+            }
+        });
         
         // 右键菜单
         fileEl.addEventListener('contextmenu', (e) => {
@@ -715,28 +973,27 @@ function renderFiles(files) {
             showContextMenu(e, file);
         });
 
-        // 添加到页面
+        // 添加到文件列表
         fileList.appendChild(fileEl);
         
-        // 为列表视图添加动作按钮事件
+        // 添加列表视图中的操作按钮事件
         if (currentView === 'list') {
-            const downloadBtn = fileEl.querySelector('.download-btn');
-            const shareBtn = fileEl.querySelector('.share-btn');
-            const deleteBtn = fileEl.querySelector('.delete-btn');
-            
-            downloadBtn.addEventListener('click', (e) => {
+            // 下载按钮
+            fileEl.querySelector('.download-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectedFile = file;
                 downloadSelectedFile();
             });
             
-            shareBtn.addEventListener('click', (e) => {
+            // 分享按钮
+            fileEl.querySelector('.share-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectedFile = file;
                 shareSelectedFile();
             });
             
-            deleteBtn.addEventListener('click', (e) => {
+            // 删除按钮
+            fileEl.querySelector('.delete-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectedFile = file;
                 confirmDeleteFile();
@@ -745,31 +1002,74 @@ function renderFiles(files) {
     });
 }
 
+// 格式化日期为易读的格式
+function formatDate(date) {
+    if (!(date instanceof Date) || isNaN(date)) return '未知';
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${year}/${month}/${day} ${hours}:${minutes}`;
+}
+
 // 生成图片缩略图
 async function generateThumbnail(fileName, fileEl) {
     try {
-        const { data, error } = await supabase.storage
-            .from(BUCKET_NAME)
-            .createSignedUrl(fileName, 60);
+        const iconDiv = fileEl.querySelector('.file-icon');
+        if (!iconDiv) return;
         
-        if (error) throw error;
+        // 显示加载状态
+        iconDiv.innerHTML = '<div class="thumbnail-loading"><div class="spinner"></div></div>';
         
+        // 从缓存获取图片URL
+        const imageUrl = await imageCache.getImageUrl(fileName);
+        if (!imageUrl) throw new Error('获取图片URL失败');
+        
+        // 创建图片对象并加载
+        const img = new Image();
+        
+        img.onload = () => {
+            // 图片加载完成，设置为背景
+            iconDiv.style.backgroundImage = `url('${imageUrl}')`;
+            iconDiv.innerHTML = '';
+            
+            // 添加文件类型标签
+            const typeTag = document.createElement('span');
+            typeTag.className = 'file-type-badge';
+            typeTag.textContent = getFileType(fileName);
+            iconDiv.appendChild(typeTag);
+        };
+        
+        img.onerror = () => {
+            // 图片加载失败，显示默认图标
+            iconDiv.style.backgroundImage = '';
+            iconDiv.innerHTML = getFileIcon(getFileType(fileName));
+            
+            // 添加文件类型标签
+            const typeTag = document.createElement('span');
+            typeTag.className = 'file-type-badge';
+            typeTag.textContent = getFileType(fileName);
+            iconDiv.appendChild(typeTag);
+        };
+        
+        img.src = imageUrl;
+    } catch (error) {
+        console.error(`无法为 ${fileName} 生成缩略图`, error);
+        
+        // 显示默认图标
         const iconDiv = fileEl.querySelector('.file-icon');
         if (iconDiv) {
-            iconDiv.style.backgroundImage = `url('${data.signedUrl}')`;
-            iconDiv.style.backgroundSize = 'cover';
-            iconDiv.style.backgroundPosition = 'center';
-            iconDiv.innerHTML = ''; // 清除图标
+            iconDiv.innerHTML = getFileIcon(getFileType(fileName));
             
-            // 保留文件类型标签
-            const fileType = getFileType(fileName);
+            // 添加文件类型标签
             const typeTag = document.createElement('span');
-            typeTag.className = 'file-type-tag';
-            typeTag.textContent = fileType;
+            typeTag.className = 'file-type-badge';
+            typeTag.textContent = getFileType(fileName);
             iconDiv.appendChild(typeTag);
         }
-    } catch (error) {
-        console.log(`无法为 ${fileName} 生成缩略图`, error);
     }
 }
 
@@ -884,13 +1184,14 @@ async function previewImage(file) {
     modalTitle.textContent = file.name;
     modalBody.innerHTML = '<div class="loading-spinner"></div>';
     modal.style.display = 'block';
-    
     try {
-        const fileUrl = await getFileUrl(file.name);
+        // 从缓存获取图片URL
+        const imageUrl = await imageCache.getImageUrl(file.name);
+        if (!imageUrl) throw new Error('获取图片URL失败');
         
         modalBody.innerHTML = `
-            <div class="image-preview">
-                <img src="${fileUrl}" alt="${file.name}">
+            <div class="image-preview" style="display:flex;justify-content:center;align-items:center;max-height:60vh;overflow:auto;">
+                <img src="${imageUrl}" alt="${file.name}" style="max-width:100%;max-height:50vh;object-fit:contain;">
             </div>
             <div class="file-actions mt-3">
                 <button id="modal-download" class="btn btn-primary">
@@ -907,12 +1208,19 @@ async function previewImage(file) {
                 </button>
             </div>
         `;
+        // 确保selectedFile已设置
+        selectedFile = file;
         
-        // 添加事件监听
-        document.getElementById('modal-download').addEventListener('click', downloadSelectedFile);
-        document.getElementById('modal-share').addEventListener('click', shareSelectedFile);
-        document.getElementById('modal-rename').addEventListener('click', showRenameForm);
-        document.getElementById('modal-delete').addEventListener('click', confirmDeleteFile);
+        // 添加事件监听器
+        const modalDownload = document.getElementById('modal-download');
+        const modalShare = document.getElementById('modal-share');
+        const modalRename = document.getElementById('modal-rename');
+        const modalDelete = document.getElementById('modal-delete');
+        
+        if (modalDownload) modalDownload.addEventListener('click', downloadSelectedFile);
+        if (modalShare) modalShare.addEventListener('click', shareSelectedFile);
+        if (modalRename) modalRename.addEventListener('click', showRenameForm);
+        if (modalDelete) modalDelete.addEventListener('click', confirmDeleteFile);
     } catch (error) {
         modalBody.innerHTML = '<div class="error-message">无法预览图片</div>';
         console.error('预览图片失败:', error);
@@ -924,13 +1232,11 @@ async function previewVideo(file) {
     modalTitle.textContent = file.name;
     modalBody.innerHTML = '<div class="loading-spinner"></div>';
     modal.style.display = 'block';
-    
     try {
         const fileUrl = await getFileUrl(file.name);
-        
         modalBody.innerHTML = `
-            <div class="video-preview">
-                <video controls>
+            <div class="video-preview" style="display:flex;justify-content:center;align-items:center;max-height:60vh;overflow:auto;">
+                <video controls style="max-width:100%;max-height:50vh;object-fit:contain;">
                     <source src="${fileUrl}" type="video/${getFileType(file.name).toLowerCase()}">
                     您的浏览器不支持视频预览
                 </video>
@@ -950,12 +1256,19 @@ async function previewVideo(file) {
                 </button>
             </div>
         `;
+        // 确保selectedFile已设置
+        selectedFile = file;
         
-        // 添加事件监听
-        document.getElementById('modal-download').addEventListener('click', downloadSelectedFile);
-        document.getElementById('modal-share').addEventListener('click', shareSelectedFile);
-        document.getElementById('modal-rename').addEventListener('click', showRenameForm);
-        document.getElementById('modal-delete').addEventListener('click', confirmDeleteFile);
+        // 添加事件监听器
+        const modalDownload = document.getElementById('modal-download');
+        const modalShare = document.getElementById('modal-share');
+        const modalRename = document.getElementById('modal-rename');
+        const modalDelete = document.getElementById('modal-delete');
+        
+        if (modalDownload) modalDownload.addEventListener('click', downloadSelectedFile);
+        if (modalShare) modalShare.addEventListener('click', shareSelectedFile);
+        if (modalRename) modalRename.addEventListener('click', showRenameForm);
+        if (modalDelete) modalDelete.addEventListener('click', confirmDeleteFile);
     } catch (error) {
         modalBody.innerHTML = '<div class="error-message">无法预览视频</div>';
         console.error('预览视频失败:', error);
@@ -967,13 +1280,11 @@ async function previewAudio(file) {
     modalTitle.textContent = file.name;
     modalBody.innerHTML = '<div class="loading-spinner"></div>';
     modal.style.display = 'block';
-    
     try {
         const fileUrl = await getFileUrl(file.name);
-        
         modalBody.innerHTML = `
-            <div class="audio-preview">
-                <audio controls>
+            <div class="audio-preview" style="display:flex;justify-content:center;align-items:center;max-height:60vh;overflow:auto;">
+                <audio controls style="max-width:100%;max-height:50vh;object-fit:contain;">
                     <source src="${fileUrl}" type="audio/${getFileType(file.name).toLowerCase()}">
                     您的浏览器不支持音频预览
                 </audio>
@@ -993,12 +1304,19 @@ async function previewAudio(file) {
                 </button>
             </div>
         `;
+        // 确保selectedFile已设置
+        selectedFile = file;
         
-        // 添加事件监听
-        document.getElementById('modal-download').addEventListener('click', downloadSelectedFile);
-        document.getElementById('modal-share').addEventListener('click', shareSelectedFile);
-        document.getElementById('modal-rename').addEventListener('click', showRenameForm);
-        document.getElementById('modal-delete').addEventListener('click', confirmDeleteFile);
+        // 添加事件监听器
+        const modalDownload = document.getElementById('modal-download');
+        const modalShare = document.getElementById('modal-share');
+        const modalRename = document.getElementById('modal-rename');
+        const modalDelete = document.getElementById('modal-delete');
+        
+        if (modalDownload) modalDownload.addEventListener('click', downloadSelectedFile);
+        if (modalShare) modalShare.addEventListener('click', shareSelectedFile);
+        if (modalRename) modalRename.addEventListener('click', showRenameForm);
+        if (modalDelete) modalDelete.addEventListener('click', confirmDeleteFile);
     } catch (error) {
         modalBody.innerHTML = '<div class="error-message">无法预览音频</div>';
         console.error('预览音频失败:', error);
@@ -1052,68 +1370,22 @@ function showFileInfo(file) {
         </div>
     `;
     
-    // 添加事件监听
-    document.getElementById('modal-download').addEventListener('click', downloadSelectedFile);
-    document.getElementById('modal-share').addEventListener('click', shareSelectedFile);
-    document.getElementById('modal-rename').addEventListener('click', showRenameForm);
-    document.getElementById('modal-delete').addEventListener('click', confirmDeleteFile);
+    // 确保selectedFile已设置
+    selectedFile = file;
     
-    modal.style.display = 'block';
+    // 添加事件监听器
+    const modalDownload = document.getElementById('modal-download');
+    const modalShare = document.getElementById('modal-share');
+    const modalRename = document.getElementById('modal-rename');
+    const modalDelete = document.getElementById('modal-delete');
+    
+    if (modalDownload) modalDownload.addEventListener('click', downloadSelectedFile);
+    if (modalShare) modalShare.addEventListener('click', shareSelectedFile);
+    if (modalRename) modalRename.addEventListener('click', showRenameForm);
+    if (modalDelete) modalDelete.addEventListener('click', confirmDeleteFile);
 }
 
+// 同样修改获取文件URL的函数
 function getFileUrl(filename) {
     return supabase.storage.from(BUCKET_NAME).getPublicUrl(filename).data.publicUrl;
 }
-
-function showToast(message) {
-    toastMessage.textContent = message;
-    toast.classList.remove('hidden');
-    
-    setTimeout(() => {
-        toast.classList.add('hidden');
-    }, 3000);
-}
-
-// 显示右键菜单
-function showContextMenu(e, file) {
-    e.preventDefault();
-    selectedFile = file;
-    
-    // 设置菜单位置
-    contextMenu.style.display = 'block';
-    contextMenu.style.left = `${e.pageX}px`;
-    contextMenu.style.top = `${e.pageY}px`;
-    
-    // 调整菜单位置，确保在视口内
-    const rightEdge = window.innerWidth - contextMenu.clientWidth - 10;
-    const bottomEdge = window.innerHeight - contextMenu.clientHeight - 10;
-    
-    if (parseInt(contextMenu.style.left) > rightEdge) {
-        contextMenu.style.left = `${rightEdge}px`;
-    }
-    
-    if (parseInt(contextMenu.style.top) > bottomEdge) {
-        contextMenu.style.top = `${bottomEdge}px`;
-    }
-
-    // 更新菜单选项文本
-    const fileType = getFileType(file.name).toLowerCase();
-    const previewItem = document.getElementById('context-preview');
-    
-    // 根据文件类型调整"预览"选项文本
-    if (ALLOWED_FILE_TYPES.images.includes(fileType)) {
-        previewItem.textContent = '预览图片';
-        previewItem.style.display = 'block';
-    } else if (ALLOWED_FILE_TYPES.videos.includes(fileType)) {
-        previewItem.textContent = '播放视频';
-        previewItem.style.display = 'block';
-    } else if (ALLOWED_FILE_TYPES.audios.includes(fileType)) {
-        previewItem.textContent = '播放音频';
-        previewItem.style.display = 'block';
-    } else {
-        previewItem.style.display = 'none';
-    }
-    
-    // 添加预览事件
-    previewItem.onclick = () => handleFileClick(file);
-} 
