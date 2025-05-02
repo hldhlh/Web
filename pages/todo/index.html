@@ -334,6 +334,7 @@
             display: flex;
             flex-direction: column;
             min-width: 0;
+            position: relative;
         }
 
         /* 分割线 */
@@ -398,7 +399,7 @@
             font-size: 0.95rem;
             width: 100%;
             cursor: text;
-            white-space: pre-wrap;
+            white-space: pre-wrap; /* 确保保留换行和空格 */
             word-break: break-word;
         }
         
@@ -675,6 +676,7 @@
             
             .task-text {
                 font-size: 1rem;
+                padding-right: 35px; /* 为信息按钮留出空间 */
             }
             
             .mobile-title {
@@ -743,6 +745,132 @@
                 padding: 10px 15px;
                 border-radius: 0;
             }
+
+            /* 覆盖之前可能存在的规则 - 使用!important确保优先级 */
+            .task-item .info-task-btn {
+                right: 2px !important; /* 移动端也强制更靠近右边缘 */
+                opacity: 0 !important; /* 强制默认隐藏 */
+            }
+
+            /* 移动端下确保也是鼠标悬停才显示 */
+            .task-item:hover .info-task-btn {
+                opacity: 1 !important; /* 悬停时强制显示 */
+            }
+
+            .task-text {
+                font-size: 1rem;
+                padding-right: 35px; /* 为信息按钮留出空间 */
+            }
+        }
+
+        /* 添加信息按钮样式 - 使用更强的选择器优先级和!important */
+        .task-item .info-task-btn {
+            position: absolute !important;
+            right: 2px !important; /* 极度靠近右边缘并使用!important强制生效 */
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            background: none;
+            border: none;
+            color: var(--secondary-text);
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            opacity: 0 !important; /* 强制默认隐藏 */
+            transition: opacity 0.15s ease-in-out, background-color 0.15s ease-in-out;
+        }
+
+        /* 悬停时显示 - 使用更高优先级 */
+        .task-item:hover .info-task-btn {
+            opacity: 1 !important; /* 强制悬停时显示 */
+        }
+
+        .info-task-btn:hover {
+            background-color: rgba(0, 0, 0, 0.08);
+            color: var(--current-theme-color); /* 悬停时使用主题色 */
+        }
+
+        /* 在触摸设备上，始终显示删除和信息按钮 */
+        .task-item .delete-task-btn,
+        .task-item .info-task-btn {
+            opacity: 1;
+            right: 15px; /* 调整移动端删除按钮位置 */
+        }
+        .task-item .info-task-btn {
+            right: 50px; /* 调整移动端信息按钮位置 */
+        }
+
+        .task-text {
+            font-size: 1rem;
+            padding-right: 75px; /* 为两个按钮留出空间 */
+        }
+
+        /* 添加弹出菜单样式 */
+        .task-popup-menu {
+            position: absolute;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 8px 0;
+            min-width: 120px;
+            z-index: 1000;
+            right: 20px;
+            top: 100%;
+            margin-top: 5px;
+            display: none;
+            border: 1px solid var(--border-color);
+        }
+        
+        .task-popup-menu.show {
+            display: block;
+        }
+        
+        .task-popup-menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+        
+        .task-popup-menu-item:hover {
+            background-color: var(--sidebar-hover);
+        }
+        
+        .task-popup-menu-item.delete {
+            color: var(--theme-red);
+        }
+        
+        .task-popup-menu-item i {
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        /* 添加复制成功提示样式 */
+        .toast-message {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .toast-message.show {
+            opacity: 1;
         }
     </style>
 </head>
@@ -923,11 +1051,36 @@
             
             let html = '';
             items.forEach(item => {
+                // 格式化创建时间
+                let creationTime = '未知';
+                if (item.created_at) {
+                    try {
+                        creationTime = new Date(item.created_at).toLocaleString('zh-CN', {
+                            year: 'numeric', month: '2-digit', day: '2-digit',
+                            hour: '2-digit', minute: '2-digit'
+                        });
+                    } catch (e) {
+                        console.error('格式化时间失败:', item.created_at, e);
+                    }
+                }
+
                 html += `<li class="task-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
     <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
     <div class="task-content">
         <span class="task-text" contenteditable="false">${item[textProperty]}</span>
         ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
+        <button class="info-task-btn" data-created-at="${item.created_at || ''}"><i class="bi bi-three-dots-vertical"></i></button>
+        <div class="task-popup-menu">
+            <div class="task-popup-menu-item view-info">
+                <i class="bi bi-info-circle"></i>创建: ${creationTime}
+            </div>
+            <div class="task-popup-menu-item copy">
+                <i class="bi bi-clipboard"></i>复制
+            </div>
+            <div class="task-popup-menu-item delete">
+                <i class="bi bi-trash3"></i>删除
+            </div>
+        </div>
     </div>
 </li>`;
             });
@@ -1033,6 +1186,59 @@
                 }
             }
             
+            // 如果点击的是信息按钮
+            if (event.target.closest('.info-task-btn')) {
+                const infoButton = event.target.closest('.info-task-btn');
+                const taskItem = infoButton.closest('.task-item');
+                
+                if (taskItem) {
+                    const menuElement = taskItem.querySelector('.task-popup-menu');
+                    
+                    // 关闭所有其他打开的菜单
+                    document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
+                        if (menu !== menuElement) {
+                            menu.classList.remove('show');
+                        }
+                    });
+                    
+                    // 切换当前菜单的显示状态
+                    menuElement.classList.toggle('show');
+                    
+                    // 阻止事件冒泡，防止立即触发document点击事件关闭菜单
+                    event.stopPropagation();
+                }
+                return; // 阻止进一步处理
+            }
+            
+            // 处理菜单项点击
+            if (event.target.closest('.task-popup-menu-item')) {
+                const menuItem = event.target.closest('.task-popup-menu-item');
+                const taskItem = menuItem.closest('.task-item');
+                const taskId = taskItem.dataset.id;
+                
+                // 点击删除选项
+                if (menuItem.classList.contains('delete')) {
+                    if (confirm('确定要删除这个任务吗？')) {
+                        deleteTask(taskId);
+                    }
+                }
+                
+                // 点击复制选项
+                if (menuItem.classList.contains('copy')) {
+                    const taskText = taskItem.querySelector('.task-text').textContent;
+                    copyToClipboard(taskText);
+                    // 显示一个小提示，表明已复制
+                    showToast('已复制到剪贴板');
+                }
+                
+                // 关闭菜单
+                const menuElement = taskItem.querySelector('.task-popup-menu');
+                menuElement.classList.remove('show');
+                
+                event.stopPropagation();
+                return;
+            }
+            
             // 如果点击的是文本元素
             if (event.target.classList.contains('task-text')) {
                 const textElement = event.target;
@@ -1131,6 +1337,7 @@
                     return;
                 }
                 
+                // 确保文本中的换行被保留
                 const { error } = await supabase
                     .from('todos')
                     .update({ task: newText })
@@ -1169,10 +1376,15 @@
                 };
                 
                 // 临时在UI中显示添加的任务
+                // 使用innerText保留换行
+                const tempElement = document.createElement('div');
+                const span = document.createElement('span');
+                span.className = 'task-text';
+                span.textContent = taskText; // 使用textContent来正确设置内容并保留换行
+                
                 const tempTaskHTML = `<li class="task-item" data-id="${tempId}">
                     <input type="checkbox" class="task-checkbox">
                     <div class="task-content">
-                        <span class="task-text" contenteditable="false">${taskText}</span>
                     </div>
                 </li>`;
                 
@@ -1184,9 +1396,10 @@
                 
                 // 添加到列表顶部
                 const taskListElem = document.getElementById('task-list');
-                const tempElement = document.createElement('div');
                 tempElement.innerHTML = tempTaskHTML;
                 const newTaskItem = tempElement.firstChild;
+                const taskContent = newTaskItem.querySelector('.task-content');
+                taskContent.appendChild(span);
                 
                 if (taskListElem.firstChild) {
                     taskListElem.insertBefore(newTaskItem, taskListElem.firstChild);
@@ -1194,7 +1407,7 @@
                     taskListElem.appendChild(newTaskItem);
                 }
                 
-                // 发送到服务器
+                // 发送到服务器，保留换行符
                 const { data, error } = await supabase
                     .from('todos')
                     .insert([{ task: taskText, is_completed: false }])
@@ -1267,6 +1480,18 @@
                     <input type="checkbox" class="task-checkbox">
                     <div class="task-content">
                         <span class="task-text editing" contenteditable="true"></span>
+                    </div>
+                    <button class="info-task-btn"><i class="bi bi-three-dots-vertical"></i></button>
+                    <div class="task-popup-menu">
+                        <div class="task-popup-menu-item view-info">
+                            <i class="bi bi-info-circle"></i>创建于现在
+                        </div>
+                        <div class="task-popup-menu-item copy">
+                            <i class="bi bi-clipboard"></i>复制
+                        </div>
+                        <div class="task-popup-menu-item delete">
+                            <i class="bi bi-trash3"></i>删除
+                        </div>
                     </div>
                 `;
                 
@@ -1470,6 +1695,15 @@
                         }
                     }
                 });
+
+                // 点击文档其他地方关闭所有弹出菜单
+                document.addEventListener('click', function(event) {
+                    if (!event.target.closest('.info-task-btn') && !event.target.closest('.task-popup-menu')) {
+                        document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
+                            menu.classList.remove('show');
+                        });
+                    }
+                });
             }
         }
 
@@ -1595,6 +1829,16 @@
             console.log("初始化应用...");
             setupTaskListeners();
             setupGlobalHandlers();
+            
+            // 启用 Popover (重复调用以确保新元素也能用)
+            const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+            const popoverList = [...popoverTriggerList].map(popoverTriggerEl => {
+                // 避免重复初始化，如果已有实例则跳过
+                if (!bootstrap.Popover.getInstance(popoverTriggerEl)) {
+                    return new bootstrap.Popover(popoverTriggerEl);
+                }
+                return null;
+            }).filter(Boolean);
             
             // 添加测试按钮事件
             const testAddTaskBtn = document.getElementById('test-add-task-btn');
@@ -1820,6 +2064,55 @@
         window.addTask = addTask;
         window.clearCompletedTasks = clearCompletedTasks;
         window.createEmptyEditableTask = createEmptyEditableTask;
+        
+        // 添加复制到剪贴板的功能
+        function copyToClipboard(text) {
+            // 创建一个临时的textarea元素
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';  // 避免滚动到底部
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                // 尝试复制
+                document.execCommand('copy');
+                console.log('文本已复制到剪贴板');
+            } catch (err) {
+                console.error('复制失败:', err);
+            }
+            
+            // 清理
+            document.body.removeChild(textarea);
+        }
+        
+        // 显示提示消息
+        function showToast(message, duration = 2000) {
+            // 移除现有的toast
+            const existingToast = document.querySelector('.toast-message');
+            if (existingToast) {
+                document.body.removeChild(existingToast);
+            }
+            
+            // 创建新的toast
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            // 显示toast
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // 指定时间后隐藏toast
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        document.body.removeChild(toast);
+                    }
+                }, 300);
+            }, duration);
+        }
     </script>
 </body>
 </html> 
