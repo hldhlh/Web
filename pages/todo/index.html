@@ -941,10 +941,12 @@
         进入全屏
     </button>
     
-    <!-- 添加测试按钮 -->
+    <!-- 删除测试按钮 -->
+    <!--
     <button id="test-add-task-btn" style="position: fixed; bottom: 10px; right: 100px; z-index: 999; padding: 8px 15px; background-color: var(--theme-purple); color: white; border: none; border-radius: 5px; cursor: pointer;">
         测试添加任务
     </button>
+    -->
 
     <script>
         const SUPABASE_URL = 'https://fmxddvjgkykuqwmasigo.supabase.co';
@@ -2021,6 +2023,7 @@
             }).filter(Boolean);
             
             // 添加测试按钮事件
+            /* 删除测试按钮事件处理
             const testAddTaskBtn = document.getElementById('test-add-task-btn');
             if (testAddTaskBtn) {
                 testAddTaskBtn.addEventListener('click', function() {
@@ -2028,6 +2031,7 @@
                     createEmptyEditableTask();
                 });
             }
+            */
             
             const initialActiveItem = document.querySelector('.sidebar-item.active') || document.querySelector('.sidebar-item');
             if (initialActiveItem) {
