@@ -329,12 +329,12 @@
         }
 
         .task-content {
-            flex: 1;
-            padding: 0 15px;
             display: flex;
             flex-direction: column;
-            min-width: 0;
+            flex: 1;
+            margin-left: 15px;
             position: relative;
+            overflow: visible;
         }
 
         /* 分割线 */
@@ -761,6 +761,14 @@
                 font-size: 1rem;
                 padding-right: 35px; /* 为信息按钮留出空间 */
             }
+            
+            /* 移动设备上侧边栏弹出菜单样式 */
+            .sidebar-popup-menu {
+                position: fixed;
+                top: auto !important;
+                left: auto !important;
+                right: 20px !important;
+            }
         }
 
         /* 添加信息按钮样式 - 使用更强的选择器优先级和!important */
@@ -812,16 +820,13 @@
 
         /* 添加弹出菜单样式 */
         .task-popup-menu {
-            position: absolute;
+            position: fixed;
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             padding: 8px 0;
             min-width: 120px;
             z-index: 1000;
-            right: 20px;
-            top: 100%;
-            margin-top: 5px;
             display: none;
             border: 1px solid var(--border-color);
         }
@@ -872,6 +877,60 @@
         .toast-message.show {
             opacity: 1;
         }
+
+        /* 侧边栏弹出菜单样式 */
+        .sidebar-popup-menu {
+            position: fixed;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 8px 0;
+            min-width: 120px;
+            z-index: 1000;
+            display: none;
+            border: 1px solid var(--border-color);
+        }
+        
+        .sidebar-popup-menu.show {
+            display: block;
+        }
+        
+        .sidebar-popup-menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+        
+        .sidebar-popup-menu-item:hover {
+            background-color: var(--sidebar-hover);
+        }
+        
+        .sidebar-popup-menu-item.delete {
+            color: var(--theme-red);
+        }
+        
+        .sidebar-popup-menu-item i {
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        .sidebar-item span {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .sidebar-item span.editing {
+            outline: none;
+            border-bottom: 1px dashed var(--current-theme-color);
+            padding-bottom: 2px;
+            min-width: 30px;
+        }
     </style>
 </head>
 <body data-theme="purple">
@@ -898,16 +957,40 @@
                     <div class="sidebar-icon purple">每</div>
                     <span>每日清单</span>
                     <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                    <div class="sidebar-popup-menu">
+                        <div class="sidebar-popup-menu-item edit">
+                            <i class="bi bi-pencil"></i>编辑名称
+                        </div>
+                        <div class="sidebar-popup-menu-item delete">
+                            <i class="bi bi-trash3"></i>删除列表
+                        </div>
+                    </div>
                 </li>
                 <li class="sidebar-item">
                     <div class="sidebar-icon blue">心</div>
                     <span>心情</span>
                     <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                    <div class="sidebar-popup-menu">
+                        <div class="sidebar-popup-menu-item edit">
+                            <i class="bi bi-pencil"></i>编辑名称
+                        </div>
+                        <div class="sidebar-popup-menu-item delete">
+                            <i class="bi bi-trash3"></i>删除列表
+                        </div>
+                    </div>
                 </li>
                 <li class="sidebar-item">
                     <div class="sidebar-icon red">生</div>
                     <span>生日备注</span>
                     <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                    <div class="sidebar-popup-menu">
+                        <div class="sidebar-popup-menu-item edit">
+                            <i class="bi bi-pencil"></i>编辑名称
+                        </div>
+                        <div class="sidebar-popup-menu-item delete">
+                            <i class="bi bi-trash3"></i>删除列表
+                        </div>
+                    </div>
                 </li>
             </ul>
             <div class="sidebar-add">
@@ -941,12 +1024,7 @@
         进入全屏
     </button>
     
-    <!-- 删除测试按钮 -->
-    <!--
-    <button id="test-add-task-btn" style="position: fixed; bottom: 10px; right: 100px; z-index: 999; padding: 8px 15px; background-color: var(--theme-purple); color: white; border: none; border-radius: 5px; cursor: pointer;">
-        测试添加任务
-    </button>
-    -->
+
 
     <script>
         const SUPABASE_URL = 'https://fmxddvjgkykuqwmasigo.supabase.co';
@@ -1066,136 +1144,30 @@
                     }
                 }
 
-                // 动态创建元素而不是使用HTML字符串，以确保换行被正确处理
-                const li = document.createElement('li');
-                li.className = `task-item ${item.is_completed ? 'completed' : ''}`;
-                li.dataset.id = item.id;
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'task-checkbox';
-                checkbox.checked = item.is_completed;
-                
-                const content = document.createElement('div');
-                content.className = 'task-content';
-                
-                const text = document.createElement('span');
-                text.className = 'task-text';
-                text.contentEditable = 'false';
-                text.textContent = item[textProperty]; // 使用textContent确保换行符被保留
-                
-                content.appendChild(text);
-                
-                if (item.note) {
-                    const note = document.createElement('div');
-                    note.className = 'task-note';
-                    note.textContent = item.note;
-                    content.appendChild(note);
-                }
-                
-                const infoBtn = document.createElement('button');
-                infoBtn.className = 'info-task-btn';
-                infoBtn.dataset.createdAt = item.created_at || '';
-                infoBtn.innerHTML = '<i class="bi bi-three-dots-vertical"></i>';
-                
-                const menu = document.createElement('div');
-                menu.className = 'task-popup-menu';
-                menu.innerHTML = `
-                    <div class="task-popup-menu-item view-info">
-                        <i class="bi bi-info-circle"></i>创建: ${creationTime}
-                    </div>
-                    <div class="task-popup-menu-item copy">
-                        <i class="bi bi-clipboard"></i>复制
-                    </div>
-                    <div class="task-popup-menu-item delete">
-                        <i class="bi bi-trash3"></i>删除
-                    </div>
-                `;
-                
-                li.appendChild(checkbox);
-                content.appendChild(infoBtn);
-                content.appendChild(menu);
-                li.appendChild(content);
-                
-                taskList.appendChild(li);
+                html += `<li class="task-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
+    <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
+    <div class="task-content">
+        <span class="task-text" contenteditable="false">${item[textProperty]}</span>
+        ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
+        <button class="info-task-btn" data-created-at="${item.created_at || ''}"><i class="bi bi-three-dots-vertical"></i></button>
+        <div class="task-popup-menu">
+            <div class="task-popup-menu-item view-info">
+                <i class="bi bi-info-circle"></i>创建: ${creationTime}
+            </div>
+            <div class="task-popup-menu-item copy">
+                <i class="bi bi-clipboard"></i>复制
+            </div>
+            <div class="task-popup-menu-item delete">
+                <i class="bi bi-trash3"></i>删除
+            </div>
+        </div>
+    </div>
+</li>`;
             });
             
             // 如果当前没有临时任务，直接渲染
             if (!shouldPreserveTempTask) {
-                taskList.innerHTML = ''; // 清空现有内容
-                
-                // 创建文档片段提高性能
-                const fragment = document.createDocumentFragment();
-                
-                items.forEach(item => {
-                    // 格式化创建时间
-                    let creationTime = '未知';
-                    if (item.created_at) {
-                        try {
-                            creationTime = new Date(item.created_at).toLocaleString('zh-CN', {
-                                year: 'numeric', month: '2-digit', day: '2-digit',
-                                hour: '2-digit', minute: '2-digit'
-                            });
-                        } catch (e) {
-                            console.error('格式化时间失败:', item.created_at, e);
-                        }
-                    }
-    
-                    // 创建元素
-                    const li = document.createElement('li');
-                    li.className = `task-item ${item.is_completed ? 'completed' : ''}`;
-                    li.dataset.id = item.id;
-                    
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'task-checkbox';
-                    checkbox.checked = item.is_completed;
-                    
-                    const content = document.createElement('div');
-                    content.className = 'task-content';
-                    
-                    const text = document.createElement('span');
-                    text.className = 'task-text';
-                    text.contentEditable = 'false';
-                    text.textContent = item[textProperty]; // 使用textContent确保换行符被保留
-                    
-                    content.appendChild(text);
-                    
-                    if (item.note) {
-                        const note = document.createElement('div');
-                        note.className = 'task-note';
-                        note.textContent = item.note;
-                        content.appendChild(note);
-                    }
-                    
-                    const infoBtn = document.createElement('button');
-                    infoBtn.className = 'info-task-btn';
-                    infoBtn.dataset.createdAt = item.created_at || '';
-                    infoBtn.innerHTML = '<i class="bi bi-three-dots-vertical"></i>';
-                    
-                    const menu = document.createElement('div');
-                    menu.className = 'task-popup-menu';
-                    menu.innerHTML = `
-                        <div class="task-popup-menu-item view-info">
-                            <i class="bi bi-info-circle"></i>创建: ${creationTime}
-                        </div>
-                        <div class="task-popup-menu-item copy">
-                            <i class="bi bi-clipboard"></i>复制
-                        </div>
-                        <div class="task-popup-menu-item delete">
-                            <i class="bi bi-trash3"></i>删除
-                        </div>
-                    `;
-                    
-                    li.appendChild(checkbox);
-                    content.appendChild(infoBtn);
-                    content.appendChild(menu);
-                    li.appendChild(content);
-                    
-                    fragment.appendChild(li);
-                });
-                
-                taskList.appendChild(fragment);
+                taskList.innerHTML = html;
             } else {
                 // 保留临时任务，先移除它
                 if (tempTask.parentNode) {
@@ -1203,81 +1175,7 @@
                 }
                 
                 // 渲染新的任务列表
-                taskList.innerHTML = '';
-                
-                // 创建文档片段
-                const fragment = document.createDocumentFragment();
-                
-                items.forEach(item => {
-                    // 构建任务项，与上面相同的逻辑
-                    // 格式化创建时间
-                    let creationTime = '未知';
-                    if (item.created_at) {
-                        try {
-                            creationTime = new Date(item.created_at).toLocaleString('zh-CN', {
-                                year: 'numeric', month: '2-digit', day: '2-digit',
-                                hour: '2-digit', minute: '2-digit'
-                            });
-                        } catch (e) {
-                            console.error('格式化时间失败:', item.created_at, e);
-                        }
-                    }
-    
-                    // 创建元素
-                    const li = document.createElement('li');
-                    li.className = `task-item ${item.is_completed ? 'completed' : ''}`;
-                    li.dataset.id = item.id;
-                    
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'task-checkbox';
-                    checkbox.checked = item.is_completed;
-                    
-                    const content = document.createElement('div');
-                    content.className = 'task-content';
-                    
-                    const text = document.createElement('span');
-                    text.className = 'task-text';
-                    text.contentEditable = 'false';
-                    text.textContent = item[textProperty]; // 使用textContent确保换行符被保留
-                    
-                    content.appendChild(text);
-                    
-                    if (item.note) {
-                        const note = document.createElement('div');
-                        note.className = 'task-note';
-                        note.textContent = item.note;
-                        content.appendChild(note);
-                    }
-                    
-                    const infoBtn = document.createElement('button');
-                    infoBtn.className = 'info-task-btn';
-                    infoBtn.dataset.createdAt = item.created_at || '';
-                    infoBtn.innerHTML = '<i class="bi bi-three-dots-vertical"></i>';
-                    
-                    const menu = document.createElement('div');
-                    menu.className = 'task-popup-menu';
-                    menu.innerHTML = `
-                        <div class="task-popup-menu-item view-info">
-                            <i class="bi bi-info-circle"></i>创建: ${creationTime}
-                        </div>
-                        <div class="task-popup-menu-item copy">
-                            <i class="bi bi-clipboard"></i>复制
-                        </div>
-                        <div class="task-popup-menu-item delete">
-                            <i class="bi bi-trash3"></i>删除
-                        </div>
-                    `;
-                    
-                    li.appendChild(checkbox);
-                    content.appendChild(infoBtn);
-                    content.appendChild(menu);
-                    li.appendChild(content);
-                    
-                    fragment.appendChild(li);
-                });
-                
-                taskList.appendChild(fragment);
+                taskList.innerHTML = html;
                 
                 // 将临时任务重新添加到顶部
                 if (taskList.firstChild) {
@@ -1386,6 +1284,9 @@
                     // 切换当前菜单的显示状态
                     menuElement.classList.toggle('show');
                     
+                    // 根据按钮位置调整菜单位置
+                    positionPopupMenu(infoButton, menuElement);
+                    
                     // 阻止事件冒泡，防止立即触发document点击事件关闭菜单
                     event.stopPropagation();
                 }
@@ -1429,17 +1330,69 @@
                 // 如果任务已完成，不允许编辑
                 if (taskItem.classList.contains('completed')) return;
                 
-                // 设置为可编辑状态
-                textElement.contentEditable = "true";
-                textElement.classList.add('editing');
-                textElement.focus();
+                // 启用编辑
+                enableTaskEditing(textElement);
+            }
+        }
+
+        // 弹出菜单位置调整函数
+        function positionPopupMenu(button, menu) {
+            // 获取按钮的位置信息
+            const buttonRect = button.getBoundingClientRect();
+            const menuRect = menu.getBoundingClientRect();
+            
+            // 计算弹出菜单的位置
+            const isRightAligned = window.innerWidth - buttonRect.right < menuRect.width;
+            const isMobile = window.innerWidth <= 768;
+            
+            // 清除之前的样式
+            menu.style.top = '';
+            menu.style.right = '';
+            menu.style.left = '';
+            
+            if (isMobile) {
+                // 移动设备上，菜单显示在按钮下方并居中
+                menu.style.top = `${buttonRect.bottom + 5}px`;
+                menu.style.left = `${buttonRect.left + (buttonRect.width/2) - (menuRect.width/2)}px`;
+            } else {
+                // 桌面设备上，菜单显示在按钮右侧
+                menu.style.top = `${buttonRect.top}px`;
                 
-                // 添加编辑提示（如果还没有）
-                if (!textElement.getAttribute('data-tooltip')) {
-                    textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
-                    textElement.title = '按回车换行，按Ctrl+Enter完成编辑';
+                if (isRightAligned) {
+                    // 如果右侧空间不足，显示在按钮左侧
+                    menu.style.right = `${window.innerWidth - buttonRect.left + 5}px`;
+                } else {
+                    // 否则显示在按钮右侧
+                    menu.style.left = `${buttonRect.right + 5}px`;
                 }
             }
+        }
+
+        // 侧边栏弹出菜单位置调整函数
+        function positionSidebarMenu(button, menu) {
+            // 获取按钮的位置信息
+            const buttonRect = button.getBoundingClientRect();
+            const menuRect = menu.getBoundingClientRect();
+            
+            // 清除之前的样式
+            menu.style.top = '';
+            menu.style.right = '';
+            menu.style.left = '';
+            
+            // 菜单显示在按钮右侧
+            menu.style.top = `${buttonRect.top}px`;
+            
+            // 检查右侧空间是否足够
+            const isRightAligned = window.innerWidth - buttonRect.right < menuRect.width;
+            
+            if (isRightAligned) {
+                // 如果右侧空间不足，显示在按钮左侧
+                menu.style.right = `${window.innerWidth - buttonRect.left + 5}px`;
+            } else {
+                // 否则显示在按钮右侧
+                menu.style.left = `${buttonRect.right + 5}px`;
+            }
+
         }
 
         function handleTaskKeydown(event) {
@@ -1818,8 +1771,9 @@
 
         // 在文档加载时初始化全局点击事件处理器
         function setupGlobalHandlers() {
-            // 确保只添加一次全局处理器
+            // 如果还没有添加过全局处理器，则添加
             if (!window.hasAddedGlobalTempTaskHandler) {
+                console.log("添加全局临时任务处理器");
                 window.hasAddedGlobalTempTaskHandler = true;
                 
                 document.addEventListener('click', function(event) {
@@ -1875,15 +1829,6 @@
                                 window.currentEditingTempTask = null;
                             }
                         }
-                    }
-                });
-
-                // 点击文档其他地方关闭所有弹出菜单
-                document.addEventListener('click', function(event) {
-                    if (!event.target.closest('.info-task-btn') && !event.target.closest('.task-popup-menu')) {
-                        document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
-                            menu.classList.remove('show');
-                        });
                     }
                 });
             }
@@ -2022,17 +1967,6 @@
                 return null;
             }).filter(Boolean);
             
-            // 添加测试按钮事件
-            /* 删除测试按钮事件处理
-            const testAddTaskBtn = document.getElementById('test-add-task-btn');
-            if (testAddTaskBtn) {
-                testAddTaskBtn.addEventListener('click', function() {
-                    console.log("测试按钮被点击");
-                    createEmptyEditableTask();
-                });
-            }
-            */
-            
             const initialActiveItem = document.querySelector('.sidebar-item.active') || document.querySelector('.sidebar-item');
             if (initialActiveItem) {
                 updateThemeAndTitle(initialActiveItem);
@@ -2140,28 +2074,140 @@
                 if (targetMore) {
                     e.stopPropagation();
                     const listItem = targetMore.closest('.sidebar-item');
-                    const listName = listItem.querySelector('span').textContent;
-
-                    const action = prompt(`请选择对"${listName}"的操作：\n1. 编辑名称\n2. 删除列表\n请输入数字`);
-
-                    if (action === '1') {
-                        const newName = prompt('请输入新名称:', listName);
-                        if (newName && newName.trim() !== '') {
-                            listItem.querySelector('span').textContent = newName.trim();
-                            if (listItem.classList.contains('active')) {
-                                document.querySelector('.list-title').textContent = newName.trim();
-                                document.querySelector('.mobile-title').textContent = newName.trim();
-                            }
+                    const menuElement = listItem.querySelector('.sidebar-popup-menu');
+                    
+                    // 关闭所有其他打开的菜单
+                    document.querySelectorAll('.sidebar-popup-menu.show').forEach(menu => {
+                        if (menu !== menuElement) {
+                            menu.classList.remove('show');
                         }
-                    } else if (action === '2') {
+                    });
+                    
+                    // 切换当前菜单的显示状态
+                    menuElement.classList.toggle('show');
+                    
+                    // 根据按钮位置调整菜单位置
+                    positionSidebarMenu(targetMore, menuElement);
+                    
+                    e.stopPropagation();
+                } else if (e.target.closest('.sidebar-popup-menu-item')) {
+                    // 处理菜单项点击
+                    const menuItem = e.target.closest('.sidebar-popup-menu-item');
+                    const listItem = menuItem.closest('.sidebar-item');
+                    const listName = listItem.querySelector('span').textContent;
+                    
+                    // 编辑名称
+                    if (menuItem.classList.contains('edit')) {
+                        // 获取列表项和名称元素
+                        const listSpan = listItem.querySelector('span');
+                        
+                        // 使名称可编辑
+                        makeListNameEditable(listSpan, listName, listItem);
+                    } 
+                    // 删除列表
+                    else if (menuItem.classList.contains('delete')) {
                         if (confirm(`确定要删除"${listName}"列表吗？`)) {
                             alert('列表删除功能待实现');
                         }
                     }
+                    
+                    // 关闭菜单
+                    const menuElement = listItem.querySelector('.sidebar-popup-menu');
+                    menuElement.classList.remove('show');
+                    
+                    e.stopPropagation();
                 } else if (targetItem) {
                     updateThemeAndTitle(targetItem);
                 }
             });
+            
+            // 添加双击列表名称编辑功能
+            sidebarList.addEventListener('dblclick', function(e) {
+                // 检查是否点击了列表名称
+                if (e.target.tagName === 'SPAN' && e.target.parentNode.classList.contains('sidebar-item')) {
+                    e.stopPropagation();
+                    const listSpan = e.target;
+                    const listItem = listSpan.closest('.sidebar-item');
+                    const listName = listSpan.textContent;
+                    
+                    // 使名称可编辑
+                    makeListNameEditable(listSpan, listName, listItem);
+                }
+            });
+            
+            // 将列表名称变为可编辑状态的函数
+            function makeListNameEditable(listSpan, listName, listItem) {
+                // 使名称可编辑
+                listSpan.contentEditable = "true";
+                listSpan.classList.add('editing');
+                
+                // 设置焦点到名称
+                listSpan.focus();
+                
+                // 选中所有文本
+                const range = document.createRange();
+                range.selectNodeContents(listSpan);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                // 为名称添加编辑相关事件
+                // 按Enter或失去焦点时保存
+                function saveListName() {
+                    const newName = listSpan.textContent.trim();
+                    
+                    // 确保名称不为空
+                    if (newName === '') {
+                        listSpan.textContent = listName; // 恢复原名称
+                    } else if (newName !== listName) {
+                        // 更新名称
+                        listSpan.textContent = newName;
+                        
+                        // 更新图标文字为新名称的第一个字符
+                        const iconElement = listItem.querySelector('.sidebar-icon');
+                        if (iconElement) {
+                            iconElement.textContent = newName.charAt(0);
+                        }
+                        
+                        // 如果是当前活动列表，更新标题
+                        if (listItem.classList.contains('active')) {
+                            document.querySelector('.list-title').textContent = newName;
+                            document.querySelector('.mobile-title').textContent = newName;
+                        }
+                    }
+                    
+                    // 移除编辑状态
+                    listSpan.contentEditable = "false";
+                    listSpan.classList.remove('editing');
+                    
+                    // 移除事件监听器
+                    listSpan.removeEventListener('keydown', handleKeyDown);
+                    listSpan.removeEventListener('blur', saveListName);
+                }
+                
+                // 处理键盘事件
+                function handleKeyDown(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); // 阻止插入换行
+                        saveListName();
+                        listSpan.blur(); // 移除焦点
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        listSpan.textContent = listName; // 恢复原名称
+                        listSpan.contentEditable = "false";
+                        listSpan.classList.remove('editing');
+                        listSpan.blur();
+                        
+                        // 移除事件监听器
+                        listSpan.removeEventListener('keydown', handleKeyDown);
+                        listSpan.removeEventListener('blur', saveListName);
+                    }
+                }
+                
+                // 添加事件监听器
+                listSpan.addEventListener('keydown', handleKeyDown);
+                listSpan.addEventListener('blur', saveListName);
+            }
 
             // 全屏按钮
             const fullscreenBtn = document.getElementById('fullscreen-btn');
@@ -2198,6 +2244,136 @@
                     console.warn('此浏览器不支持全屏 API。');
                 }
             }
+
+            // 添加列表按钮点击事件
+            document.querySelector('.sidebar-add').addEventListener('click', function() {
+                // 创建新的列表项
+                const newItem = document.createElement('li');
+                newItem.className = 'sidebar-item';
+                newItem.innerHTML = `
+                    <div class="sidebar-icon purple">新</div>
+                    <span class="editing" contenteditable="true">新列表</span>
+                    <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                    <div class="sidebar-popup-menu">
+                        <div class="sidebar-popup-menu-item edit">
+                            <i class="bi bi-pencil"></i>编辑名称
+                        </div>
+                        <div class="sidebar-popup-menu-item delete">
+                            <i class="bi bi-trash3"></i>删除列表
+                        </div>
+                    </div>
+                `;
+                
+                // 添加到列表中
+                const sidebarList = document.querySelector('.sidebar-list');
+                sidebarList.appendChild(newItem);
+                
+                // 获取名称元素并设置焦点
+                const listSpan = newItem.querySelector('span');
+                
+                // 设置焦点并选择所有文本
+                setTimeout(() => {
+                    listSpan.focus();
+                    
+                    // 选中所有文本
+                    const range = document.createRange();
+                    range.selectNodeContents(listSpan);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    
+                    // 为名称添加编辑相关事件
+                    // 按Enter或失去焦点时保存
+                    function saveNewListName() {
+                        const listName = listSpan.textContent.trim();
+                        
+                        // 确保名称不为空
+                        if (listName === '') {
+                            // 如果为空，移除该列表项
+                            if (newItem.parentNode) {
+                                newItem.parentNode.removeChild(newItem);
+                            }
+                            return;
+                        }
+                        
+                        // 更新图标中的首字符
+                        const firstChar = listName.charAt(0);
+                        newItem.querySelector('.sidebar-icon').textContent = firstChar;
+                        
+                        // 移除编辑状态
+                        listSpan.contentEditable = "false";
+                        listSpan.classList.remove('editing');
+                        
+                        // 切换到新创建的列表
+                        updateThemeAndTitle(newItem);
+                        
+                        // 移除事件监听器
+                        listSpan.removeEventListener('keydown', handleKeyDown);
+                        listSpan.removeEventListener('blur', saveNewListName);
+                    }
+                    
+                    // 处理键盘事件
+                    function handleKeyDown(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault(); // 阻止插入换行
+                            saveNewListName();
+                            listSpan.blur(); // 移除焦点
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            // 如果按ESC，取消创建
+                            if (newItem.parentNode) {
+                                newItem.parentNode.removeChild(newItem);
+                            }
+                        }
+                    }
+                    
+                    // 添加事件监听器
+                    listSpan.addEventListener('keydown', handleKeyDown);
+                    listSpan.addEventListener('blur', saveNewListName);
+                }, 50);
+            });
+
+            // 点击文档其他地方关闭所有弹出菜单
+            document.addEventListener('click', function(event) {
+                // 关闭任务弹出菜单
+                if (!event.target.closest('.info-task-btn') && !event.target.closest('.task-popup-menu')) {
+                    document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
+                        menu.classList.remove('show');
+                    });
+                }
+                
+                // 关闭侧边栏弹出菜单
+                if (!event.target.closest('.sidebar-more') && !event.target.closest('.sidebar-popup-menu')) {
+                    document.querySelectorAll('.sidebar-popup-menu.show').forEach(menu => {
+                        menu.classList.remove('show');
+                    });
+                }
+            });
+            
+            // 添加窗口大小调整监听器，在调整大小时重新定位所有显示的菜单
+            window.addEventListener('resize', function() {
+                // 重新定位任务弹出菜单
+                document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
+                    const taskItem = menu.closest('.task-item');
+                    if (taskItem) {
+                        const infoButton = taskItem.querySelector('.info-task-btn');
+                        if (infoButton) {
+                            positionPopupMenu(infoButton, menu);
+                        }
+                    }
+                });
+                
+                // 重新定位侧边栏弹出菜单
+                document.querySelectorAll('.sidebar-popup-menu.show').forEach(menu => {
+                    const sidebarItem = menu.closest('.sidebar-item');
+                    if (sidebarItem) {
+                        const moreButton = sidebarItem.querySelector('.sidebar-more');
+                        if (moreButton) {
+                            positionSidebarMenu(moreButton, menu);
+                        }
+                    }
+                });
+            });
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -2296,6 +2472,20 @@
                     }
                 }, 300);
             }, duration);
+        }
+
+        // 启用任务编辑功能
+        function enableTaskEditing(textElement) {
+            // 设置为可编辑状态
+            textElement.contentEditable = "true";
+            textElement.classList.add('editing');
+            textElement.focus();
+            
+            // 添加编辑提示（如果还没有）
+            if (!textElement.getAttribute('data-tooltip')) {
+                textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
+                textElement.title = '按回车换行，按Ctrl+Enter完成编辑';
+            }
         }
     </script>
 </body>
