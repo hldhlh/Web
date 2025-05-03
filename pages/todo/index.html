@@ -715,24 +715,7 @@
                 box-shadow: none;
             }
 
-            /* 全屏模式样式 */
-            :fullscreen .mobile-header {
-                display: flex !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                z-index: 100 !important;
-            }
-
-            :fullscreen .main-content {
-                padding-top: 60px !important;
-                height: calc(100vh - 60px) !important;
-            }
-
-            :fullscreen #fullscreen-btn {
-                display: none !important;
-            }
+            /* 移除了全屏模式样式 */
 
             .app-container {
                 padding: 0;
@@ -1020,9 +1003,25 @@
         </div>
     </div>
 
-    <button id="fullscreen-btn" style="position: fixed; bottom: 10px; right: 10px; z-index: 999; padding: 8px 15px; background-color: var(--primary-color); color: white; border: none; border-radius: 5px; cursor: pointer;">
-        进入全屏
-    </button>
+
+    
+    <!-- 自定义确认对话框 -->
+    <div id="custom-confirm" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.65); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background-color: white; border-radius: 12px; width: 460px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.15); overflow: hidden; display: flex; flex-direction: column;">
+            <div style="padding: 40px 40px 30px 40px; text-align: center; display: flex; flex-direction: column; justify-content: center; min-height: 140px;">
+                <h3 id="confirm-title" style="margin: 0 0 16px 0; font-size: 22px; font-weight: 600; letter-spacing: -0.2px; color: #333;"></h3>
+                <p id="confirm-message" style="margin: 0; color: #666; font-size: 16px; line-height: 1.5;"></p>
+            </div>
+            <div style="display: flex; padding: 0 40px 40px 40px; gap: 16px; justify-content: center;">
+                <button id="confirm-cancel" style="width: 180px; height: 38px; background-color: #007bff; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; color: white; font-weight: 500; transition: all 0.2s ease; padding: 0; box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);" onmouseover="this.style.backgroundColor='#0069d9'; this.style.boxShadow='0 4px 8px rgba(0, 123, 255, 0.3)';" onmouseout="this.style.backgroundColor='#007bff'; this.style.boxShadow='0 2px 4px rgba(0, 123, 255, 0.2)';">取消</button>
+                <button id="confirm-ok" style="width: 180px; height: 38px; background-color: #f5f5f5; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; color: #ff453a; font-weight: 500; transition: all 0.2s ease; padding: 0; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);" onmouseover="this.style.backgroundColor='#e8e8e8'; this.style.boxShadow='0 4px 8px rgba(0, 0, 0, 0.1)';" onmouseout="this.style.backgroundColor='#f5f5f5'; this.style.boxShadow='0 2px 4px rgba(0, 0, 0, 0.05)';">删除</button>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        /* 没有动画效果 */
+    </style>
     
 
 
@@ -1301,9 +1300,12 @@
                 
                 // 点击删除选项
                 if (menuItem.classList.contains('delete')) {
-                    if (confirm('确定要删除这个任务吗？')) {
-                        deleteTask(taskId);
-                    }
+                    // 使用自定义对话框删除任务
+                    showCustomConfirm(
+                        '删除任务？', 
+                        '此任务将被永久删除', 
+                        () => deleteTask(taskId)
+                    );
                 }
                 
                 // 点击复制选项
@@ -2025,9 +2027,11 @@
                 const action = prompt(`${listTitle}选项：\n1. 清除已完成任务\n2. 全部标记完成\n3. 全部标记未完成\n请输入数字或取消`);
 
                 if (action === '1') {
-                    if (confirm('确定要清除所有已完成的任务吗？')) {
-                        clearCompletedTasks();
-                    }
+                    showCustomConfirm(
+                        '清除已完成的任务？', 
+                        '所有已完成的任务将被永久删除', 
+                        clearCompletedTasks
+                    );
                 } else if (action === '2' || action === '3') {
                     const markAsCompleted = action === '2';
                     const selector = markAsCompleted ? '.task-checkbox:not(:checked)' : '.task-checkbox:checked';
@@ -2049,9 +2053,11 @@
                 const action = prompt(`${listTitle}选项：\n1. 清除已完成任务\n2. 全部标记完成\n3. 全部标记未完成\n请输入数字或取消`);
                 
                 if (action === '1') {
-                    if (confirm('确定要清除所有已完成的任务吗？')) {
-                        clearCompletedTasks();
-                    }
+                    showCustomConfirm(
+                        '清除已完成的任务？', 
+                        '所有已完成的任务将被永久删除', 
+                        clearCompletedTasks
+                    );
                 } else if (action === '2' || action === '3') {
                     const markAsCompleted = action === '2';
                     const selector = markAsCompleted ? '.task-checkbox:not(:checked)' : '.task-checkbox:checked';
@@ -2106,9 +2112,7 @@
                     } 
                     // 删除列表
                     else if (menuItem.classList.contains('delete')) {
-                        if (confirm(`确定要删除"${listName}"列表吗？`)) {
-                            alert('列表删除功能待实现');
-                        }
+                        deleteList(listItem);
                     }
                     
                     // 关闭菜单
@@ -2209,41 +2213,24 @@
                 listSpan.addEventListener('blur', saveListName);
             }
 
-            // 全屏按钮
-            const fullscreenBtn = document.getElementById('fullscreen-btn');
-            const elem = document.documentElement;
-            if (fullscreenBtn) {
-                fullscreenBtn.addEventListener('click', () => {
-                    if (elem.requestFullscreen) {
-                        elem.requestFullscreen().catch(err => {
-                            console.error(`请求全屏失败: ${err.message}`);
-                            alert('无法进入全屏模式，可能需要用户交互或浏览器不支持。');
-                        });
-                    } else if (elem.webkitRequestFullscreen) {
-                        elem.webkitRequestFullscreen().catch(err => {
-                            console.error(`请求全屏失败: ${err.message}`);
-                            alert('无法进入全屏模式，可能需要用户交互或浏览器不支持。');
-                        });
-                    } else if (elem.msRequestFullscreen) {
-                        elem.msRequestFullscreen();
-                    }
-                });
-
-                document.addEventListener('fullscreenchange', () => {
-                    console.log(document.fullscreenElement ? '已进入全屏模式' : '已退出全屏模式');
-                });
-                document.addEventListener('webkitfullscreenchange', () => {
-                    console.log(document.webkitFullscreenElement ? '已进入全屏模式' : '已退出全屏模式');
-                });
-                document.addEventListener('msfullscreenchange', () => {
-                    console.log(document.msFullscreenElement ? '已进入全屏模式' : '已退出全屏模式');
-                });
-
-                if (!document.fullscreenEnabled && !document.webkitFullscreenEnabled && !document.msFullscreenEnabled) {
-                    fullscreenBtn.style.display = 'none';
-                    console.warn('此浏览器不支持全屏 API。');
+            // 移除了全屏按钮相关代码
+            
+            /*
+            // 进入全屏的标准JavaScript代码，仅供参考：
+            function enterFullscreen(element) {
+                if(element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if(element.msRequestFullscreen) {      // IE
+                    element.msRequestFullscreen();
+                } else if(element.webkitRequestFullscreen) {  // Safari
+                    element.webkitRequestFullscreen();
+                } else if(element.mozRequestFullscreen) {     // Firefox
+                    element.mozRequestFullscreen();
                 }
             }
+            
+            // 使用方法：enterFullscreen(document.documentElement); // 全屏整个页面
+            */
 
             // 添加列表按钮点击事件
             document.querySelector('.sidebar-add').addEventListener('click', function() {
@@ -2418,12 +2405,117 @@
             initialize();
         });
         
+        // 自定义确认对话框函数
+        function showCustomConfirm(title, message, okCallback) {
+            const confirmDialog = document.getElementById('custom-confirm');
+            const titleElement = document.getElementById('confirm-title');
+            const messageElement = document.getElementById('confirm-message');
+            const cancelButton = document.getElementById('confirm-cancel');
+            const okButton = document.getElementById('confirm-ok');
+            
+            // 设置对话框内容
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            // 立即显示对话框，没有动画
+            confirmDialog.style.display = 'flex';
+            
+            // 绑定取消按钮事件
+            const cancelHandler = () => {
+                // 立即隐藏对话框，没有动画
+                confirmDialog.style.display = 'none';
+                
+                cancelButton.removeEventListener('click', cancelHandler);
+                okButton.removeEventListener('click', okHandler);
+            };
+            
+            // 绑定确认按钮事件
+            const okHandler = () => {
+                // 立即隐藏对话框，没有动画
+                confirmDialog.style.display = 'none';
+                okCallback();
+                
+                cancelButton.removeEventListener('click', cancelHandler);
+                okButton.removeEventListener('click', okHandler);
+            };
+            
+            // 设置事件监听
+            cancelButton.addEventListener('click', cancelHandler);
+            okButton.addEventListener('click', okHandler);
+            
+            // 添加点击背景关闭对话框的功能
+            const backdropClickHandler = (event) => {
+                // 只有点击背景时才关闭
+                if (event.target === confirmDialog) {
+                    cancelHandler();
+                }
+            };
+            
+            confirmDialog.addEventListener('click', backdropClickHandler);
+            
+            // 一次性事件移除
+            cancelButton.addEventListener('click', () => {
+                confirmDialog.removeEventListener('click', backdropClickHandler);
+            }, { once: true });
+            
+            okButton.addEventListener('click', () => {
+                confirmDialog.removeEventListener('click', backdropClickHandler);
+            }, { once: true });
+        }
+        
+        // 列表删除功能
+        function deleteList(listItem) {
+            // 如果尝试删除最后一个列表项，显示提示并阻止删除
+            const totalLists = document.querySelectorAll('.sidebar-item').length;
+            if (totalLists <= 1) {
+                showToast('无法删除最后一个列表');
+                return;
+            }
+            
+            // 获取列表名称
+            const listName = listItem.querySelector('span').textContent;
+            
+            // 显示自定义确认对话框
+            showCustomConfirm(
+                `删除列表"${listName}"？`, 
+                '此操作将删除列表中的所有提醒事项。', 
+                () => {
+                    // 如果删除的是当前激活的列表，切换到另一个列表
+                    if (listItem.classList.contains('active')) {
+                        // 查找下一个或上一个列表项
+                        const nextItem = listItem.nextElementSibling;
+                        const prevItem = listItem.previousElementSibling;
+                        
+                        // 优先选择下一个列表，如果没有则选择上一个
+                        const newActiveItem = nextItem && nextItem.classList.contains('sidebar-item') ? 
+                                            nextItem : 
+                                            (prevItem && prevItem.classList.contains('sidebar-item') ? prevItem : null);
+                        
+                        if (newActiveItem) {
+                            // 在删除后切换到新的列表
+                            setTimeout(() => updateThemeAndTitle(newActiveItem), 0);
+                        }
+                    }
+                    
+                    // 从DOM中移除列表项
+                    if (listItem.parentNode) {
+                        listItem.parentNode.removeChild(listItem);
+                    }
+                    
+                    // 显示成功提示
+                    showToast('列表已删除');
+                }
+            );
+        }
+
         // 确保全局函数在window对象上可用
         window.toggleTaskStatus = toggleTaskStatus;
         window.deleteTask = deleteTask;
         window.addTask = addTask;
         window.clearCompletedTasks = clearCompletedTasks;
         window.createEmptyEditableTask = createEmptyEditableTask;
+        window.deleteList = deleteList;
+        window.showCustomConfirm = showCustomConfirm;
         
         // 添加复制到剪贴板的功能
         function copyToClipboard(text) {
