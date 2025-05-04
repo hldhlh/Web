@@ -1030,6 +1030,21 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZteGRkdmpna3lrdXF3bWFzaWdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDMzMjcsImV4cCI6MjA1OTYxOTMyN30.XCU4-03oajGh6M2-PNiBotCZSIDn_nJXkIC0Thjjfqo';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // === Supabase Realtime 实时推送订阅 ===
+        // 订阅 todos 表的所有变动，实现多端实时同步
+        supabase
+          .channel('public:todos')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'todos' },
+            payload => {
+              // 只要有变动，自动刷新任务列表
+              // 可根据payload.eventType做更细粒度处理
+              loadBirthdays();
+            }
+          )
+          .subscribe();
+
         const taskList = document.getElementById('task-list');
         const sidebarList = document.querySelector('.sidebar-list');
 
