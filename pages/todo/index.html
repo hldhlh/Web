@@ -1422,7 +1422,7 @@
         function finishEditing(textElement) {
             const taskItem = textElement.closest('.task-item');
             const taskId = taskItem.dataset.id;
-            const newText = textElement.textContent.trim();
+            const newText = htmlToPlainText(textElement.innerHTML);
             
             // 确保内容不为空
             if (newText === '') {
@@ -1717,7 +1717,7 @@
                         return;
                     }
                     
-                    const newText = textElement.textContent.trim();
+                    const newText = htmlToPlainText(textElement.innerHTML);
                     console.log("任务文本:", newText);
                     if (newText !== '') {
                         try {
@@ -1792,7 +1792,7 @@
                             }
                             
                             // 手动触发保存
-                            const newText = textElement.textContent.trim();
+                            const newText = htmlToPlainText(textElement.innerHTML);
                             if (newText !== '') {
                                 // 标记为正在保存
                                 window.currentEditingTempTask.dataset.saving = "true";
@@ -1802,7 +1802,7 @@
                                 textElement.classList.remove('editing');
                                 
                                 // 异步添加任务
-                                addTask(newText).then(() => {
+                                addTask(htmlToPlainText(textElement.innerHTML)).then(() => {
                                     // 添加成功后移除临时任务
                                     if (window.currentEditingTempTask && window.currentEditingTempTask.parentNode) {
                                         window.currentEditingTempTask.parentNode.removeChild(window.currentEditingTempTask);
@@ -2578,6 +2578,24 @@
                 textElement.setAttribute('data-tooltip', '按Ctrl+Enter完成编辑');
                 textElement.title = '按回车换行，按Ctrl+Enter完成编辑';
             }
+        }
+
+        // 工具函数：将HTML内容统一转为\n换行
+        function htmlToPlainText(html) {
+            if (!html) return '';
+            // 1. 将 <div>、<p> 替换为换行
+            let text = html.replace(/<div><br><\/div>/gi, '\n')
+                           .replace(/<div>/gi, '\n')
+                           .replace(/<\/div>/gi, '')
+                           .replace(/<p>/gi, '\n')
+                           .replace(/<\/p>/gi, '')
+                           .replace(/<br\s*\/?>(?!\n)/gi, '\n');
+            // 2. 去除多余的换行
+            text = text.replace(/^\n+|\n+$/g, '');
+            // 3. 转义HTML实体
+            const temp = document.createElement('div');
+            temp.innerHTML = text;
+            return temp.textContent || temp.innerText || '';
         }
     </script>
 </body>
