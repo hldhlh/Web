@@ -2379,46 +2379,109 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM已加载");
-            
-            // 先绑定添加按钮事件 - 仅在这里绑定一次
-            // 清除之前可能存在的事件处理器
-            const pcAddBtn = document.querySelector('.header-actions button:first-child');
-            if (pcAddBtn) {
-                console.log("直接绑定PC添加按钮");
-                // 移除之前可能存在的所有点击事件
-                const newPcAddBtn = pcAddBtn.cloneNode(true);
-                pcAddBtn.parentNode.replaceChild(newPcAddBtn, pcAddBtn);
-                
-                newPcAddBtn.onclick = function(e) {
-                    console.log("PC添加按钮被点击 (直接绑定)");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    createEmptyEditableTask();
-                    return false;
-                };
-            }
-            
-            const mobileAddBtn = document.querySelector('.mobile-actions button:first-child');
-            if (mobileAddBtn) {
-                console.log("直接绑定移动端添加按钮");
-                // 移除之前可能存在的所有点击事件
-                const newMobileAddBtn = mobileAddBtn.cloneNode(true);
-                mobileAddBtn.parentNode.replaceChild(newMobileAddBtn, mobileAddBtn);
-                
-                newMobileAddBtn.onclick = function(e) {
-                    console.log("移动端添加按钮被点击 (直接绑定)");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    createEmptyEditableTask();
-                    return false;
-                };
-            }
-            
-            // 然后再初始化所有其他功能，但不再绑定添加按钮
-            // 然后再初始化所有其他功能
-            initialize();
+            loadBirthdays(); // 首次全量加载
+            setupRealtime(); // 启用实时推送
         });
+
+        function setupRealtime() {
+            supabase
+              .channel('public:todos')
+              .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'todos' },
+                payload => {
+                  handleRealtimeChange(payload);
+                }
+              )
+              .subscribe();
+        }
+
+        function handleRealtimeChange(payload) {
+            const { eventType, new: newRow, old: oldRow } = payload;
+            if (eventType === 'INSERT') {
+                if (!insertTaskToDOM(newRow)) {
+                    loadBirthdays(); // fallback
+                }
+            } else if (eventType === 'UPDATE') {
+                if (!updateTaskInDOM(newRow)) {
+                    loadBirthdays(); // fallback
+                }
+            } else if (eventType === 'DELETE') {
+                if (!removeTaskFromDOM(oldRow.id)) {
+                    loadBirthdays(); // fallback
+                }
+            }
+        }
+
+        // 插入新任务到DOM，已存在则不插入，返回true/false
+        function insertTaskToDOM(task) {
+            if (document.querySelector(`.task-item[data-id="${task.id}"]`)) return true;
+            const taskListElem = document.getElementById('task-list');
+            if (!taskListElem) return false;
+            const temp = document.createElement('div');
+            temp.innerHTML = renderTaskItemHTML(task);
+            const newTaskItem = temp.firstChild;
+            if (taskListElem.firstChild) {
+                taskListElem.insertBefore(newTaskItem, taskListElem.firstChild);
+            } else {
+                taskListElem.appendChild(newTaskItem);
+            }
+            setupTaskListeners();
+            return true;
+        }
+
+        // 更新任务内容到DOM，找不到则返回false
+        function updateTaskInDOM(task) {
+            const li = document.querySelector(`.task-item[data-id="${task.id}"]`);
+            if (!li) return false;
+            const newHTML = renderTaskItemHTML(task);
+            const temp = document.createElement('div');
+            temp.innerHTML = newHTML;
+            const newLi = temp.firstChild;
+            li.innerHTML = newLi.innerHTML;
+            setupTaskListeners();
+            return true;
+        }
+
+        // 从DOM中移除任务，找不到则返回false
+        function removeTaskFromDOM(id) {
+            const li = document.querySelector(`.task-item[data-id="${id}"]`);
+            if (!li) return false;
+            if (li.parentNode) li.parentNode.removeChild(li);
+            return true;
+        }
+
+        // 渲染单个任务的HTML
+        function renderTaskItemHTML(item) {
+            let creationTime = '未知';
+            if (item.created_at) {
+                try {
+                    creationTime = new Date(item.created_at).toLocaleString('zh-CN', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                } catch (e) {}
+            }
+            return `<li class="task-item${item.is_completed ? ' completed' : ''}" data-id="${item.id}">
+<input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
+<div class="task-content">
+    <span class="task-text" contenteditable="false">${(item.task || '').replace(/\n/g, '<br>')}</span>
+    ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
+    <button class="info-task-btn" data-created-at="${item.created_at || ''}"><i class="bi bi-three-dots-vertical"></i></button>
+    <div class="task-popup-menu">
+        <div class="task-popup-menu-item view-info">
+            <i class="bi bi-info-circle"></i>创建: ${creationTime}
+        </div>
+        <div class="task-popup-menu-item copy">
+            <i class="bi bi-clipboard"></i>复制
+        </div>
+        <div class="task-popup-menu-item delete">
+            <i class="bi bi-trash3"></i>删除
+        </div>
+    </div>
+</div>
+</li>`;
+        }
         
         // 自定义确认对话框函数
         function showCustomConfirm(title, message, okCallback) {
