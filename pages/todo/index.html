@@ -1146,7 +1146,7 @@
                 html += `<li class="task-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
     <input type="checkbox" class="task-checkbox" ${item.is_completed ? 'checked' : ''}>
     <div class="task-content">
-        <span class="task-text" contenteditable="false">${item[textProperty]}</span>
+        <span class="task-text" contenteditable="false">${(item[textProperty] || '').replace(/\n/g, '<br>')}</span>
         ${item.note ? `<div class="task-note">${item.note}</div>` : ''}
         <button class="info-task-btn" data-created-at="${item.created_at || ''}"><i class="bi bi-three-dots-vertical"></i></button>
         <div class="task-popup-menu">
