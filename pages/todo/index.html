@@ -82,12 +82,6 @@
         </div>
     </div>
     
-    <style>
-        /* 没有动画效果 */
-    </style>
-    
-
-
     <script>
         const SUPABASE_URL = 'https://fmxddvjgkykuqwmasigo.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZteGRkdmpna3lrdXF3bWFzaWdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDMzMjcsImV4cCI6MjA1OTYxOTMyN30.XCU4-03oajGh6M2-PNiBotCZSIDn_nJXkIC0Thjjfqo';
@@ -416,63 +410,36 @@
         }
 
         // 弹出菜单位置调整函数
-        function positionPopupMenu(button, menu) {
-            // 获取按钮的位置信息
-            const buttonRect = button.getBoundingClientRect();
-            const menuRect = menu.getBoundingClientRect();
+        function positionPopupMenu(e,t){
+            const i=e.getBoundingClientRect();
+            const n=t.getBoundingClientRect(); // 修复：使用t.getBoundingClientRect()获取正确的尺寸
+            const s=window.innerWidth-i.right<n.width;
+            const a=window.innerWidth<=768;
             
-            // 计算弹出菜单的位置
-            const isRightAligned = window.innerWidth - buttonRect.right < menuRect.width;
-            const isMobile = window.innerWidth <= 768;
+            t.style.top="";
+            t.style.right="";
+            t.style.left="";
             
-            // 清除之前的样式
-            menu.style.top = '';
-            menu.style.right = '';
-            menu.style.left = '';
-            
-            if (isMobile) {
-                // 移动设备上，菜单显示在按钮下方并居中
-                menu.style.top = `${buttonRect.bottom + 5}px`;
-                menu.style.left = `${buttonRect.left + (buttonRect.width/2) - (menuRect.width/2)}px`;
-            } else {
-                // 桌面设备上，菜单显示在按钮右侧
-                menu.style.top = `${buttonRect.top}px`;
-                
-                if (isRightAligned) {
-                    // 如果右侧空间不足，显示在按钮左侧
-                    menu.style.right = `${window.innerWidth - buttonRect.left + 5}px`;
-                } else {
-                    // 否则显示在按钮右侧
-                    menu.style.left = `${buttonRect.right + 5}px`;
-                }
-            }
+            a?(t.style.top=`${i.bottom+5}px`,
+            t.style.left=`${i.left+i.width/2-n.width/2}px`):
+            (t.style.top=`${i.top}px`,
+            s?t.style.right=`${window.innerWidth-i.left+5}px`:
+            t.style.left=`${i.right+5}px`);
         }
 
         // 侧边栏弹出菜单位置调整函数
-        function positionSidebarMenu(button, menu) {
-            // 获取按钮的位置信息
-            const buttonRect = button.getBoundingClientRect();
-            const menuRect = menu.getBoundingClientRect();
+        function positionSidebarMenu(e,t){
+            const i=e.getBoundingClientRect();
+            const n=t.getBoundingClientRect(); // 修复：使用t.getBoundingClientRect()获取正确的尺寸
             
-            // 清除之前的样式
-            menu.style.top = '';
-            menu.style.right = '';
-            menu.style.left = '';
+            t.style.top="";
+            t.style.right="";
+            t.style.left="";
+            t.style.top=`${i.top}px`;
             
-            // 菜单显示在按钮右侧
-            menu.style.top = `${buttonRect.top}px`;
-            
-            // 检查右侧空间是否足够
-            const isRightAligned = window.innerWidth - buttonRect.right < menuRect.width;
-            
-            if (isRightAligned) {
-                // 如果右侧空间不足，显示在按钮左侧
-                menu.style.right = `${window.innerWidth - buttonRect.left + 5}px`;
-            } else {
-                // 否则显示在按钮右侧
-                menu.style.left = `${buttonRect.right + 5}px`;
-            }
-
+            const s=window.innerWidth-i.right<n.width;
+            s?t.style.right=`${window.innerWidth-i.left+5}px`:
+            t.style.left=`${i.right+5}px`;
         }
 
         function handleTaskKeydown(event) {
@@ -1009,26 +976,27 @@
                    iconElement.classList.contains('red') ? 'red' : 'purple';
         }
 
-        function updateThemeAndTitle(listItem) {
-            const listTitleText = listItem.querySelector('span').textContent;
-            const iconElement = listItem.querySelector('.sidebar-icon');
-            const themeColor = getThemeFromIcon(iconElement);
-
-            document.querySelector('.list-title').textContent = listTitleText;
-            document.querySelector('.mobile-title').textContent = listTitleText;
-            document.body.dataset.theme = themeColor;
-
-            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-            listItem.classList.add('active');
-
+        // 压缩版本的updateThemeAndTitle函数修复
+        function updateThemeAndTitle(e){
+            const t=e.querySelector("span").textContent,
+                  i=e.querySelector(".sidebar-icon"),
+                  n=getThemeFromIcon(i);
+            
+            document.querySelector(".list-title").textContent=t;
+            document.querySelector(".mobile-title").textContent=t;
+            document.body.dataset.theme=n;
+            
+            document.querySelectorAll(".sidebar-item").forEach(e=>e.classList.remove("active"));
+            e.classList.add("active");
+            
             loadBirthdays();
-
-            if (window.innerWidth <= 768) {
-                document.querySelector('.sidebar').style.display = 'none';
-                document.querySelector('.main-content').style.display = 'block';
-                document.querySelector('.mobile-header').style.display = 'flex';
-                document.querySelector('.mobile-back').style.visibility = 'visible';
-                document.querySelector('.mobile-actions').style.display = 'flex';
+            
+            if(window.innerWidth<=768){
+                document.querySelector(".sidebar").style.display="none";
+                document.querySelector(".main-content").style.display="block";
+                document.querySelector(".mobile-header").style.display="flex";
+                document.querySelector(".mobile-back").style.visibility="visible";
+                document.querySelector(".mobile-actions").style.display="flex";
             }
         }
 
@@ -1151,54 +1119,59 @@
             });
 
             // 侧边栏点击处理
-            sidebarList.addEventListener('click', function(e) {
-                const targetItem = e.target.closest('.sidebar-item');
-                const targetMore = e.target.closest('.sidebar-more');
-
+            sidebarList.addEventListener("click", function(e) {
+                const targetItem = e.target.closest(".sidebar-item");
+                const targetMore = e.target.closest(".sidebar-more");
+                
+                // 处理菜单按钮点击
                 if (targetMore) {
                     e.stopPropagation();
-                    const listItem = targetMore.closest('.sidebar-item');
-                    const menuElement = listItem.querySelector('.sidebar-popup-menu');
+                    const listItem = targetMore.closest(".sidebar-item");
+                    const menuElement = listItem.querySelector(".sidebar-popup-menu");
                     
                     // 关闭所有其他打开的菜单
-                    document.querySelectorAll('.sidebar-popup-menu.show').forEach(menu => {
+                    document.querySelectorAll(".sidebar-popup-menu.show").forEach(menu => {
                         if (menu !== menuElement) {
-                            menu.classList.remove('show');
+                            menu.classList.remove("show");
                         }
                     });
                     
                     // 切换当前菜单的显示状态
-                    menuElement.classList.toggle('show');
+                    menuElement.classList.toggle("show");
                     
                     // 根据按钮位置调整菜单位置
                     positionSidebarMenu(targetMore, menuElement);
                     
                     e.stopPropagation();
-                } else if (e.target.closest('.sidebar-popup-menu-item')) {
-                    // 处理菜单项点击
-                    const menuItem = e.target.closest('.sidebar-popup-menu-item');
-                    const listItem = menuItem.closest('.sidebar-item');
-                    const listName = listItem.querySelector('span').textContent;
+                } 
+                // 处理菜单项点击
+                else if (e.target.closest(".sidebar-popup-menu-item")) {
+                    const menuItem = e.target.closest(".sidebar-popup-menu-item");
+                    const listItem = menuItem.closest(".sidebar-item");
+                    const listName = listItem.querySelector("span").textContent;
                     
                     // 编辑名称
-                    if (menuItem.classList.contains('edit')) {
+                    if (menuItem.classList.contains("edit")) {
                         // 获取列表项和名称元素
-                        const listSpan = listItem.querySelector('span');
+                        const listSpan = listItem.querySelector("span");
                         
                         // 使名称可编辑
                         makeListNameEditable(listSpan, listName, listItem);
                     } 
                     // 删除列表
-                    else if (menuItem.classList.contains('delete')) {
+                    else if (menuItem.classList.contains("delete")) {
                         deleteList(listItem);
                     }
                     
                     // 关闭菜单
-                    const menuElement = listItem.querySelector('.sidebar-popup-menu');
-                    menuElement.classList.remove('show');
+                    const menuElement = listItem.querySelector(".sidebar-popup-menu");
+                    menuElement.classList.remove("show");
                     
                     e.stopPropagation();
-                } else if (targetItem) {
+                } 
+                // 处理点击列表项本身
+                else if (targetItem) {
+                    // 立即更新主题和标题
                     updateThemeAndTitle(targetItem);
                 }
             });
@@ -1441,9 +1414,39 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            loadBirthdays(); // 首次全量加载
-            setupRealtime(); // 启用实时推送
+        // 添加在document.addEventListener("DOMContentLoaded", function()...)代码之前的位置
+
+        // 添加直接的事件绑定，确保列表切换功能正常工作
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log("绑定侧边栏点击事件...");
+            
+            // 为每个侧边栏项添加直接点击事件
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    // 如果不是点击菜单按钮或菜单项，切换到该列表
+                    if (!e.target.closest('.sidebar-more') && !e.target.closest('.sidebar-popup-menu-item')) {
+                        console.log("列表项被点击:", this.querySelector('span').textContent);
+                        updateThemeAndTitle(this);
+                        e.stopPropagation();
+                    }
+                });
+            });
+            
+            // 添加移动端返回按钮点击事件
+            document.querySelector('.mobile-back').addEventListener('click', function() {
+                console.log("返回按钮被点击");
+                if (window.innerWidth <= 768) {
+                    const sidebar = document.querySelector('.sidebar');
+                    sidebar.style.display = 'flex';
+                    document.querySelector('.main-content').style.display = 'none';
+                    document.querySelector('.mobile-header').style.display = 'none';
+                }
+            });
+            
+            // 初始化其他功能
+            loadBirthdays();
+            setupRealtime();
+            initialize(); // 确保调用initialize函数进行完整初始化
         });
 
         function setupRealtime() {
