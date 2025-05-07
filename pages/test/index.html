@@ -238,13 +238,19 @@ body {
 }
 
 .task-item {
-    DISPLAY: FLEX;
-    ALIGN-ITEMS: CENTER;
-    PADDING: 12PX 15PX;
-    POSITION: RELATIVE;
-    WIDTH: 100%;
-    BOX-SIZING: BORDER-BOX;
-    MARGIN: 0;
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.task-item.deleting {
+    opacity: 0;
+    transform: translateX(-20px);
 }
 
 .task-content {
@@ -709,7 +715,8 @@ body {
             sidebar: document.querySelector('.sidebar'),
             mainContent: document.querySelector('.main-content'),
             mobileHeader: document.querySelector('.mobile-header'),
-            mobileBack: document.querySelector('.mobile-back'),
+            mobileBack: document.querySelector('.mobile-header .mobile-back'),
+            mobileActions: document.querySelector('.mobile-header .mobile-actions'),
             listMenu: document.getElementById('list-popup-menu'),
             confirmDialog: document.getElementById('custom-confirm'),
             confirmTitle: document.getElementById('confirm-title'),
@@ -761,6 +768,7 @@ body {
             },
 
             positionPopupMenu(button, menu) {
+                if (!button || !menu) return;
                 const btnRect = button.getBoundingClientRect();
                 const menuRect = menu.getBoundingClientRect();
                 const isMobile = window.innerWidth <= 768;
@@ -780,6 +788,7 @@ body {
             },
 
             positionListMenu(button, menu) {
+                if (!button || !menu) return;
                 const btnRect = button.getBoundingClientRect();
                 const menuRect = menu.getBoundingClientRect();
                 const isMobile = window.innerWidth <= 768;
@@ -820,6 +829,7 @@ body {
             },
 
             showConfirm(title, message, okCallback) {
+                if (!DOM.confirmTitle || !DOM.confirmMessage || !DOM.confirmDialog) return;
                 DOM.confirmTitle.textContent = title;
                 DOM.confirmMessage.textContent = message;
                 DOM.confirmDialog.style.display = 'flex';
@@ -872,22 +882,33 @@ body {
             },
 
             updateThemeAndTitle(item) {
-                const title = item.querySelector('span').textContent;
+                if (!item || !DOM.listTitle || !DOM.mobileTitle || !DOM.sidebar || !DOM.mainContent || !DOM.mobileHeader) {
+                    console.warn('Missing DOM elements in updateThemeAndTitle');
+                    return;
+                }
+                const title = item.querySelector('span')?.textContent || '未命名';
                 const icon = item.querySelector('.sidebar-icon');
-                const theme = icon.classList.contains('blue') ? 'blue' :
-                    icon.classList.contains('red') ? 'red' : 'purple';
+                const theme = icon?.classList.contains('blue') ? 'blue' :
+                    icon?.classList.contains('red') ? 'red' : 'purple';
                 DOM.listTitle.textContent = title;
                 DOM.mobileTitle.textContent = title;
                 document.body.dataset.theme = theme;
                 document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
                 state.currentList = item;
-                if (window.innerWidth <= 768) {
+                const isMobile = window.innerWidth <= 768;
+                if (isMobile) {
                     DOM.sidebar.style.display = 'none';
                     DOM.mainContent.style.display = 'block';
                     DOM.mobileHeader.style.display = 'flex';
-                    DOM.mobileBack.style.visibility = 'visible';
-                    DOM.mobileActions.style.display = 'flex';
+                    if (DOM.mobileBack) DOM.mobileBack.style.visibility = 'visible';
+                    if (DOM.mobileActions) DOM.mobileActions.style.display = 'flex';
+                } else {
+                    DOM.sidebar.style.display = 'flex';
+                    DOM.mainContent.style.display = 'block';
+                    DOM.mobileHeader.style.display = 'none';
+                    if (DOM.mobileBack) DOM.mobileBack.style.visibility = 'hidden';
+                    if (DOM.mobileActions) DOM.mobileActions.style.display = 'none';
                 }
             },
 
@@ -995,8 +1016,6 @@ body {
                     if (data?.length) {
                         const task = document.querySelector(`[data-id="${tempId}"]`);
                         if (task) task.dataset.id = data[0].id;
-                    } else {
-                        TaskManager.loadTasks();
                     }
                     return data;
                 } catch (error) {
@@ -1027,26 +1046,25 @@ body {
 
             async deleteTask(id) {
                 try {
-                    const { error } = await supabase.from('todos').delete().eq('id', id);
-                    if (error) throw error;
-                    UI.showToast('任务已删除');
-                    if (state.currentFilter) {
-                        TaskManager.loadTasks(state.currentFilter);
-                    } else {
-                        const task = document.querySelector(`[data-id="${id}"]`);
-                        if (task) {
+                    const task = document.querySelector(`[data-id="${id}"]`);
+                    if (task) {
+                        task.classList.add('deleting');
+                        setTimeout(() => {
                             task.remove();
                             if (!DOM.taskList.children.length) {
                                 UI.hideFilterStatus();
                                 DOM.taskList.innerHTML = '<div class="empty-state">列表为空，快来添加新任务吧！</div>';
                             }
-                        } else {
-                            TaskManager.loadTasks();
-                        }
+                        }, 300); // Match CSS transition duration
                     }
+                    const { error } = await supabase.from('todos').delete().eq('id', id);
+                    if (error) throw error;
+                    UI.showToast('任务已删除');
                 } catch (error) {
                     console.error('删除任务失败:', error);
                     UI.showToast('删除失败: ' + error.message);
+                    const task = document.querySelector(`[data-id="${id}"]`);
+                    if (task) task.classList.remove('deleting');
                 }
             },
 
@@ -1226,7 +1244,7 @@ body {
                         } else if (eventType === 'UPDATE') {
                             if (!this.updateTask(newRow)) TaskManager.loadTasks();
                         } else if (eventType === 'DELETE') {
-                            if (!this.deleteTask(oldRow.id)) TaskManager.loadTasks();
+                            this.deleteTask(oldRow.id);
                         }
                     })
                     .subscribe();
@@ -1282,7 +1300,13 @@ body {
             deleteTask(id) {
                 const li = document.querySelector(`[data-id="${id}"]`);
                 if (!li) return false;
-                li.remove();
+                li.classList.add('deleting');
+                setTimeout(() => {
+                    li.remove();
+                    if (!DOM.taskList.children.length) {
+                        DOM.taskList.innerHTML = '<div class="empty-state">列表为空，快来添加新任务吧！</div>';
+                    }
+                }, 300); // Match CSS transition duration
                 return true;
             }
         };
@@ -1370,7 +1394,7 @@ body {
                             state.currentEditingTask.remove();
                             state.currentEditingTask = null;
                         }
-                    } else if (DOM.sidebar.style.display === 'flex' && !DOM.sidebar.contains(e.target) &&
+                    } else if (DOM.sidebar?.style.display === 'flex' && !DOM.sidebar.contains(e.target) &&
                         !e.target.closest('.mobile-back') && window.innerWidth <= 768) {
                         DOM.sidebar.style.display = 'none';
                         DOM.mainContent.style.display = 'block';
@@ -1455,11 +1479,21 @@ body {
                     }
                 });
 
-                DOM.mobileBack.addEventListener('click', () => {
-                    if (window.innerWidth <= 768) {
-                        DOM.sidebar.style.display = 'flex';
-                        DOM.mainContent.style.display = 'none';
-                        DOM.mobileHeader.style.display = 'none';
+                if (DOM.mobileBack) {
+                    DOM.mobileBack.addEventListener('click', () => {
+                        if (window.innerWidth <= 768 && DOM.sidebar && DOM.mainContent && DOM.mobileHeader) {
+                            DOM.sidebar.style.display = 'flex';
+                            DOM.mainContent.style.display = 'none';
+                            DOM.mobileHeader.style.display = 'none';
+                        }
+                    });
+                }
+
+                DOM.sidebarList.addEventListener('click', e => {
+                    const sidebarItem = e.target.closest('.sidebar-item');
+                    if (sidebarItem && !sidebarItem.classList.contains('active')) {
+                        UI.updateThemeAndTitle(sidebarItem);
+                        TaskManager.loadTasks();
                     }
                 });
 
@@ -1473,16 +1507,20 @@ body {
                 document.querySelector('.sidebar-add').addEventListener('click', ListManager.addList);
 
                 window.addEventListener('resize', () => {
-                    if (window.innerWidth > 768) {
-                        DOM.sidebar.style.display = '';
-                        DOM.mainContent.style.display = '';
-                        DOM.mobileHeader.style.display = 'none';
-                    } else if (DOM.sidebar.style.display !== 'flex') {
-                        DOM.sidebar.style.display = 'none';
-                        DOM.mainContent.style.display = 'block';
-                        DOM.mobileHeader.style.display = 'flex';
+                    if (!DOM.sidebar || !DOM.mainContent || !DOM.mobileHeader) return;
+                    const isMobile = window.innerWidth <= 768;
+                    if (isMobile) {
+                        if (DOM.sidebar.style.display !== 'flex') {
+                            DOM.sidebar.style.display = 'none';
+                            DOM.mainContent.style.display = 'block';
+                            DOM.mobileHeader.style.display = 'flex';
+                        } else {
+                            DOM.mainContent.style.display = 'none';
+                            DOM.mobileHeader.style.display = 'none';
+                        }
                     } else {
-                        DOM.mainContent.style.display = 'none';
+                        DOM.sidebar.style.display = 'flex';
+                        DOM.mainContent.style.display = 'block';
                         DOM.mobileHeader.style.display = 'none';
                     }
                     document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
@@ -1501,8 +1539,20 @@ body {
         function init() {
             Events.setup();
             Realtime.setup();
+            const isMobile = window.innerWidth <= 768;
             const initialItem = document.querySelector('.sidebar-item.active') || document.querySelector('.sidebar-item');
-            if (initialItem) UI.updateThemeAndTitle(initialItem);
+            if (initialItem && DOM.sidebar && DOM.mainContent && DOM.mobileHeader) {
+                UI.updateThemeAndTitle(initialItem);
+                if (isMobile) {
+                    DOM.sidebar.style.display = 'none';
+                    DOM.mainContent.style.display = 'block';
+                    DOM.mobileHeader.style.display = 'flex';
+                } else {
+                    DOM.sidebar.style.display = 'flex';
+                    DOM.mainContent.style.display = 'block';
+                    DOM.mobileHeader.style.display = 'none';
+                }
+            }
             TaskManager.loadTasks();
         }
 
