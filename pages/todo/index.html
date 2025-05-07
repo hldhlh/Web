@@ -825,10 +825,16 @@ body {
     z-index: 1000;
     display: none;
     border: 1px solid var(--border-color);
+    /* 添加动画过渡 */
+    transition: opacity 0.2s, transform 0.25s;
+    opacity: 0;
+    transform: translateY(10px);
 }
 
 .task-popup-menu.show {
     display: block;
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .task-popup-menu-item {
@@ -989,6 +995,56 @@ body {
     background-color: currentColor;
     border-radius: 1px;
 }
+
+/* 移动端菜单样式优化 */
+@media (max-width: 768px) {
+    .task-popup-menu {
+        width: 90%;
+        max-width: 300px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        padding: 10px 0;
+        left: 50% !important;
+        transform: translateX(-50%);
+        bottom: 20px !important;
+        top: auto !important;
+    }
+    
+    .task-popup-menu-item {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+    
+    .task-popup-menu-item i {
+        font-size: 18px;
+        margin-right: 15px;
+    }
+    
+    .task-popup-menu-item.delete {
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        margin-top: 5px;
+        padding-top: 15px;
+    }
+}
+
+/* 移动端遮罩层 */
+.mobile-menu-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 999;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.mobile-menu-backdrop.show {
+    display: block;
+    opacity: 1;
+}
     </style>
 </head>
 <body data-theme="purple">
@@ -1082,6 +1138,9 @@ body {
             </div>
         </div>
     </div>
+    
+    <!-- 移动端菜单遮罩 -->
+    <div id="mobile-menu-backdrop" class="mobile-menu-backdrop"></div>
     
     <!-- 列表操作弹出菜单 -->
     <div id="list-popup-menu" class="list-popup-menu">
@@ -1360,6 +1419,11 @@ body {
             // 如果当前没有临时任务，直接渲染
             if (!shouldPreserveTempTask) {
                 taskList.innerHTML = html;
+                
+                // 为每个任务项应用菜单功能
+                document.querySelectorAll('.task-item').forEach(taskItem => {
+                    ensureTaskMenuFunctionality(taskItem);
+                });
             } else {
                 // 保留临时任务，先移除它
                 if (tempTask.parentNode) {
@@ -1369,12 +1433,20 @@ body {
                 // 渲染新的任务列表
                 taskList.innerHTML = html;
                 
+                // 为每个任务项应用菜单功能
+                document.querySelectorAll('.task-item').forEach(taskItem => {
+                    ensureTaskMenuFunctionality(taskItem);
+                });
+                
                 // 将临时任务重新添加到顶部
                 if (taskList.firstChild) {
                     taskList.insertBefore(tempTask, taskList.firstChild);
                 } else {
                     taskList.appendChild(tempTask);
                 }
+                
+                // 确保临时任务的菜单功能正常
+                ensureTaskMenuFunctionality(tempTask);
                 
                 // 重新聚焦到临时任务
                 const textElement = tempTask.querySelector('.task-text');
@@ -1465,6 +1537,7 @@ body {
                 
                 if (taskItem) {
                     const menuElement = taskItem.querySelector('.task-popup-menu');
+                    const backdrop = document.getElementById('mobile-menu-backdrop');
                     
                     // 关闭所有其他打开的菜单
                     document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
@@ -1475,6 +1548,15 @@ body {
                     
                     // 切换当前菜单的显示状态
                     menuElement.classList.toggle('show');
+                    
+                    // 移动端处理遮罩层
+                    if (window.innerWidth <= 768) {
+                        if (menuElement.classList.contains('show')) {
+                            backdrop.classList.add('show');
+                        } else {
+                            backdrop.classList.remove('show');
+                        }
+                    }
                     
                     // 根据按钮位置调整菜单位置
                     positionPopupMenu(infoButton, menuElement);
@@ -1513,6 +1595,9 @@ body {
                 const menuElement = taskItem.querySelector('.task-popup-menu');
                 menuElement.classList.remove('show');
                 
+                // 隐藏遮罩层
+                document.getElementById('mobile-menu-backdrop').classList.remove('show');
+                
                 event.stopPropagation();
                 return;
             }
@@ -1541,11 +1626,23 @@ body {
             t.style.right="";
             t.style.left="";
             
-            a?(t.style.top=`${i.bottom+5}px`,
-            t.style.left=`${i.left+i.width/2-n.width/2}px`):
-            (t.style.top=`${i.top}px`,
-            s?t.style.right=`${window.innerWidth-i.left+5}px`:
-            t.style.left=`${i.right+5}px`);
+            if (a) {
+                // 移动端使用CSS的固定定位在底部，不需要计算位置
+                // 如果已经添加了相应的CSS样式，这里可以不做任何调整
+                // 为了防止其他JS修改，再次强制设置位置
+                t.style.left = '50%';
+                t.style.bottom = '20px';
+                t.style.transform = 'translateX(-50%)';
+                t.style.top = 'auto';
+            } else {
+                // PC端保持原有的定位逻辑
+                t.style.top=`${i.top}px`;
+                if (s) {
+                    t.style.right=`${window.innerWidth-i.left+5}px`;
+                } else {
+                    t.style.left=`${i.right+5}px`;
+                }
+            }
         }
 
         // 列表操作菜单定位函数
@@ -1738,18 +1835,17 @@ body {
                         timestamp: Date.now()
                     };
                     
-                    // 临时在UI中显示添加的任务
-                    // 使用innerText保留换行
-                    const tempElement = document.createElement('div');
-                    const span = document.createElement('span');
-                    span.className = 'task-text';
-                    span.textContent = taskText; // 使用textContent来正确设置内容并保留换行
+                    // 创建临时任务对象
+                    const taskObj = {
+                        id: tempId,
+                        task: taskText,
+                        is_completed: false,
+                        created_at: new Date().toISOString()
+                    };
                     
-                    const tempTaskHTML = `<li class="task-item" data-id="${tempId}">
-                        <input type="checkbox" class="task-checkbox">
-                        <div class="task-content">
-                        </div>
-                    </li>`;
+                    // 使用renderTaskItemHTML创建带完整菜单的任务HTML
+                    const tempElement = document.createElement('div');
+                    tempElement.innerHTML = renderTaskItemHTML(taskObj);
                     
                     // 如果有"载入中..."或"空列表"状态，则清除
                     const emptyState = document.querySelector('.empty-state');
@@ -1759,13 +1855,10 @@ body {
                     
                     // 添加到列表顶部
                     const taskListElem = document.getElementById('task-list');
-                    tempElement.innerHTML = tempTaskHTML;
                     const newTaskItem = tempElement.firstChild;
                     // 新增挂标记，后续实时推送时可识别
                     newTaskItem.classList.add('pending-sync');
                     newTaskItem.dataset.pendingSync = 'true';
-                    const taskContent = newTaskItem.querySelector('.task-content');
-                    taskContent.appendChild(span);
                     
                     // 设置动画效果
                     newTaskItem.style.opacity = '0';
@@ -1800,6 +1893,49 @@ body {
                         const tempTask = document.querySelector(`[data-id="${tempId}"]`);
                         if (tempTask) {
                             tempTask.dataset.id = newTask.id;
+                            
+                            // 确保菜单功能正常
+                            ensureTaskMenuFunctionality(tempTask);
+                            
+                            // 确保重新绑定事件处理程序
+                            setupTaskListeners();
+                            
+                            // 为确保菜单正常弹出，可以重新应用一次事件委托
+                            const infoBtn = tempTask.querySelector('.info-task-btn');
+                            if (infoBtn) {
+                                infoBtn.addEventListener('click', function(e) {
+                                    const taskItem = this.closest('.task-item');
+                                    if (taskItem) {
+                                        const menuElement = taskItem.querySelector('.task-popup-menu');
+                                        const backdrop = document.getElementById('mobile-menu-backdrop');
+                                        
+                                        // 关闭所有其他打开的菜单
+                                        document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
+                                            if (menu !== menuElement) {
+                                                menu.classList.remove('show');
+                                            }
+                                        });
+                                        
+                                        // 切换当前菜单的显示状态
+                                        menuElement.classList.toggle('show');
+                                        
+                                        // 移动端处理遮罩层
+                                        if (window.innerWidth <= 768) {
+                                            if (menuElement.classList.contains('show')) {
+                                                backdrop.classList.add('show');
+                                            } else {
+                                                backdrop.classList.remove('show');
+                                            }
+                                        }
+                                        
+                                        // 根据按钮位置调整菜单位置
+                                        positionPopupMenu(this, menuElement);
+                                        
+                                        // 阻止事件冒泡
+                                        e.stopPropagation();
+                                    }
+                                });
+                            }
                         } else {
                             // 如果找不到临时任务元素，重新加载整个列表
                             loadBirthdays();
@@ -2950,6 +3086,16 @@ body {
                     }
                 });
             });
+            
+            // 遮罩层点击事件
+            document.getElementById('mobile-menu-backdrop').addEventListener('click', function() {
+                // 关闭所有打开的菜单
+                document.querySelectorAll('.task-popup-menu.show, .sidebar-popup-menu.show, .list-popup-menu.show').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+                // 隐藏遮罩层
+                this.classList.remove('show');
+            });
         }
 
         // 添加在document.addEventListener("DOMContentLoaded", function()...)代码之前的位置
@@ -3128,6 +3274,9 @@ body {
                 if (chk) chk.checked = !!task.is_completed;
                 const txtEl = pendingItem.querySelector('.task-text');
                 if (txtEl) txtEl.innerHTML = (task.task || '').replace(/\n/g, '<br>');
+                
+                // 确保菜单功能正常
+                ensureTaskMenuFunctionality(pendingItem);
                 setupTaskListeners();
                 return true;
             }
@@ -3156,6 +3305,8 @@ body {
                 emptyState.parentNode.removeChild(emptyState);
             }
             
+            // 确保菜单功能正常
+            ensureTaskMenuFunctionality(newTaskItem);
             setupTaskListeners();
             
             // 使用requestAnimationFrame确保DOM更新后再应用动画
@@ -3203,7 +3354,8 @@ body {
                     li.parentNode.scrollLeft = scrollPos.left;
                 }
                 
-                // 重新绑定事件
+                // 确保菜单功能正常
+                ensureTaskMenuFunctionality(li);
                 setupTaskListeners();
             }, 50);
             
@@ -3266,6 +3418,125 @@ body {
     </div>
 </div>
 </li>`;
+        }
+        
+        // 确保任务菜单交互正常
+        function ensureTaskMenuFunctionality(taskItem) {
+            if (!taskItem) return;
+            
+            // 1. 菜单按钮点击事件
+            const infoBtn = taskItem.querySelector('.info-task-btn');
+            if (infoBtn) {
+                // 移除可能存在的旧事件监听器
+                const newInfoBtn = infoBtn.cloneNode(true);
+                if (infoBtn.parentNode) {
+                    infoBtn.parentNode.replaceChild(newInfoBtn, infoBtn);
+                }
+                
+                // 添加新的事件监听器
+                newInfoBtn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // 防止事件冒泡
+                    
+                    const taskItem = this.closest('.task-item');
+                    if (!taskItem) return;
+                    
+                    const menuElement = taskItem.querySelector('.task-popup-menu');
+                    if (!menuElement) return;
+                    
+                    const backdrop = document.getElementById('mobile-menu-backdrop');
+                    
+                    // 关闭所有其他打开的菜单
+                    document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
+                        if (menu !== menuElement) {
+                            menu.classList.remove('show');
+                        }
+                    });
+                    
+                    // 切换当前菜单的显示状态
+                    menuElement.classList.toggle('show');
+                    
+                    // 移动端处理遮罩层
+                    if (window.innerWidth <= 768) {
+                        if (menuElement.classList.contains('show')) {
+                            backdrop.classList.add('show');
+                        } else {
+                            backdrop.classList.remove('show');
+                        }
+                    }
+                    
+                    // 根据按钮位置调整菜单位置
+                    positionPopupMenu(this, menuElement);
+                });
+            }
+            
+            // 2. 菜单项点击事件
+            const menuElement = taskItem.querySelector('.task-popup-menu');
+            if (menuElement) {
+                // 删除选项
+                const deleteItem = menuElement.querySelector('.task-popup-menu-item.delete');
+                if (deleteItem) {
+                    // 移除可能存在的旧事件监听器
+                    const newDeleteItem = deleteItem.cloneNode(true);
+                    if (deleteItem.parentNode) {
+                        deleteItem.parentNode.replaceChild(newDeleteItem, deleteItem);
+                    }
+                    
+                    // 添加新的事件监听器
+                    newDeleteItem.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        
+                        const taskItem = this.closest('.task-item');
+                        if (!taskItem) return;
+                        
+                        const taskId = taskItem.dataset.id;
+                        
+                        // 使用自定义对话框删除任务
+                        showCustomConfirm(
+                            '删除任务？', 
+                            '此任务将被永久删除', 
+                            () => deleteTask(taskId)
+                        );
+                        
+                        // 关闭菜单
+                        menuElement.classList.remove('show');
+                        
+                        // 隐藏遮罩层
+                        document.getElementById('mobile-menu-backdrop').classList.remove('show');
+                    });
+                }
+                
+                // 复制选项
+                const copyItem = menuElement.querySelector('.task-popup-menu-item.copy');
+                if (copyItem) {
+                    // 移除可能存在的旧事件监听器
+                    const newCopyItem = copyItem.cloneNode(true);
+                    if (copyItem.parentNode) {
+                        copyItem.parentNode.replaceChild(newCopyItem, copyItem);
+                    }
+                    
+                    // 添加新的事件监听器
+                    newCopyItem.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        
+                        const taskItem = this.closest('.task-item');
+                        if (!taskItem) return;
+                        
+                        const taskText = taskItem.querySelector('.task-text').textContent;
+                        copyToClipboard(taskText);
+                        
+                        // 显示一个小提示，表明已复制
+                        showToast('已复制到剪贴板');
+                        
+                        // 关闭菜单
+                        menuElement.classList.remove('show');
+                        
+                        // 隐藏遮罩层
+                        document.getElementById('mobile-menu-backdrop').classList.remove('show');
+                    });
+                }
+            }
+            
+            return taskItem;
         }
         
         // 自定义确认对话框函数
