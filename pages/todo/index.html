@@ -485,7 +485,6 @@ body {
 .mobile-header {
     display: none;
     padding: 15px 0;
-    border-bottom: 1px solid var(--border-color);
     background-color: var(--bg-color);
     position: fixed;
     top: 0;
@@ -1003,7 +1002,7 @@ body {
             </div>
             <div class="mobile-title">每日清单</div>
             <div class="mobile-actions">
-                <div class="header-action add-task-btn" tabindex="-1">
+                <div class="header-action add-task-btn" tabindex="-1" onclick="createEmptyEditableTask()">
                     <svg viewBox="0 0 24 24">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
                     </svg>
@@ -1054,7 +1053,7 @@ body {
                 <div class="list-header">
                     <h1 class="list-title">每日清单</h1>
                     <div class="header-actions">
-                        <div class="header-action add-task-btn" tabindex="-1">
+                        <div class="header-action add-task-btn" tabindex="-1" onclick="createEmptyEditableTask()">
                             <svg viewBox="0 0 24 24">
                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
                             </svg>
@@ -1123,7 +1122,7 @@ body {
         const taskList = document.getElementById('task-list');
         const sidebarList = document.querySelector('.sidebar-list');
 
-        // 记录最近添加的任务，用于防止重复
+        // 记录最近添加的任务
         window.lastAddedTask = {
             text: null,
             timestamp: 0
@@ -1167,7 +1166,7 @@ body {
                 }
                 
                 // 显示加载中状态，但保留任何正在编辑的任务
-                if (!shouldPreserveTempTask && !document.querySelector('.task-item.temp-task')) {
+                if (!shouldPreserveTempTask && !document.querySelector('.task-item.temp-task') && !filteredTasks) {
                     taskList.innerHTML = `<div class="empty-state">载入中...</div>`;
                 }
                 
@@ -1188,10 +1187,14 @@ body {
                     renderTaskItems(tasksArray, 'task', shouldPreserveTempTask ? tempTask : null, tempTaskText);
                     
                     // 设置筛选状态标记
-                    window.currentFilterState = 'filtered';
+                    window.currentFilterState = 'filtered'; // 需要确保 filterType 在调用 loadBirthdays 时传递
                     
                     // 添加筛选提示
-                    showFilterStatus(tasksArray.length);
+                    // 注意: showFilterStatus 依赖全局 filterType, 这里可能需要调整或确保 filterType 正确传递
+                    // 暂时假设 filterType 是通过其他方式设置的，或者 showFilterStatus 能处理 null
+                    showFilterStatus(tasksArray.length, window.currentFilterState);
+
+
                 } else {
                     // 正常从服务器获取所有数据
                     const { data, error } = await supabase
@@ -1305,19 +1308,9 @@ body {
         }
 
         function renderBirthdays(birthdays, tempTask, tempTaskText) {
-            if (!birthdays || !Array.isArray(birthdays) || birthdays.length === 0) {
-                const mockData = [
-                    { id: 1, name: "分组", note: "", is_completed: false },
-                    { id: 2, name: "代码管理改为GitHub界面", note: "", is_completed: true },
-                    { id: 3, name: "写一个云词的灵感点子结构图布记录器", note: "", is_completed: false },
-                    { id: 4, name: "查询J金价", note: "", is_completed: true },
-                    { id: 5, name: "写个主页", note: "", is_completed: false },
-                    { id: 6, name: "添加时间线", note: "", is_completed: false },
-                    { id: 7, name: "谷歌2.5a代码能力做个工程测试", note: "", is_completed: true },
-                    { id: 8, name: "HTML转WXML的解决方案实现", note: "", is_completed: false }
-                ];
-                
-                renderTaskItems(mockData, 'name', tempTask, tempTaskText);
+            if ((!birthdays || !Array.isArray(birthdays) || birthdays.length === 0) && !tempTask) {
+                // 移除了模拟数据，改为显示空列表提示
+                taskList.innerHTML = '<div class="empty-state">列表为空，快来添加新任务吧！</div>';
                 return;
             }
 
@@ -1664,9 +1657,18 @@ body {
             
             // 检查是否为临时任务
             if (taskItem.classList.contains('temp-task') || taskItem.dataset.tempFlag) {
-                // 如果是临时任务，直接移除
+                // 如果是临时任务，添加动画效果后移除
                 if (taskItem && taskItem.parentNode) {
-                    taskItem.parentNode.removeChild(taskItem);
+                    // 添加淡出动画
+                    taskItem.style.transition = 'opacity 0.3s ease';
+                    taskItem.style.opacity = '0';
+                    
+                    // 等待动画完成后移除
+                    setTimeout(() => {
+                        if (taskItem && taskItem.parentNode) {
+                            taskItem.parentNode.removeChild(taskItem);
+                        }
+                    }, 300);
                 }
                 return;
             }
@@ -1701,85 +1703,127 @@ body {
         }
 
         async function addTask(taskText) {
-            // 声明tempId变量在函数作用域的开头，使其在catch块中也可访问
-            let tempId = 'temp-' + Date.now();
+            const normalizedText = (taskText || '').trim();
+            // 初始化待插入集合
+            if (!window.pendingInsertTexts) window.pendingInsertTexts = new Set();
+            // 如果文本正在插入中，直接返回
+            if (window.pendingInsertTexts.has(normalizedText)) {
+                console.warn('检测到相同文本正在插入中，忽略本次调用');
+                return null;
+            }
+            // 将文本标记为待插入
+            window.pendingInsertTexts.add(normalizedText);
             try {
-                // 检查任务文本是否为空
-                if (!taskText || taskText.trim() === '') {
-                    console.warn('任务内容不能为空');
+                // --- 原有短时间判断保留，可适当放宽时间 ---
+                if (window.lastAddedTask &&
+                    window.lastAddedTask.text === normalizedText &&
+                    (Date.now() - window.lastAddedTask.timestamp) < 1500) {
+                    console.warn('短时间重复添加，相同文本已存在，忽略');
+                    window.pendingInsertTexts.delete(normalizedText);
                     return null;
                 }
-                
-                // 防止短时间内重复添加相同任务
-                const now = Date.now();
-                const timeSinceLastAdd = now - window.lastAddedTask.timestamp;
-                if (window.lastAddedTask.text === taskText && timeSinceLastAdd < 2000) {
-                    console.warn('防止重复添加相同任务:', taskText);
-                    return null;
-                }
-                
-                // 更新最近添加的任务记录
-                window.lastAddedTask = {
-                    text: taskText,
-                    timestamp: now
-                };
-                
-                // 临时在UI中显示添加的任务
-                // 使用innerText保留换行
-                const tempElement = document.createElement('div');
-                const span = document.createElement('span');
-                span.className = 'task-text';
-                span.textContent = taskText; // 使用textContent来正确设置内容并保留换行
-                
-                const tempTaskHTML = `<li class="task-item" data-id="${tempId}">
-                    <input type="checkbox" class="task-checkbox">
-                    <div class="task-content">
-                    </div>
-                </li>`;
-                
-                // 如果有"载入中..."或"空列表"状态，则清除
-                const emptyState = document.querySelector('.empty-state');
-                if (emptyState) {
-                    taskList.innerHTML = '';
-                }
-                
-                // 添加到列表顶部
-                const taskListElem = document.getElementById('task-list');
-                tempElement.innerHTML = tempTaskHTML;
-                const newTaskItem = tempElement.firstChild;
-                const taskContent = newTaskItem.querySelector('.task-content');
-                taskContent.appendChild(span);
-                
-                if (taskListElem.firstChild) {
-                    taskListElem.insertBefore(newTaskItem, taskListElem.firstChild);
-                } else {
-                    taskListElem.appendChild(newTaskItem);
-                }
-                
-                // 发送到服务器，保留换行符
-                const { data, error } = await supabase
-                    .from('todos')
-                    .insert([{ task: taskText, is_completed: false }])
-                    .select();
-                
-                if (error) throw error;
-                
-                // 用真实ID替换临时ID
-                if (data && data.length > 0) {
-                    const newTask = data[0];
-                    const tempTask = document.querySelector(`[data-id="${tempId}"]`);
-                    if (tempTask) {
-                        tempTask.dataset.id = newTask.id;
+                // ------------------------------------------------
+                // 声明tempId变量在函数作用域的开头，使其在catch块中也可访问
+                let tempId = 'temp-' + Date.now();
+                try {
+                    // 检查任务文本是否为空
+                    if (!taskText || taskText.trim() === '') {
+                        console.warn('任务内容不能为空');
+                        return null;
+                    }
+                    
+                    // 更新最近添加的任务记录
+                    window.lastAddedTask = {
+                        text: taskText,
+                        timestamp: Date.now()
+                    };
+                    
+                    // 临时在UI中显示添加的任务
+                    // 使用innerText保留换行
+                    const tempElement = document.createElement('div');
+                    const span = document.createElement('span');
+                    span.className = 'task-text';
+                    span.textContent = taskText; // 使用textContent来正确设置内容并保留换行
+                    
+                    const tempTaskHTML = `<li class="task-item" data-id="${tempId}">
+                        <input type="checkbox" class="task-checkbox">
+                        <div class="task-content">
+                        </div>
+                    </li>`;
+                    
+                    // 如果有"载入中..."或"空列表"状态，则清除
+                    const emptyState = document.querySelector('.empty-state');
+                    if (emptyState) {
+                        taskList.innerHTML = '';
+                    }
+                    
+                    // 添加到列表顶部
+                    const taskListElem = document.getElementById('task-list');
+                    tempElement.innerHTML = tempTaskHTML;
+                    const newTaskItem = tempElement.firstChild;
+                    // 新增挂标记，后续实时推送时可识别
+                    newTaskItem.classList.add('pending-sync');
+                    newTaskItem.dataset.pendingSync = 'true';
+                    const taskContent = newTaskItem.querySelector('.task-content');
+                    taskContent.appendChild(span);
+                    
+                    // 设置动画效果
+                    newTaskItem.style.opacity = '0';
+                    newTaskItem.style.transition = 'opacity 0.3s ease';
+                    
+                    // 插入新任务到列表顶部
+                    console.log("插入新任务元素到列表顶部");
+                    if (taskList.firstChild) {
+                        taskList.insertBefore(newTaskItem, taskList.firstChild);
                     } else {
-                        // 如果找不到临时任务元素，重新加载整个列表
+                        taskList.appendChild(newTaskItem);
+                    }
+                    
+                    // 淡入效果
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            newTaskItem.style.opacity = '1';
+                        });
+                    });
+                    
+                    // 发送到服务器，保留换行符
+                    const { data, error } = await supabase
+                        .from('todos')
+                        .insert([{ task: taskText, is_completed: false }])
+                        .select();
+                    
+                    if (error) throw error;
+                    
+                    // 用真实ID替换临时ID
+                    if (data && data.length > 0) {
+                        const newTask = data[0];
+                        const tempTask = document.querySelector(`[data-id="${tempId}"]`);
+                        if (tempTask) {
+                            tempTask.dataset.id = newTask.id;
+                        } else {
+                            // 如果找不到临时任务元素，重新加载整个列表
+                            loadBirthdays();
+                        }
+                    } else {
+                        // 如果没有返回数据，重新加载整个列表
                         loadBirthdays();
                     }
-                } else {
-                    // 如果没有返回数据，重新加载整个列表
-                    loadBirthdays();
+                    
+                    return data;
+                } catch (error) {
+                    console.error('添加任务失败:', error);
+                    // 移除临时添加的任务元素
+                    const tempTask = document.querySelector(`[data-id="${tempId}"]`);
+                    if (tempTask) {
+                        tempTask.parentNode.removeChild(tempTask);
+                    }
+                    // 显示错误消息
+                    alert('添加失败: ' + error.message);
+                    return null;
+                } finally {
+                    // 始终移除待插入标记
+                    window.pendingInsertTexts.delete(normalizedText);
                 }
-                
-                return data;
             } catch (error) {
                 console.error('添加任务失败:', error);
                 // 移除临时添加的任务元素
@@ -1805,13 +1849,54 @@ body {
                     return;
                 }
                 
-                // 如果已经存在正在编辑的临时任务，先聚焦到它
+                // 如果已经存在正在编辑的临时任务，先保存它再创建新任务
                 if (window.currentEditingTempTask) {
-                    console.log("已存在临时任务，聚焦到它");
+                    console.log("已存在临时任务，尝试保存它然后创建新任务");
                     const existingTextElement = window.currentEditingTempTask.querySelector('.task-text');
                     if (existingTextElement) {
-                        existingTextElement.focus();
-                        return;
+                        const existingText = htmlToPlainText(existingTextElement.innerHTML);
+                        
+                        // 保存现有任务引用，因为在异步操作中它可能会改变
+                        const existingTaskItem = window.currentEditingTempTask;
+                        
+                        // 如果有内容则保存，否则直接移除
+                        if (existingText && existingText.trim() !== '') {
+                            // 标记为正在保存
+                            existingTaskItem.dataset.saving = "true";
+                            
+                            // 显示保存中的状态
+                            existingTextElement.contentEditable = "false";
+                            existingTextElement.classList.remove('editing');
+                            
+                            // 立即重置全局变量，以便能创建新任务
+                            window.currentEditingTempTask = null;
+                            
+                            // 异步保存现有任务
+                            addTask(existingText).then(() => {
+                                // 保存成功后移除旧任务元素
+                                if (existingTaskItem && existingTaskItem.parentNode) {
+                                    existingTaskItem.parentNode.removeChild(existingTaskItem);
+                                }
+                            }).catch(err => {
+                                console.error("保存已存在的临时任务失败:", err);
+                                // 如果保存失败，先移除再创建新的
+                                if (existingTaskItem && existingTaskItem.parentNode) {
+                                    existingTaskItem.parentNode.removeChild(existingTaskItem);
+                                }
+                            });
+                        } else {
+                            // 空任务直接移除
+                            if (existingTaskItem && existingTaskItem.parentNode) {
+                                existingTaskItem.parentNode.removeChild(existingTaskItem);
+                            }
+                            window.currentEditingTempTask = null;
+                        }
+                    } else {
+                        // 如果找不到文本元素，直接清除状态
+                        if (window.currentEditingTempTask.parentNode) {
+                            window.currentEditingTempTask.parentNode.removeChild(window.currentEditingTempTask);
+                        }
+                        window.currentEditingTempTask = null;
                     }
                 }
 
@@ -1824,6 +1909,10 @@ body {
                 newTaskItem.className = 'task-item temp-task';
                 newTaskItem.dataset.id = tempFlag;
                 newTaskItem.dataset.tempFlag = 'true';
+                
+                // 设置初始透明度
+                newTaskItem.style.opacity = '0';
+                newTaskItem.style.transition = 'opacity 0.3s ease';
                 
                 // 创建任务内容
                 const taskContent = document.createElement('div');
@@ -1874,15 +1963,26 @@ body {
                     taskList.innerHTML = '';
                 }
                 
-                // 插入新任务到列表末尾
-                console.log("插入新任务元素到列表末尾");
-                taskList.appendChild(newTaskItem);
+                // 插入新任务到列表顶部
+                console.log("插入新任务元素到列表顶部");
+                if (taskList.firstChild) {
+                    taskList.insertBefore(newTaskItem, taskList.firstChild);
+                } else {
+                    taskList.appendChild(newTaskItem);
+                }
                 
                 // 滚动到新任务位置
                 newTaskItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 
                 // 标记全局状态
                 window.currentEditingTempTask = newTaskItem;
+                
+                // 添加淡入效果
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        newTaskItem.style.opacity = '1';
+                    });
+                });
                 
                 // 使用 requestAnimationFrame 确保DOM更新后再设置焦点和选区
                 requestAnimationFrame(() => {
@@ -1937,66 +2037,179 @@ body {
         // 处理临时任务的保存
         async function finishTempTask(textElement) {
             console.log("执行finishTempTask");
+            
+            // 如果文本元素不在DOM中，取消保存并重置状态
             if (!document.contains(textElement)) {
                 console.log("元素已不在DOM中，取消保存");
+                window.currentEditingTempTask = null; // 确保重置全局状态
                 return;
             }
             
             const taskItem = textElement.closest('.task-item');
-            if (!taskItem) return;
+            if (!taskItem) {
+                console.log("找不到关联的任务项，取消保存");
+                window.currentEditingTempTask = null; // 确保重置全局状态
+                return;
+            }
             
             // 检查是否已经在保存过程中
             if (taskItem.dataset.saving === "true") {
                 console.log("任务已经在保存中，避免重复保存");
+                // 不做任何操作，让现有保存过程完成
                 return;
             }
             
+            // 获取文本内容
             const newText = htmlToPlainText(textElement.innerHTML);
             console.log("任务文本:", newText);
-            if (newText !== '') {
+            
+            // 保存一个任务项的引用，防止异步过程中丢失
+            const taskRef = taskItem;
+            
+            // 立即标记为正在保存，防止重复保存
+            taskRef.dataset.saving = "true";
+            
+            if (newText.trim() !== '') {
                 try {
-                    // 标记为正在保存
-                    taskItem.dataset.saving = "true";
-                    
-                    // 显示保存中的状态
+                    // 更新UI状态
                     textElement.contentEditable = "false";
                     textElement.classList.remove('editing');
+                    
+                    // 立即清除全局引用，允许创建新任务
+                    if (window.currentEditingTempTask === taskRef) {
+                        console.log("清除当前编辑任务引用，允许创建新任务");
+                        window.currentEditingTempTask = null;
+                    }
                     
                     // 调用添加任务API
                     console.log("调用addTask添加任务");
                     await addTask(newText);
                     
                     // 移除临时元素，数据会在addTask成功后重新加载
-                    console.log("移除临时元素");
-                    removeTempTask(taskItem);
+                    console.log("添加成功，移除临时元素");
+                    if (taskRef && document.contains(taskRef) && taskRef.parentNode) {
+                        // 添加淡出动画
+                        taskRef.style.transition = 'opacity 0.3s ease';
+                        taskRef.style.opacity = '0';
+                        
+                        // 等待动画完成后移除
+                        setTimeout(() => {
+                            if (taskRef && document.contains(taskRef) && taskRef.parentNode) {
+                                taskRef.parentNode.removeChild(taskRef);
+                            }
+                        }, 300);
+                    }
                 } catch (err) {
                     console.error("添加任务时出错:", err);
-                    // 取消保存状态
-                    taskItem.dataset.saving = "false";
-                    // 恢复可编辑状态，让用户重试
-                    textElement.contentEditable = "true";
-                    textElement.classList.add('editing');
-                    textElement.focus();
-                    return;
+                    
+                    // 检查元素是否仍在文档中
+                    if (document.contains(taskRef)) {
+                        // 取消保存状态
+                        taskRef.dataset.saving = "false";
+                        
+                        // 重新启用编辑功能
+                        const recoveryTextElement = taskRef.querySelector('.task-text');
+                        if (recoveryTextElement) {
+                            recoveryTextElement.contentEditable = "true";
+                            recoveryTextElement.classList.add('editing');
+                            // 尝试重新获取焦点
+                            try {
+                                recoveryTextElement.focus();
+                            } catch (focusErr) {
+                                console.warn("重新获取焦点失败:", focusErr);
+                            }
+                        }
+                        
+                        // 恢复全局引用
+                        if (!window.currentEditingTempTask) {
+                            window.currentEditingTempTask = taskRef;
+                        }
+                    } else {
+                        // 如果元素已不在文档中，确保全局状态是干净的
+                        window.currentEditingTempTask = null;
+                    }
+                    
+                    return; // 出错时提前返回
                 }
             } else {
-                // 如果为空则移除此元素
+                // 如果任务为空，直接移除
                 console.log("任务为空，移除临时元素");
-                removeTempTask(taskItem);
+                if (taskRef && document.contains(taskRef) && taskRef.parentNode) {
+                    taskRef.parentNode.removeChild(taskRef);
+                }
+                
+                // 确保重置全局状态
+                if (window.currentEditingTempTask === taskRef) {
+                    window.currentEditingTempTask = null;
+                }
             }
-            
-            window.currentEditingTempTask = null;
         }
 
         // 移除临时任务元素
         function removeTempTask(taskItem) {
-            console.log("执行removeTempTask");
-            if (taskItem && taskItem.parentNode) {
-                taskItem.parentNode.removeChild(taskItem);
+            console.log("执行removeTempTask，移除临时任务");
+            
+            // 检查任务项是否存在
+            if (!taskItem) {
+                console.log("任务项不存在，无需移除");
+                return;
             }
             
+            // 检查任务项是否仍在DOM中
+            if (!document.contains(taskItem)) {
+                console.log("任务项已不在DOM中，无需移除");
+                // 仍然需要检查全局引用并清理
+                if (window.currentEditingTempTask === taskItem) {
+                    console.log("重置全局编辑任务引用");
+                    window.currentEditingTempTask = null;
+                }
+                return;
+            }
+            
+            // 如果已经在保存中，不再重复移除
+            if (taskItem.dataset.saving === "true") {
+                console.log("任务正在保存中，由保存过程处理移除");
+                return;
+            }
+            
+            // 移除DOM元素
+            try {
+                if (taskItem.parentNode) {
+                    // 添加淡出动画
+                    taskItem.style.transition = 'opacity 0.2s ease';
+                    taskItem.style.opacity = '0';
+                    
+                    // 等待动画完成后移除
+                    setTimeout(() => {
+                        if (taskItem.parentNode) {
+                            taskItem.parentNode.removeChild(taskItem);
+                            console.log("成功从DOM中移除任务项");
+                        }
+                    }, 200);
+                }
+            } catch (err) {
+                console.error("移除任务项时出错:", err);
+            }
+            
+            // 检查并清除全局引用
             if (window.currentEditingTempTask === taskItem) {
+                console.log("重置全局编辑任务引用");
                 window.currentEditingTempTask = null;
+            }
+            
+            // 检查是否有其他临时任务遗留
+            const tempTasks = document.querySelectorAll('.task-item.temp-task');
+            if (tempTasks.length > 0) {
+                console.log(`发现 ${tempTasks.length} 个额外临时任务，也一并清理`);
+                tempTasks.forEach(task => {
+                    if (task !== taskItem && task.parentNode) {
+                        try {
+                            task.parentNode.removeChild(task);
+                        } catch (err) {
+                            console.warn("清理额外临时任务失败:", err);
+                        }
+                    }
+                });
             }
         }
 
@@ -2114,7 +2327,41 @@ body {
                     .eq('id', id);
                 
                 if (error) throw error;
-                loadBirthdays();
+
+                showToast('任务已删除');
+
+                // 检查当前是否应用了筛选
+                if (window.currentFilterState === 'completed' || window.currentFilterState === 'uncompleted') {
+                    // 如果有筛选，则重新加载并应用筛选，这样计数和空状态会更新
+                    fetchAndFilterTasks(window.currentFilterState, true); // 添加第二个参数 true
+                } else {
+                    // 否则，直接从DOM中移除，并检查列表是否为空
+                    const taskItem = document.querySelector(`.task-item[data-id="${id}"]`);
+                    if (taskItem && taskItem.parentNode) {
+                        // 应用淡出动画效果
+                        taskItem.style.transition = 'opacity 0.3s ease';
+                        taskItem.style.opacity = '0';
+                        
+                        // 等待动画完成后再从DOM移除
+                        setTimeout(() => {
+                            if (taskItem.parentNode) {
+                                taskItem.parentNode.removeChild(taskItem);
+                                
+                                // 检查列表是否变为空
+                                if (taskList.children.length === 0) {
+                                    hideFilterStatus(); // 如果列表为空，也隐藏筛选状态
+                                    taskList.innerHTML = '<div class="empty-state">列表为空，快来添加新任务吧！</div>';
+                                }
+                            }
+                        }, 300);
+                    } else {
+                        // 如果DOM元素未找到，不重新加载整个列表，而只检查列表是否为空
+                        if (taskList.children.length === 0) {
+                            hideFilterStatus(); // 如果列表为空，也隐藏筛选状态
+                            taskList.innerHTML = '<div class="empty-state">列表为空，快来添加新任务吧！</div>';
+                        }
+                    }
+                }
             } catch (error) {
                 console.error('删除任务失败:', error);
                 alert('删除失败: ' + error.message);
@@ -2190,12 +2437,21 @@ body {
             setupGlobalHandlers();
             
             // 绑定添加任务按钮事件
-            const addTaskButtons = document.querySelectorAll('.header-action[onclick="createEmptyEditableTask()"]');
-            addTaskButtons.forEach(button => {
+            console.log("开始绑定添加任务按钮事件");
+            document.querySelectorAll('.add-task-btn').forEach(button => {
+                console.log("找到添加任务按钮:", button);
+                // 移除可能存在的旧事件处理程序
                 button.removeAttribute('onclick');
-                button.addEventListener('click', function(e) {
+                const newButton = button.cloneNode(true);
+                if (button.parentNode) {
+                    button.parentNode.replaceChild(newButton, button);
+                }
+                
+                // 添加新的事件处理程序
+                newButton.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('添加任务按钮被点击');
+                    e.stopPropagation();
+                    console.log('添加任务按钮被点击 (initialize)');
                     createEmptyEditableTask();
                 });
             });
@@ -2609,10 +2865,12 @@ body {
             });
             
             // 从服务器获取数据并按条件筛选
-            async function fetchAndFilterTasks(filterType) {
+            async function fetchAndFilterTasks(filterType, isDeletionOperation = false) {
                 try {
-                    // 显示加载中状态
-                    taskList.innerHTML = `<div class="empty-state">载入中...</div>`;
+                    // 显示加载中状态 - 仅当不是删除操作时
+                    if (!isDeletionOperation) {
+                        taskList.innerHTML = `<div class="empty-state">载入中...</div>`;
+                    }
                     
                     // 从服务器获取所有任务
                     const { data, error } = await supabase
@@ -2629,7 +2887,17 @@ body {
                     } else if (filterType === 'uncompleted') {
                         filteredData = data.filter(item => !item.is_completed);
                     } else {
+                        // 如果 filterType 不是 'completed' 或 'uncompleted'，则显示全部
+                        // 这种情况理论上不应该通过这个函数处理，loadBirthdays 会处理 "显示全部"
+                        // 但为了健壮性，这里也处理一下
                         filteredData = data;
+                        window.currentFilterState = null; // 清除筛选状态
+                        hideFilterStatus();
+                        renderTaskItems(filteredData, 'task', null, null);
+                        if (filteredData.length === 0) {
+                            taskList.innerHTML = '<div class="empty-state">列表为空，快来添加新任务吧！</div>';
+                        }
+                        return;
                     }
                     
                     // 设置筛选状态
@@ -2639,10 +2907,22 @@ body {
                     showFilterStatus(filteredData.length, filterType);
                     
                     // 渲染筛选后的任务
-                    renderTaskItems(filteredData, 'task', null, null);
+                    if (filteredData.length > 0) {
+                        renderTaskItems(filteredData, 'task', null, null);
+                    } else {
+                         let emptyMessage = '没有符合筛选条件的任务';
+                        if (filterType === 'completed') {
+                            emptyMessage = '没有已完成的任务';
+                        } else if (filterType === 'uncompleted') {
+                            emptyMessage = '没有未完成的任务';
+                        }
+                        taskList.innerHTML = `<div class="empty-state">${emptyMessage}</div>`;
+                    }
                 } catch (error) {
                     console.error('筛选任务失败:', error);
                     taskList.innerHTML = `<div class="empty-state">筛选失败，请重试</div>`;
+                    window.currentFilterState = null;
+                    hideFilterStatus();
                 }
             }
             
@@ -2680,6 +2960,7 @@ body {
             
             // 绑定添加任务按钮事件
             document.querySelectorAll('.add-task-btn').forEach(button => {
+                console.log('DOM加载后：找到添加任务按钮', button);
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
                     console.log('添加任务按钮被点击');
@@ -2710,10 +2991,12 @@ body {
             });
             
             // 从服务器获取数据并按条件筛选
-            async function fetchAndFilterTasks(filterType) {
+            async function fetchAndFilterTasks(filterType, isDeletionOperation = false) {
                 try {
-                    // 显示加载中状态
-                    taskList.innerHTML = `<div class="empty-state">载入中...</div>`;
+                    // 显示加载中状态 - 仅当不是删除操作时
+                    if (!isDeletionOperation) {
+                        taskList.innerHTML = `<div class="empty-state">载入中...</div>`;
+                    }
                     
                     // 从服务器获取所有任务
                     const { data, error } = await supabase
@@ -2730,7 +3013,17 @@ body {
                     } else if (filterType === 'uncompleted') {
                         filteredData = data.filter(item => !item.is_completed);
                     } else {
+                        // 如果 filterType 不是 'completed' 或 'uncompleted'，则显示全部
+                        // 这种情况理论上不应该通过这个函数处理，loadBirthdays 会处理 "显示全部"
+                        // 但为了健壮性，这里也处理一下
                         filteredData = data;
+                        window.currentFilterState = null; // 清除筛选状态
+                        hideFilterStatus();
+                        renderTaskItems(filteredData, 'task', null, null);
+                        if (filteredData.length === 0) {
+                            taskList.innerHTML = '<div class="empty-state">列表为空，快来添加新任务吧！</div>';
+                        }
+                        return;
                     }
                     
                     // 设置筛选状态
@@ -2740,10 +3033,22 @@ body {
                     showFilterStatus(filteredData.length, filterType);
                     
                     // 渲染筛选后的任务
-                    renderTaskItems(filteredData, 'task', null, null);
+                    if (filteredData.length > 0) {
+                        renderTaskItems(filteredData, 'task', null, null);
+                    } else {
+                         let emptyMessage = '没有符合筛选条件的任务';
+                        if (filterType === 'completed') {
+                            emptyMessage = '没有已完成的任务';
+                        } else if (filterType === 'uncompleted') {
+                            emptyMessage = '没有未完成的任务';
+                        }
+                        taskList.innerHTML = `<div class="empty-state">${emptyMessage}</div>`;
+                    }
                 } catch (error) {
                     console.error('筛选任务失败:', error);
                     taskList.innerHTML = `<div class="empty-state">筛选失败，请重试</div>`;
+                    window.currentFilterState = null;
+                    hideFilterStatus();
                 }
             }
             
@@ -2808,18 +3113,58 @@ body {
 
         // 插入新任务到DOM，已存在则不插入，返回true/false
         function insertTaskToDOM(task) {
+            // 优先检查是否存在待同步的临时元素（通过文本匹配）
+            const pendingItem = Array.from(document.querySelectorAll('.task-item.pending-sync')).find(li => {
+                const txt = li.querySelector('.task-text');
+                return txt && txt.textContent.trim() === (task.task || '').trim();
+            });
+            if (pendingItem) {
+                // 复用该元素而不是新建
+                pendingItem.dataset.id = task.id;
+                pendingItem.classList.remove('pending-sync');
+                delete pendingItem.dataset.pendingSync;
+                // 更新复选框状态和值
+                const chk = pendingItem.querySelector('.task-checkbox');
+                if (chk) chk.checked = !!task.is_completed;
+                const txtEl = pendingItem.querySelector('.task-text');
+                if (txtEl) txtEl.innerHTML = (task.task || '').replace(/\n/g, '<br>');
+                setupTaskListeners();
+                return true;
+            }
+            // 若页面已存在相同 ID，则不插入
             if (document.querySelector(`.task-item[data-id="${task.id}"]`)) return true;
             const taskListElem = document.getElementById('task-list');
             if (!taskListElem) return false;
             const temp = document.createElement('div');
             temp.innerHTML = renderTaskItemHTML(task);
             const newTaskItem = temp.firstChild;
+            
+            // 先设置透明度为0
+            newTaskItem.style.opacity = '0';
+            newTaskItem.style.transition = 'opacity 0.3s ease';
+            
+            // 插入DOM
             if (taskListElem.firstChild) {
                 taskListElem.insertBefore(newTaskItem, taskListElem.firstChild);
             } else {
                 taskListElem.appendChild(newTaskItem);
             }
+            
+            // 检查是否需要移除空状态提示
+            const emptyState = taskListElem.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.parentNode.removeChild(emptyState);
+            }
+            
             setupTaskListeners();
+            
+            // 使用requestAnimationFrame确保DOM更新后再应用动画
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    newTaskItem.style.opacity = '1';
+                });
+            });
+            
             return true;
         }
 
@@ -2827,12 +3172,41 @@ body {
         function updateTaskInDOM(task) {
             const li = document.querySelector(`.task-item[data-id="${task.id}"]`);
             if (!li) return false;
+            
+            // 创建新HTML
             const newHTML = renderTaskItemHTML(task);
             const temp = document.createElement('div');
             temp.innerHTML = newHTML;
             const newLi = temp.firstChild;
-            li.innerHTML = newLi.innerHTML;
-            setupTaskListeners();
+            
+            // 保存当前滚动位置
+            const scrollPos = { 
+                top: li.parentNode ? li.parentNode.scrollTop : 0,
+                left: li.parentNode ? li.parentNode.scrollLeft : 0 
+            };
+            
+            // 应用淡入淡出过渡
+            li.style.transition = 'opacity 0.15s ease';
+            li.style.opacity = '0.5';
+            
+            // 短时间后更新内容并恢复透明度
+            setTimeout(() => {
+                // 更新内容
+                li.innerHTML = newLi.innerHTML;
+                
+                // 恢复透明度
+                li.style.opacity = '1';
+                
+                // 恢复滚动位置
+                if (li.parentNode) {
+                    li.parentNode.scrollTop = scrollPos.top;
+                    li.parentNode.scrollLeft = scrollPos.left;
+                }
+                
+                // 重新绑定事件
+                setupTaskListeners();
+            }, 50);
+            
             return true;
         }
 
@@ -2840,7 +3214,25 @@ body {
         function removeTaskFromDOM(id) {
             const li = document.querySelector(`.task-item[data-id="${id}"]`);
             if (!li) return false;
-            if (li.parentNode) li.parentNode.removeChild(li);
+            
+            // 添加淡出动画效果
+            li.style.transition = 'opacity 0.3s ease';
+            li.style.opacity = '0';
+            
+            // 等待动画完成后再从DOM移除
+            setTimeout(() => {
+                if (li.parentNode) {
+                    li.parentNode.removeChild(li);
+                    
+                    // 检查列表是否变为空
+                    const taskList = document.getElementById('task-list');
+                    if (taskList && taskList.children.length === 0) {
+                        hideFilterStatus(); // 如果列表为空，也隐藏筛选状态
+                        taskList.innerHTML = '<div class="empty-state">列表为空，快来添加新任务吧！</div>';
+                    }
+                }
+            }, 300);
+            
             return true;
         }
 
@@ -3068,8 +3460,77 @@ body {
             temp.innerHTML = text;
             return temp.textContent || temp.innerText || '';
         }
+
+        // 全局事件委托，确保添加任务按钮点击能被处理
+        document.addEventListener('click', function(e) {
+            const addTaskBtn = e.target.closest('.add-task-btn');
+            if (addTaskBtn) {
+                console.log('通过全局事件委托处理添加任务按钮点击', new Date().toISOString());
+                console.log('当前临时任务状态:', window.currentEditingTempTask ? '存在' : '不存在');
+                
+                // 如果已经存在临时任务，尝试保存它
+                if (window.currentEditingTempTask) {
+                    const existingTextElement = window.currentEditingTempTask.querySelector('.task-text');
+                    if (existingTextElement) {
+                        const existingText = htmlToPlainText(existingTextElement.innerHTML);
+                        
+                        // 保存现有任务引用
+                        const existingTaskItem = window.currentEditingTempTask;
+                        
+                        // 如果有内容则保存，否则直接移除
+                        if (existingText && existingText.trim() !== '') {
+                            console.log('保存现有临时任务:', existingText);
+                            
+                            // 标记为正在保存
+                            existingTaskItem.dataset.saving = "true";
+                            
+                            // 显示保存中的状态
+                            existingTextElement.contentEditable = "false";
+                            existingTextElement.classList.remove('editing');
+                            
+                            // 立即重置全局变量，以便能创建新任务
+                            window.currentEditingTempTask = null;
+                            
+                            // 异步保存现有任务，但不等待结果就创建新任务
+                            addTask(existingText).then(() => {
+                                // 保存成功后移除旧任务元素
+                                if (existingTaskItem && existingTaskItem.parentNode) {
+                                    existingTaskItem.parentNode.removeChild(existingTaskItem);
+                                }
+                            }).catch(err => {
+                                console.error("保存已存在的临时任务失败:", err);
+                                // 如果保存失败，先移除再创建新的
+                                if (existingTaskItem && existingTaskItem.parentNode) {
+                                    existingTaskItem.parentNode.removeChild(existingTaskItem);
+                                }
+                            });
+                        } else {
+                            // 空任务直接移除
+                            if (existingTaskItem && existingTaskItem.parentNode) {
+                                existingTaskItem.parentNode.removeChild(existingTaskItem);
+                            }
+                            window.currentEditingTempTask = null;
+                        }
+                    } else {
+                        // 如果找不到文本元素，直接清除状态
+                        const tempTasks = document.querySelectorAll('.task-item.temp-task');
+                        tempTasks.forEach(task => {
+                            console.log('移除发现的临时任务元素');
+                            if (task.parentNode) task.parentNode.removeChild(task);
+                        });
+                        
+                        window.currentEditingTempTask = null;
+                    }
+                }
+                
+                e.preventDefault();
+                e.stopPropagation();
+                createEmptyEditableTask();
+            }
+        });
     </script>
 </body>
 </html> 
 
 
+                    
