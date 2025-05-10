@@ -79,8 +79,8 @@ body {
 
 /* 滚动条样式 */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -88,7 +88,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: rgba(0, 0, 0, 0.15);
     border-radius: 4px;
     border: 2px solid transparent;
 }
@@ -102,18 +102,12 @@ body {
 .task-list {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
 }
 
 /* 桌面端滚动条交互 */
 @media (hover:hover) and (pointer:fine) {
-    .sidebar-list, 
-    .main-content, 
-    .task-list {
-        scrollbar-width: thin;
-        scrollbar-color: transparent transparent;
-        transition: scrollbar-color 0.3s ease;
-    }
-    
     .sidebar-list::-webkit-scrollbar-thumb,
     .main-content::-webkit-scrollbar-thumb,
     .task-list::-webkit-scrollbar-thumb {
@@ -121,32 +115,63 @@ body {
         transition: background-color 0.3s ease;
     }
     
-    .sidebar-list:hover,
-    .main-content:hover,
-    .task-list:hover {
-        scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    .sidebar-list.is-scrolling::-webkit-scrollbar-thumb,
+    .main-content.is-scrolling::-webkit-scrollbar-thumb,
+    .task-list.is-scrolling::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.15);
     }
     
-    .sidebar-list:hover::-webkit-scrollbar-thumb,
-    .main-content:hover::-webkit-scrollbar-thumb,
-    .task-list:hover::-webkit-scrollbar-thumb {
-        background-color: rgba(0, 0, 0, 0.2);
-    }
-}
-
-/* 移动端滚动条 */
-@media (hover:none) or (pointer:coarse) {
     .sidebar-list,
     .main-content,
     .task-list {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+        transition: scrollbar-color 0.3s ease;
+        scrollbar-color: transparent transparent;
     }
     
-    .sidebar-list::-webkit-scrollbar-thumb,
-    .main-content::-webkit-scrollbar-thumb,
-    .task-list::-webkit-scrollbar-thumb {
-        background-color: rgba(0, 0, 0, 0.1);
+    .sidebar-list.is-scrolling,
+    .main-content.is-scrolling,
+    .task-list.is-scrolling {
+        scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+    }
+}
+
+/* 移动端滚动条 - 始终保持隐藏状态，除非正在滚动 */
+@media (hover:none) or (pointer:coarse) {
+    .sidebar-list::-webkit-scrollbar,
+    .main-content::-webkit-scrollbar,
+    .task-list::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+    }
+    
+    .sidebar-list,
+    .main-content,
+    .task-list {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;     /* Firefox */
+    }
+    
+    /* 滚动时临时显示的滚动指示器 */
+    .scrolling-active {
+        position: relative;
+    }
+    
+    .scrolling-active::after {
+        content: '';
+        position: absolute;
+        right: 2px;
+        top: 4px;
+        bottom: 4px;
+        width: 4px;
+        border-radius: 2px;
+        background-color: rgba(0, 0, 0, 0.2);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+    
+    .scrolling-active.is-scrolling::after {
+        opacity: 1;
     }
 }
 
@@ -2572,6 +2597,9 @@ body {
             setupTaskListeners();
             setupGlobalHandlers();
             
+            // 初始化滚动条增强功能
+            setupScrollEnhancement();
+            
             // 绑定添加任务按钮事件
             console.log("开始绑定添加任务按钮事件");
             document.querySelectorAll('.add-task-btn').forEach(button => {
@@ -3799,6 +3827,76 @@ body {
                 createEmptyEditableTask();
             }
         });
+
+        // 添加全局点击事件处理
+        document.addEventListener('click', function(e) {
+            // 关闭任务弹出菜单
+            if (!e.target.closest('.info-task-btn') && !e.target.closest('.task-popup-menu')) {
+                document.querySelectorAll('.task-popup-menu.show').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+            
+            // 关闭侧边栏弹出菜单
+            if (!e.target.closest('.sidebar-more') && !e.target.closest('.sidebar-popup-menu')) {
+                document.querySelectorAll('.sidebar-popup-menu.show').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+            
+            // 关闭列表操作菜单
+            if (!e.target.closest('.header-action:last-child') && !e.target.closest('.list-popup-menu')) {
+                document.querySelectorAll('.list-popup-menu.show').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+        
+        // 滚动条增强功能
+        function setupScrollEnhancement() {
+            const scrollableElements = [
+                document.querySelector('.sidebar-list'),
+                document.querySelector('.main-content'),
+                document.querySelector('.task-list')
+            ].filter(el => el); // 过滤掉可能为null的元素
+            
+            // 检测是否为移动设备
+            const isMobileDevice = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+            
+            // 为所有可滚动元素添加滚动事件处理
+            scrollableElements.forEach(el => {
+                if (isMobileDevice) {
+                    el.classList.add('scrolling-active');
+                }
+                
+                // 添加滚动事件处理
+                let scrollTimer;
+                el.addEventListener('scroll', function() {
+                    // 添加滚动中标记
+                    this.classList.add('is-scrolling');
+                    
+                    // 清除之前的定时器
+                    clearTimeout(scrollTimer);
+                    
+                    // 设置新的定时器，滚动停止后移除标记
+                    scrollTimer = setTimeout(() => {
+                        this.classList.remove('is-scrolling');
+                    }, 1000); // 滚动停止1秒后隐藏滚动条或指示器
+                });
+                
+                // 初始加载时触发一次滚动事件，显示滚动条
+                if (el.scrollHeight > el.clientHeight) {
+                    el.classList.add('is-scrolling');
+                    clearTimeout(scrollTimer);
+                    scrollTimer = setTimeout(() => {
+                        el.classList.remove('is-scrolling');
+                    }, 2000); // 初始显示2秒后隐藏
+                }
+            });
+        }
+        
+        // 在初始化函数中调用滚动增强功能
+        setupScrollEnhancement();
     </script>
 </body>
 </html> 
