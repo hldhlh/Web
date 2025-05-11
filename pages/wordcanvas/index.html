@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>云词灵感画布</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #f8f9fa;
+            overflow: hidden;
+            height: 100vh;
+            user-select: none;
+        }
+        
+        #canvas {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-color: white;
+            cursor: pointer;
+        }
+        
+        .tag {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 8px 12px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            cursor: move;
+            transition: transform 0.1s, box-shadow 0.2s;
+            border: 1px solid #e6e6e6;
+            z-index: 1;
+            font-size: 16px;
+            max-width: 300px;
+            word-wrap: break-word;
+        }
+        
+        .tag:hover {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            z-index: 2;
+        }
+        
+        .tag.dragging {
+            opacity: 0.9;
+            transform: scale(1.05);
+            z-index: 3;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .input-modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 10;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 10px;
+            width: 250px;
+        }
+        
+        .input-modal input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .input-modal input:focus {
+            border-color: #4a90e2;
+        }
+        
+        .buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+            gap: 10px;
+        }
+        
+        .btn {
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .save-btn {
+            background-color: #4a90e2;
+            color: white;
+        }
+        
+        .cancel-btn {
+            background-color: #f1f1f1;
+            color: #333;
+        }
+        
+        .help-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #4a90e2;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 5;
+        }
+        
+        .help-tooltip {
+            display: none;
+            position: fixed;
+            bottom: 70px;
+            right: 20px;
+            width: 250px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.2);
+            font-size: 14px;
+            line-height: 1.5;
+            z-index: 5;
+        }
+        
+        #debug {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1000;
+            max-width: 300px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas"></div>
+    
+    <div class="input-modal" id="inputModal">
+        <input type="text" id="tagInput" placeholder="输入词条或句子" autofocus>
+        <div class="buttons">
+            <button class="btn cancel-btn" id="cancelBtn">取消</button>
+            <button class="btn save-btn" id="saveBtn">保存</button>
+        </div>
+    </div>
+    
+    <div class="help-button" id="helpBtn">?</div>
+    <div class="help-tooltip" id="helpTooltip">
+        <p><strong>使用说明：</strong></p>
+        <p>• 点击任意位置添加新词条</p>
+        <p>• 拖动词条可改变位置</p>
+        <p>• 双击词条可编辑内容</p>
+    </div>
+    
+    <div id="debug"></div>
+    
+    <script>
+        // 调试函数
+        function log(message) {
+            const debug = document.getElementById('debug');
+            debug.style.display = 'block';
+            debug.textContent = message;
+            console.log(message);
+        }
+        
+        // 初始化变量
+        log("初始化中...");
+        const canvas = document.getElementById('canvas');
+        const inputModal = document.getElementById('inputModal');
+        const tagInput = document.getElementById('tagInput');
+        const saveBtn = document.getElementById('saveBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const helpBtn = document.getElementById('helpBtn');
+        const helpTooltip = document.getElementById('helpTooltip');
+        
+        let clickPosition = { x: 0, y: 0 };
+        let editingTag = null;
+        let isDragging = false;
+        let currentTag = null;
+        let offset = { x: 0, y: 0 };
+        
+        // 显示输入框
+        function showInputModal(x, y, text = '') {
+            log(`显示输入框: (${x}, ${y})`);
+            clickPosition = { x, y };
+            inputModal.style.display = 'block';
+            inputModal.style.left = `${x}px`;
+            inputModal.style.top = `${y}px`;
+            tagInput.value = text;
+            tagInput.focus();
+            // 确保输入框在视口内
+            const rect = inputModal.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                inputModal.style.left = `${x - (rect.right - window.innerWidth) - 10}px`;
+            }
+            if (rect.bottom > window.innerHeight) {
+                inputModal.style.top = `${y - (rect.bottom - window.innerHeight) - 10}px`;
+            }
+        }
+        
+        // 隐藏输入框
+        function hideInputModal() {
+            log("隐藏输入框");
+            inputModal.style.display = 'none';
+            tagInput.value = '';
+            editingTag = null;
+        }
+        
+        // 创建新标签
+        function createTag(text, x, y) {
+            log(`创建标签: "${text}" 位置: (${x}, ${y})`);
+            const tag = document.createElement('div');
+            tag.className = 'tag';
+            tag.textContent = text;
+            tag.style.left = `${x}px`;
+            tag.style.top = `${y}px`;
+            
+            // 绑定拖动事件
+            tag.addEventListener('mousedown', handleTagMouseDown);
+            
+            // 双击编辑
+            tag.addEventListener('dblclick', handleTagDblClick);
+            
+            canvas.appendChild(tag);
+            return tag;
+        }
+        
+        // 处理画布点击事件
+        function handleCanvasClick(e) {
+            log(`画布点击: (${e.clientX}, ${e.clientY}), isDragging=${isDragging}`);
+            // 确保不是拖动结束的点击，且点击的是画布而不是标签
+            if (!isDragging && e.target === canvas) {
+                showInputModal(e.clientX, e.clientY);
+                e.stopPropagation();
+            }
+        }
+        
+        // 处理标签鼠标按下事件
+        function handleTagMouseDown(e) {
+            if (e.button !== 0) return; // 只响应左键
+            isDragging = true;
+            currentTag = this;
+            this.classList.add('dragging');
+            
+            const rect = this.getBoundingClientRect();
+            offset = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+            
+            // 阻止事件冒泡和默认行为
+            e.stopPropagation();
+            e.preventDefault();  // 添加preventDefault防止其他事件触发
+            log("标签开始拖动");
+        }
+        
+        // 处理标签双击事件
+        function handleTagDblClick(e) {
+            editingTag = this;
+            const rect = this.getBoundingClientRect();
+            showInputModal(rect.left, rect.top, this.textContent);
+            e.stopPropagation();
+            log("双击编辑标签");
+        }
+        
+        // 处理鼠标移动事件
+        function handleMouseMove(e) {
+            if (isDragging && currentTag) {
+                currentTag.style.left = `${e.clientX - offset.x}px`;
+                currentTag.style.top = `${e.clientY - offset.y}px`;
+                e.preventDefault();
+            }
+        }
+        
+        // 处理鼠标释放事件
+        function handleMouseUp(e) {
+            if (isDragging && currentTag) {
+                currentTag.classList.remove('dragging');
+                isDragging = false;
+                currentTag = null;
+                log("标签拖动结束");
+                
+                // 阻止拖动结束时的点击事件传播
+                if (e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }
+            }
+        }
+        
+        // 保存按钮点击事件
+        function handleSaveClick() {
+            const text = tagInput.value.trim();
+            log(`保存按钮点击: text="${text}"`);
+            if (text) {
+                if (editingTag) {
+                    editingTag.textContent = text;
+                } else {
+                    createTag(text, clickPosition.x, clickPosition.y);
+                }
+            }
+            hideInputModal();
+        }
+        
+        // 取消按钮点击事件
+        function handleCancelClick() {
+            log("取消按钮点击");
+            hideInputModal();
+        }
+        
+        // 处理输入框键盘事件
+        function handleInputKeydown(e) {
+            if (e.key === 'Enter') {
+                log("按下回车键");
+                handleSaveClick();
+            } else if (e.key === 'Escape') {
+                log("按下ESC键");
+                handleCancelClick();
+            }
+        }
+        
+        // 处理点击其他地方事件
+        function handleDocumentClick(e) {
+            if (e.target !== inputModal && 
+                !inputModal.contains(e.target) && 
+                e.target !== tagInput &&
+                inputModal.style.display === 'block') {
+                // 检查是否为保存或取消按钮点击
+                if (e.target !== saveBtn && e.target !== cancelBtn) {
+                    log("点击其他区域，关闭输入框");
+                    const text = tagInput.value.trim();
+                    if (text) {
+                        if (editingTag) {
+                            editingTag.textContent = text;
+                        } else {
+                            createTag(text, clickPosition.x, clickPosition.y);
+                        }
+                    }
+                    hideInputModal();
+                }
+            }
+        }
+        
+        // 显示帮助提示
+        function showHelpTooltip() {
+            helpTooltip.style.display = 'block';
+            log("显示帮助提示");
+        }
+        
+        // 隐藏帮助提示
+        function hideHelpTooltip() {
+            helpTooltip.style.display = 'none';
+            log("隐藏帮助提示");
+        }
+        
+        // 防止默认拖拽行为
+        function preventDefault(e) {
+            e.preventDefault();
+        }
+        
+        // 处理触摸开始事件
+        function handleTouchStart(e) {
+            log("触摸开始");
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                
+                if (element && element.classList.contains('tag')) {
+                    isDragging = true;
+                    currentTag = element;
+                    currentTag.classList.add('dragging');
+                    
+                    const rect = currentTag.getBoundingClientRect();
+                    offset = {
+                        x: touch.clientX - rect.left,
+                        y: touch.clientY - rect.top
+                    };
+                } else if (element === canvas) {
+                    // 在空白画布上触摸，显示输入框
+                    showInputModal(touch.clientX, touch.clientY);
+                }
+            }
+        }
+        
+        // 处理触摸移动事件
+        function handleTouchMove(e) {
+            if (isDragging && currentTag && e.touches.length === 1) {
+                const touch = e.touches[0];
+                currentTag.style.left = `${touch.clientX - offset.x}px`;
+                currentTag.style.top = `${touch.clientY - offset.y}px`;
+                e.preventDefault();
+            }
+        }
+        
+        // 处理触摸结束事件
+        function handleTouchEnd(e) {
+            log("触摸结束");
+            if (isDragging && currentTag) {
+                currentTag.classList.remove('dragging');
+                isDragging = false;
+                currentTag = null;
+            } else {
+                // 获取触摸位置的元素
+                const touch = e.changedTouches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                
+                // 只有点击画布而不是标签时才显示输入框
+                if (element === canvas) {
+                    showInputModal(touch.clientX, touch.clientY);
+                }
+            }
+        }
+        
+        // 窗口大小调整
+        function handleResize() {
+            const tags = document.querySelectorAll('.tag');
+            tags.forEach(tag => {
+                // 使用百分比定位确保标签位置在窗口调整后保持相对位置
+                const left = parseFloat(tag.style.left) / window.innerWidth * 100;
+                const top = parseFloat(tag.style.top) / window.innerHeight * 100;
+                tag.dataset.percentLeft = left;
+                tag.dataset.percentTop = top;
+                tag.style.left = `${left}%`;
+                tag.style.top = `${top}%`;
+            });
+        }
+        
+        // 绑定所有事件
+        function bindEvents() {
+            log("绑定事件...");
+            // 移除直接在HTML中的onclick属性，改为在这里绑定事件
+            canvas.removeAttribute('onclick');
+            canvas.addEventListener('click', handleCanvasClick);
+            
+            // 处理鼠标事件
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            
+            // 按钮事件
+            saveBtn.addEventListener('click', handleSaveClick);
+            cancelBtn.addEventListener('click', handleCancelClick);
+            
+            // 输入框事件
+            tagInput.addEventListener('keydown', handleInputKeydown);
+            
+            // 文档点击事件
+            document.addEventListener('click', handleDocumentClick);
+            
+            // 帮助按钮事件
+            helpBtn.addEventListener('mouseenter', showHelpTooltip);
+            helpBtn.addEventListener('mouseleave', hideHelpTooltip);
+            
+            // 防止默认拖拽行为
+            document.addEventListener('dragover', preventDefault);
+            document.addEventListener('drop', preventDefault);
+            
+            // 阻止右键菜单
+            document.addEventListener('contextmenu', preventDefault);
+            
+            // 移动端事件
+            canvas.addEventListener('touchstart', handleTouchStart);
+            document.addEventListener('touchmove', handleTouchMove);
+            document.addEventListener('touchend', handleTouchEnd);
+            
+            // 窗口调整事件
+            window.addEventListener('resize', handleResize);
+            
+            log("所有事件已绑定");
+        }
+        
+        // 初始化
+        bindEvents();
+        log("云词灵感画布已就绪，点击空白处添加词条");
+        
+        // 3秒后隐藏调试信息
+        setTimeout(() => {
+            document.getElementById('debug').style.display = 'none';
+        }, 3000);
+    </script>
+</body>
+</html>

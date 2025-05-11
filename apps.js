@@ -6,6 +6,7 @@ export async function getAppDirectories() {
         {id:'calendar',name:'日历',path:'calendar/index.html'},
         {id:'todo',name:'待办事项',path:'todo/index.html'},
         {id:'test',name:'测试',path:'test/index.html'},
+        {id:'wordcanvas',name:'灵感词云',path:'wordcanvas/index.html'},
         {id:'cloud',name:'云盘',path:'cloud/index.html'}
     ];
 }
