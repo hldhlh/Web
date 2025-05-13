@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>云词灵感画布</title>
     <style>
+        /* 基础样式 */
         * {
             margin: 0;
             padding: 0;
@@ -19,12 +20,13 @@
             user-select: none;
         }
         
+        /* 画布相关样式 */
         #canvas {
             width: 100%;
             height: 100%;
             position: relative;
             background-color: white;
-            cursor: pointer;
+            cursor: default;
             overflow: hidden;
         }
         
@@ -35,8 +37,11 @@
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
+            transform-origin: center center;
+            will-change: transform;
         }
         
+        /* 标签样式 */
         .tag {
             position: absolute;
             background-color: rgba(255, 255, 255, 0.9);
@@ -49,25 +54,33 @@
             font-size: 16px;
             max-width: 300px;
             word-wrap: break-word;
-            transform: translate(-50%, -50%);
+            will-change: transform, left, top;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
         }
         
-        .tag:hover {
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        .tag:hover { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); z-index: 2; }
+        .tag.dragging { opacity: 0.9; z-index: 3; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); }
+        .tag.selected { 
+            border: 2px solid #4a90e2;
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
             z-index: 2;
+            background-color: rgba(74, 144, 226, 0.1);
         }
         
-        .tag.dragging {
-            opacity: 0.9;
-            z-index: 3;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        /* 选区样式 */
+        .selection-area {
+            position: absolute;
+            border: 2px dashed #4a90e2;
+            background-color: rgba(74, 144, 226, 0.15);
+            z-index: 9000;
+            pointer-events: none;
         }
         
+        /* 输入框样式 */
         .input-modal {
             display: none;
             position: fixed;
-            left: 0;
-            top: 0;
             z-index: 10;
             background-color: white;
             border-radius: 4px;
@@ -85,10 +98,9 @@
             outline: none;
         }
         
-        .input-modal input:focus {
-            border-color: #4a90e2;
-        }
+        .input-modal input:focus { border-color: #4a90e2; }
         
+        /* 按钮样式 */
         .buttons {
             display: flex;
             justify-content: flex-end;
@@ -104,20 +116,12 @@
             font-size: 14px;
         }
         
-        .save-btn {
-            background-color: #4a90e2;
-            color: white;
-        }
+        .save-btn { background-color: #4a90e2; color: white; }
+        .cancel-btn { background-color: #f1f1f1; color: #333; }
         
-        .cancel-btn {
-            background-color: #f1f1f1;
-            color: #333;
-        }
-        
-        .help-button {
+        /* 帮助按钮样式 */
+        .help-button, .reset-button {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
             width: 40px;
             height: 40px;
             border-radius: 50%;
@@ -132,6 +136,10 @@
             z-index: 5;
         }
         
+        .help-button { bottom: 20px; right: 20px; }
+        .reset-button { bottom: 20px; left: 20px; }
+        
+        /* 帮助提示样式 */
         .help-tooltip {
             display: none;
             position: fixed;
@@ -147,19 +155,42 @@
             z-index: 5;
         }
         
-        #debug {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
+        /* 右键菜单样式 */
+        .context-menu {
+            position: absolute;
+            background-color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 6px;
+            padding: 6px 0;
+            min-width: 120px;
             z-index: 1000;
-            max-width: 300px;
-            display: none;
+            opacity: 0;
+            transform: scale(0.95);
+            transform-origin: top left;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            pointer-events: none;
         }
+        
+        .context-menu.active {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+        
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            color: var(--text-primary, #333);
+            transition: background-color 0.15s ease;
+        }
+        
+        .context-menu-item:hover { background-color: rgba(0, 0, 0, 0.05); }
+        .context-menu-item.delete { color: #ff3b30; }
+        .context-menu-item i { margin-right: 8px; font-size: 16px; width: 18px; text-align: center; }
+        .context-menu-divider { height: 1px; background-color: rgba(0, 0, 0, 0.1); margin: 4px 0; }
     </style>
 </head>
 <body>
@@ -175,756 +206,685 @@
         </div>
     </div>
     
-    <div class="help-button" id="helpBtn">?</div>
-    <div class="help-tooltip" id="helpTooltip">
-        <p><strong>使用说明：</strong></p>
-        <p>• 点击空白处添加新词条</p>
-        <p>• 拖动词条可改变位置</p>
-        <p>• 双击词条可编辑内容</p>
-        <p>• 移动设备：长按词条可编辑</p>
+    <div class="help-tooltip" id="helpTooltip"></div>
+    <div class="context-menu" id="tagContextMenu">
+        <div class="context-menu-item" id="editTagItem"><i>✏️</i>重命名</div>
+        <div class="context-menu-item" id="copyTagItem"><i>📋</i>复制</div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item delete" id="deleteTagItem"><i>🗑️</i>删除</div>
     </div>
     
-    <div id="debug"></div>
-    
+    <div class="help-button" id="helpBtn">?</div>
+    <div class="reset-button" id="resetBtn">⟲</div>
+
     <script>
-        // 调试函数
-        function log(message) {
-            const debug = document.getElementById('debug');
-            debug.style.display = 'block';
-            debug.textContent = message;
-            console.log(message);
-        }
-        
-        // 初始化变量
-        log("初始化中...");
-        const canvas = document.getElementById('canvas');
-        const canvasContainer = document.getElementById('canvasContainer');
-        const inputModal = document.getElementById('inputModal');
-        const tagInput = document.getElementById('tagInput');
-        const saveBtn = document.getElementById('saveBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const helpBtn = document.getElementById('helpBtn');
-        const helpTooltip = document.getElementById('helpTooltip');
-        
-        // 画布配置和状态
+        // 核心配置
         const CONFIG = {
-            // 画布尺寸
-            canvasWidth: 5000,
-            canvasHeight: 5000,
-            // 画布中心
-            canvasCenterX: 2500,
-            canvasCenterY: 2500,
-            // 拖动相关
-            dragThreshold: 5,
-            // 视觉缩放比
-            scale: 1
+            canvas: {
+                width: 5000,
+                height: 5000,
+                centerX: 2500,
+                centerY: 2500,
+                scale: 1,
+                minScale: 0.5,
+                maxScale: 2.0
+            },
+            interaction: {
+                clickThreshold: 5,
+                clickDuration: 200,
+                touchThreshold: 5,
+                touchDuration: 300,
+                selectionThreshold: 5,
+                longPressDelay: 800
+            }
         };
-        
-        // 状态变量
-        let clickPosition = { x: 0, y: 0 };
-        let editingTag = null;
-        let isDragging = false;
-        let currentTag = null;
-        let offset = { x: 0, y: 0 };
-        let viewportCenter = { x: 0, y: 0 };
-        
-        // 拖动相关
-        let isDragStart = false;
-        let dragStartPos = { x: 0, y: 0 };
-        let lastPos = { x: 0, y: 0 };
-        
-        // 画布拖动相关变量
-        let isPanning = false;
-        let panStartX = 0;
-        let panStartY = 0;
-        // 画布偏移量 - 用于坐标计算
-        let canvasOffsetLeft = 0;
-        let canvasOffsetTop = 0;
-        
-        // 更新画布位置偏移量
-        function updateCanvasOffset() {
-            // 从style中获取当前百分比位置
-            const leftPercent = parseFloat(canvasContainer.style.left) || 50;
-            const topPercent = parseFloat(canvasContainer.style.top) || 50;
-            
-            // 计算偏移像素值 (从50%中心点计算)
-            canvasOffsetLeft = (leftPercent - 50) / 100 * canvas.offsetWidth;
-            canvasOffsetTop = (topPercent - 50) / 100 * canvas.offsetHeight;
-            
-            log(`画布偏移量更新: 左${canvasOffsetLeft}px, 上${canvasOffsetTop}px`);
-        }
-        
-        // 计算视口中心
-        function updateViewportCenter() {
-            // 获取画布元素的大小
-            const rect = canvas.getBoundingClientRect();
-            
-            // 计算视口中心
-            viewportCenter = {
-                x: rect.width / 2,
-                y: rect.height / 2
-            };
-            
-            // 更新画布偏移量
-            updateCanvasOffset();
-            
-            log(`视口中心坐标: (${viewportCenter.x}, ${viewportCenter.y})`);
-            return viewportCenter;
-        }
-        
-        // 视口坐标转换为画布坐标 - 考虑画布偏移
-        function viewportToCanvas(viewportX, viewportY) {
-            updateViewportCenter();
-            
-            // 计算相对于视口中心的偏移
-            const offsetX = Math.round(viewportX - viewportCenter.x);
-            const offsetY = Math.round(viewportY - viewportCenter.y);
-            
-            // 计算画布中的坐标 (考虑画布已经偏移的量)
-            const canvasX = CONFIG.canvasCenterX + offsetX - canvasOffsetLeft;
-            const canvasY = CONFIG.canvasCenterY + offsetY - canvasOffsetTop;
-            
-            log(`视口坐标转换: 视口(${viewportX}, ${viewportY}) -> 画布(${canvasX}, ${canvasY})`);
-            return { x: canvasX, y: canvasY };
-        }
-        
-        // 画布坐标转换为视口坐标 - 考虑画布偏移
-        function canvasToViewport(canvasX, canvasY) {
-            updateViewportCenter();
-            
-            // 计算相对于画布中心的偏移 (考虑画布已经偏移的量)
-            const offsetX = canvasX - CONFIG.canvasCenterX + canvasOffsetLeft;
-            const offsetY = canvasY - CONFIG.canvasCenterY + canvasOffsetTop;
-            
-            // 计算视口中的坐标
-            const viewportX = Math.round(viewportCenter.x + offsetX);
-            const viewportY = Math.round(viewportCenter.y + offsetY);
-            
-            log(`画布坐标转换: 画布(${canvasX}, ${canvasY}) -> 视口(${viewportX}, ${viewportY})`);
-            return { x: viewportX, y: viewportY };
-        }
-        
-        // 显示输入框
-        function showInputModal(clientX, clientY, text = '') {
-            // 转换为画布坐标
-            const canvasPos = viewportToCanvas(clientX, clientY);
-            log(`显示输入框: 客户端(${clientX}, ${clientY}), 画布坐标(${canvasPos.x}, ${canvasPos.y})`);
-            
-            // 保存点击位置（画布坐标）
-            clickPosition = canvasPos;
-            
-            // 设置输入框位置（在客户端坐标上）
-            inputModal.style.display = 'block';
-            inputModal.style.left = `${clientX}px`;
-            inputModal.style.top = `${clientY}px`;
-            tagInput.value = text;
-            tagInput.focus();
-            
-            // 确保输入框在视口内
-            const rect = inputModal.getBoundingClientRect();
-            if (rect.right > window.innerWidth) {
-                inputModal.style.left = `${clientX - (rect.right - window.innerWidth) - 10}px`;
+
+        // 状态管理
+        const State = {
+            mouse: {
+                startTime: 0,
+                startPos: { x: 0, y: 0 },
+                clickPos: { x: 0, y: 0 }
+            },
+            canvas: {
+                offset: { x: 0, y: 0 },
+                viewportCenter: { x: 0, y: 0 }
+            },
+            interaction: {
+                isDragging: false,
+                isPanning: false,
+                isSelecting: false,
+                currentTag: null,
+                editingTag: null,
+                selectedTags: [],
+                dragOffset: { x: 0, y: 0 }
             }
-            if (rect.bottom > window.innerHeight) {
-                inputModal.style.top = `${clientY - (rect.bottom - window.innerHeight) - 10}px`;
-            }
-        }
-        
-        // 隐藏输入框
-        function hideInputModal() {
-            log("隐藏输入框");
-            inputModal.style.display = 'none';
-            tagInput.value = '';
-            editingTag = null;
-        }
-        
-        // 创建新标签
-        function createTag(text, canvasX, canvasY) {
-            log(`创建标签: "${text}" 位置(画布坐标): (${canvasX}, ${canvasY})`);
-            
-            // 创建DOM元素
-            const tag = document.createElement('div');
-            tag.className = 'tag';
-            tag.textContent = text;
-            
-            // 存储画布坐标
-            tag.dataset.canvasX = canvasX;
-            tag.dataset.canvasY = canvasY;
-            
-            // 设置标签位置
-            tag.style.left = `${canvasX}px`;
-            tag.style.top = `${canvasY}px`;
-            
-            // 绑定拖动事件
-            tag.addEventListener('mousedown', handleTagMouseDown);
-            
-            // 双击编辑
-            tag.addEventListener('dblclick', handleTagDblClick);
-            
-            // 为移动设备设置长按编辑
-            setupTagTouchEvents(tag);
-            
-            // 添加到容器
-            canvasContainer.appendChild(tag);
-            
-            return tag;
-        }
-        
-        // 更新标签位置
-        function updateTagPosition(tag, canvasX, canvasY) {
-            // 更新数据属性 - 使用取整的值避免小数点精度问题
-            const roundedX = Math.round(canvasX);
-            const roundedY = Math.round(canvasY);
-            
-            tag.dataset.canvasX = roundedX;
-            tag.dataset.canvasY = roundedY;
-            
-            // 更新样式位置 - 使用取整的值确保精确定位
-            tag.style.left = `${roundedX}px`;
-            tag.style.top = `${roundedY}px`;
-        }
-        
-        // 处理画布点击事件
-        function handleCanvasClick(e) {
-            log(`画布点击: (${e.clientX}, ${e.clientY}), isDragging=${isDragging}`);
-            // 确保不是拖动结束的点击
-            if (!isDragging) {
-                // 检查点击的是否是画布或画布容器
-                if (e.target === canvas || e.target === canvasContainer) {
-                    showInputModal(e.clientX, e.clientY);
-                    e.stopPropagation();
-                }
-            }
-        }
-        
-        // 处理画布鼠标按下事件 - 中键拖动
-        function handleCanvasMouseDown(e) {
-            // 只响应鼠标中键(button === 1)
-            if (e.button === 1) {
-                isPanning = true;
-                panStartX = e.clientX;
-                panStartY = e.clientY;
-                document.body.style.cursor = 'grabbing';
-                e.preventDefault();
-                log("开始拖动画布");
-            }
-        }
-        
-        // 处理画布鼠标移动事件
-        function handleCanvasMouseMove(e) {
-            if (isPanning) {
-                const dx = e.clientX - panStartX;
-                const dy = e.clientY - panStartY;
-                
-                // 更新画布位置 - 移动画布容器
-                const currentLeft = parseFloat(canvasContainer.style.left) || 50;
-                const currentTop = parseFloat(canvasContainer.style.top) || 50;
-                
-                // 计算新位置 (百分比)
-                const newLeft = currentLeft + (dx / canvas.offsetWidth) * 100;
-                const newTop = currentTop + (dy / canvas.offsetHeight) * 100;
-                
-                // 应用新位置
-                canvasContainer.style.left = `${newLeft}%`;
-                canvasContainer.style.top = `${newTop}%`;
-                
-                // 更新起始位置
-                panStartX = e.clientX;
-                panStartY = e.clientY;
-                
-                // 更新视口中心和画布偏移量
-                updateViewportCenter();
-                
-                e.preventDefault();
-            }
-        }
-        
-        // 处理画布鼠标释放事件
-        function handleCanvasMouseUp(e) {
-            if (isPanning) {
-                isPanning = false;
-                document.body.style.cursor = '';
-                e.preventDefault();
-                log("停止拖动画布");
-            }
-        }
-        
-        // 处理触摸画布拖动
-        function handleCanvasTouchPan(e) {
-            if (e.touches.length === 2) {
-                // 双指触摸开始平移
-                e.preventDefault();
-                
-                if (!isPanning) {
-                    isPanning = true;
-                    panStartX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                    panStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                    document.body.style.cursor = 'grabbing';
-                    log("开始双指拖动画布");
+        };
+
+        // DOM元素缓存
+        const DOM = {
+            canvas: document.getElementById('canvas'),
+            container: document.getElementById('canvasContainer'),
+            inputModal: document.getElementById('inputModal'),
+            tagInput: document.getElementById('tagInput'),
+            saveBtn: document.getElementById('saveBtn'),
+            cancelBtn: document.getElementById('cancelBtn'),
+            helpBtn: document.getElementById('helpBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            helpTooltip: document.getElementById('helpTooltip'),
+            contextMenu: document.getElementById('tagContextMenu'),
+            selectionArea: document.createElement('div')
+        };
+
+        // 工具函数
+        const Utils = {
+            // 防抖动
+            debounce(func, wait) {
+                let timeout;
+                return function(...args) {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(this, args), wait);
+                };
+            },
+
+            // 计算距离
+            getDistance(point1, point2) {
+                return Math.sqrt(
+                    Math.pow(point2.x - point1.x, 2) + 
+                    Math.pow(point2.y - point1.y, 2)
+                );
+            },
+
+            // 判断是否为有效点击
+            isValidClick(startPos, endPos, startTime) {
+                const distance = this.getDistance(startPos, endPos);
+                const duration = Date.now() - startTime;
+                return distance <= CONFIG.interaction.clickThreshold && 
+                       duration <= CONFIG.interaction.clickDuration;
+            },
+
+            // 检查设备类型
+            isMobileDevice() {
+                return (('ontouchstart' in window) ||
+                       (navigator.maxTouchPoints > 0) ||
+                       (navigator.msMaxTouchPoints > 0));
+            },
+
+            // 阻止默认事件
+            preventDefault(e) {
+                if (e.type === 'contextmenu' && e.target.classList.contains('tag')) {
                     return;
                 }
-                
-                // 计算双指中心点
-                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                
-                // 计算移动距离
-                const dx = touchX - panStartX;
-                const dy = touchY - panStartY;
-                
-                // 更新画布位置 - 移动画布容器
-                const currentLeft = parseFloat(canvasContainer.style.left) || 50;
-                const currentTop = parseFloat(canvasContainer.style.top) || 50;
-                
-                // 计算新位置 (百分比)
-                const newLeft = currentLeft + (dx / canvas.offsetWidth) * 100;
-                const newTop = currentTop + (dy / canvas.offsetHeight) * 100;
-                
-                // 应用新位置
-                canvasContainer.style.left = `${newLeft}%`;
-                canvasContainer.style.top = `${newTop}%`;
-                
-                // 更新起始位置
-                panStartX = touchX;
-                panStartY = touchY;
-                
-                // 更新视口中心和画布偏移量
-                updateViewportCenter();
-            }
-        }
-        
-        // 处理触摸结束
-        function handleCanvasTouchPanEnd(e) {
-            if (isPanning && e.touches.length < 2) {
-                isPanning = false;
-                document.body.style.cursor = '';
-                log("停止双指拖动画布");
-            }
-        }
-        
-        // 重置画布位置
-        function resetCanvasPosition() {
-            canvasContainer.style.left = '50%';
-            canvasContainer.style.top = '50%';
-            
-            // 更新视口中心和画布偏移量
-            updateViewportCenter();
-            
-            log("重置画布位置");
-        }
-        
-        // 添加画布重置功能
-        function setupCanvasReset() {
-            // 添加重置按钮
-            const resetBtn = document.createElement('div');
-            resetBtn.className = 'reset-button';
-            resetBtn.innerHTML = '⟲';
-            resetBtn.title = '重置画布位置';
-            document.body.appendChild(resetBtn);
-            
-            resetBtn.addEventListener('click', function() {
-                resetCanvasPosition();
-            });
-            
-            // 移动端支持
-            resetBtn.addEventListener('touchstart', function(e) {
                 e.preventDefault();
-                resetCanvasPosition();
-            });
-            
-            // 添加按钮样式
-            const style = document.createElement('style');
-            style.textContent = `
-                .reset-button {
-                    position: fixed;
-                    bottom: 20px;
-                    left: 20px;
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    background-color: #4a90e2;
-                    color: white;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 20px;
-                    cursor: pointer;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                    z-index: 5;
+            }
+        };
+
+        // 视口管理
+        const Viewport = {
+            // 更新视口中心
+            updateCenter() {
+                const rect = DOM.canvas.getBoundingClientRect();
+                State.canvas.viewportCenter = {
+                    x: rect.width / 2,
+                    y: rect.height / 2
+                };
+                this.updateOffset();
+                return State.canvas.viewportCenter;
+            },
+
+            // 更新画布偏移
+            updateOffset() {
+                const leftPercent = parseFloat(DOM.container.style.left) || 50;
+                const topPercent = parseFloat(DOM.container.style.top) || 50;
+                
+                State.canvas.offset = {
+                    x: (leftPercent - 50) / 100 * DOM.canvas.offsetWidth / CONFIG.canvas.scale,
+                    y: (topPercent - 50) / 100 * DOM.canvas.offsetHeight / CONFIG.canvas.scale
+                };
+            },
+
+            // 视口坐标转画布坐标
+            toCanvas(viewportX, viewportY) {
+                this.updateCenter();
+                const scale = CONFIG.canvas.scale;
+                const offsetX = Math.round((viewportX - State.canvas.viewportCenter.x) / scale);
+                const offsetY = Math.round((viewportY - State.canvas.viewportCenter.y) / scale);
+                
+                return {
+                    x: CONFIG.canvas.centerX + offsetX - State.canvas.offset.x,
+                    y: CONFIG.canvas.centerY + offsetY - State.canvas.offset.y
+                };
+            },
+
+            // 画布坐标转视口坐标
+            toViewport(canvasX, canvasY) {
+                this.updateCenter();
+                const scale = CONFIG.canvas.scale;
+                const offsetX = (canvasX - CONFIG.canvas.centerX + State.canvas.offset.x) * scale;
+                const offsetY = (canvasY - CONFIG.canvas.centerY + State.canvas.offset.y) * scale;
+                
+                return {
+                    x: Math.round(State.canvas.viewportCenter.x + offsetX),
+                    y: Math.round(State.canvas.viewportCenter.y + offsetY)
+                };
+            }
+        };
+
+        // 标签管理
+        const TagManager = {
+            // 创建标签
+            create(text, canvasX, canvasY) {
+                const tag = document.createElement('div');
+                tag.className = 'tag';
+                tag.textContent = text;
+                
+                tag.dataset.canvasX = canvasX;
+                tag.dataset.canvasY = canvasY;
+                
+                tag.style.transform = 'none';
+                tag.style.left = `${canvasX}px`;
+                tag.style.top = `${canvasY}px`;
+                
+                this.setupTagEvents(tag);
+                DOM.container.appendChild(tag);
+                return tag;
+            },
+
+            // 设置标签事件
+            setupTagEvents(tag) {
+                tag.addEventListener('mousedown', EventHandler.tag.mouseDown);
+                tag.addEventListener('dblclick', EventHandler.tag.doubleClick);
+                tag.addEventListener('contextmenu', EventHandler.tag.contextMenu);
+                this.setupTagTouchEvents(tag);
+            },
+
+            // 设置标签触摸事件
+            setupTagTouchEvents(tag) {
+                let longPressTimer;
+                let touchMoved = false;
+
+                tag.addEventListener('touchstart', e => {
+                    touchMoved = false;
+                    longPressTimer = setTimeout(() => {
+                        if (!touchMoved && !State.interaction.isDragging && !State.interaction.isPanning) {
+                            const touch = e.touches[0];
+                            ContextMenu.show(touch, tag);
+                        }
+                    }, CONFIG.interaction.longPressDelay);
+                });
+
+                tag.addEventListener('touchend', () => clearTimeout(longPressTimer));
+                tag.addEventListener('touchmove', () => {
+                    touchMoved = true;
+                    clearTimeout(longPressTimer);
+                });
+            },
+
+            // 更新标签位置
+            updatePosition(tag, canvasX, canvasY) {
+                const roundedX = Math.round(canvasX);
+                const roundedY = Math.round(canvasY);
+                
+                tag.dataset.canvasX = roundedX;
+                tag.dataset.canvasY = roundedY;
+                tag.style.left = `${roundedX}px`;
+                tag.style.top = `${roundedY}px`;
+            },
+
+            // 选择标签
+            select(tag) {
+                tag.classList.add('selected');
+                if (!State.interaction.selectedTags.includes(tag)) {
+                    State.interaction.selectedTags.push(tag);
                 }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        // 处理标签鼠标按下事件
-        function handleTagMouseDown(e) {
-            if (e.button !== 0) return; // 只响应左键
-            
-            isDragging = true;
-            currentTag = this;
-            this.classList.add('dragging');
-            
-            // 获取当前标签的画布坐标
-            const canvasX = parseFloat(this.dataset.canvasX);
-            const canvasY = parseFloat(this.dataset.canvasY);
-            
-            // 获取鼠标相对于标签中心的偏移
-            const rect = this.getBoundingClientRect();
-            const tagCenterX = rect.left + rect.width / 2;
-            const tagCenterY = rect.top + rect.height / 2;
-            
-            offset = {
-                x: e.clientX - tagCenterX,
-                y: e.clientY - tagCenterY
-            };
-            
-            // 阻止事件冒泡和默认行为
-            e.stopPropagation();
-            e.preventDefault();
-            log("标签开始拖动");
-        }
-        
-        // 处理标签双击事件
-        function handleTagDblClick(e) {
-            editingTag = this;
-            
-            // 获取标签相对于视口的位置
-            const rect = this.getBoundingClientRect();
-            const tagCenterX = rect.left + rect.width / 2;
-            const tagCenterY = rect.top + rect.height / 2;
-            
-            showInputModal(tagCenterX, tagCenterY, this.textContent);
-            e.stopPropagation();
-            log("双击编辑标签");
-        }
-        
-        // 处理鼠标移动事件
-        function handleMouseMove(e) {
-            if (isDragging && currentTag) {
-                // 获取鼠标位置减去偏移
-                const clientX = e.clientX - offset.x;
-                const clientY = e.clientY - offset.y;
-                
-                // 转换为画布坐标
-                const canvasPos = viewportToCanvas(clientX, clientY);
-                
-                // 更新标签位置 - 直接设置而不使用动画
-                updateTagPosition(currentTag, canvasPos.x, canvasPos.y);
-                
-                e.preventDefault();
+            },
+
+            // 取消选择所有标签
+            clearSelection() {
+                State.interaction.selectedTags.forEach(tag => {
+                    tag.classList.remove('selected');
+                });
+                State.interaction.selectedTags = [];
             }
-        }
-        
-        // 处理鼠标释放事件
-        function handleMouseUp(e) {
-            if (isDragging && currentTag) {
-                currentTag.classList.remove('dragging');
-                isDragging = false;
-                currentTag = null;
-                log("标签拖动结束");
+        };
+
+        // 输入框管理
+        const InputModal = {
+            show(clientX, clientY, text = '') {
+                const canvasPos = Viewport.toCanvas(clientX, clientY);
+                State.mouse.clickPos = canvasPos;
                 
-                // 阻止拖动结束时的点击事件传播
-                if (e) {
+                DOM.inputModal.style.display = 'block';
+                DOM.inputModal.style.left = `${clientX}px`;
+                DOM.inputModal.style.top = `${clientY}px`;
+                DOM.tagInput.value = text;
+                DOM.tagInput.focus();
+                
+                this.adjustPosition();
+            },
+
+            hide() {
+                DOM.inputModal.style.display = 'none';
+                DOM.tagInput.value = '';
+                State.interaction.editingTag = null;
+            },
+
+            adjustPosition() {
+                const rect = DOM.inputModal.getBoundingClientRect();
+                if (rect.right > window.innerWidth) {
+                    DOM.inputModal.style.left = `${window.innerWidth - rect.width - 10}px`;
+                }
+                if (rect.bottom > window.innerHeight) {
+                    DOM.inputModal.style.top = `${window.innerHeight - rect.height - 10}px`;
+                }
+            },
+
+            save() {
+                const text = DOM.tagInput.value.trim();
+                if (text) {
+                    if (State.interaction.editingTag) {
+                        State.interaction.editingTag.textContent = text;
+                    } else {
+                        TagManager.create(text, State.mouse.clickPos.x, State.mouse.clickPos.y);
+                    }
+                }
+                this.hide();
+            }
+        };
+
+        // 右键菜单管理
+        const ContextMenu = {
+            show(e, tag) {
+                e.preventDefault();
+                State.interaction.contextMenuTag = tag;
+                
+                if (State.interaction.selectedTags.length > 1 && State.interaction.selectedTags.includes(tag)) {
+                    this.updateMenuText(true);
+                } else {
+                    this.updateMenuText(false);
+                    TagManager.clearSelection();
+                    TagManager.select(tag);
+                }
+                
+                this.setPosition(e);
+                DOM.contextMenu.classList.add('active');
+            },
+
+            hide() {
+                DOM.contextMenu.classList.remove('active');
+                State.interaction.contextMenuTag = null;
+            },
+
+            updateMenuText(isMultiple) {
+                const items = DOM.contextMenu.querySelectorAll('.context-menu-item');
+                items[0].textContent = isMultiple ? "重命名选中标签" : "重命名";
+                items[1].textContent = isMultiple ? "复制选中标签" : "复制";
+                items[2].textContent = isMultiple ? "删除选中标签" : "删除";
+            },
+
+            setPosition(e) {
+                const x = e.clientX;
+                const y = e.clientY;
+                DOM.contextMenu.style.left = `${x}px`;
+                DOM.contextMenu.style.top = `${y}px`;
+                
+                const menuRect = DOM.contextMenu.getBoundingClientRect();
+                if (menuRect.right > window.innerWidth) {
+                    DOM.contextMenu.style.left = `${x - menuRect.width}px`;
+                }
+                if (menuRect.bottom > window.innerHeight) {
+                    DOM.contextMenu.style.top = `${y - menuRect.height}px`;
+                }
+            },
+
+            handleEdit() {
+                if (State.interaction.contextMenuTag) {
+                    const rect = State.interaction.contextMenuTag.getBoundingClientRect();
+                    State.interaction.editingTag = State.interaction.contextMenuTag;
+                    InputModal.show(rect.left, rect.top, State.interaction.contextMenuTag.textContent);
+                }
+                this.hide();
+            },
+
+            handleCopy() {
+                if (State.interaction.selectedTags.length > 0) {
+                    const text = State.interaction.selectedTags.length > 1 
+                        ? State.interaction.selectedTags.map(tag => tag.textContent).join('\n')
+                        : State.interaction.contextMenuTag.textContent;
+                    
+                    navigator.clipboard.writeText(text).catch(console.error);
+                }
+                this.hide();
+            },
+
+            handleDelete() {
+                if (State.interaction.selectedTags.length > 0) {
+                    State.interaction.selectedTags.forEach(tag => tag.remove());
+                    State.interaction.selectedTags = [];
+                }
+                this.hide();
+            }
+        };
+
+        // 选区管理
+        const SelectionArea = {
+            init() {
+                DOM.selectionArea.className = 'selection-area';
+                DOM.canvas.appendChild(DOM.selectionArea);
+            },
+
+            start(e) {
+                const rect = DOM.canvas.getBoundingClientRect();
+                State.mouse.startPos = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                
+                DOM.selectionArea.style.left = `${State.mouse.startPos.x}px`;
+                DOM.selectionArea.style.top = `${State.mouse.startPos.y}px`;
+                DOM.selectionArea.style.width = '0';
+                DOM.selectionArea.style.height = '0';
+                DOM.selectionArea.style.display = 'none';
+            },
+
+            update(e) {
+                const rect = DOM.canvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+                
+                const left = Math.min(currentX, State.mouse.startPos.x);
+                const top = Math.min(currentY, State.mouse.startPos.y);
+                const width = Math.abs(currentX - State.mouse.startPos.x);
+                const height = Math.abs(currentY - State.mouse.startPos.y);
+                
+                if (width > CONFIG.interaction.selectionThreshold || 
+                    height > CONFIG.interaction.selectionThreshold) {
+                    State.interaction.isSelecting = true;
+                    DOM.selectionArea.style.display = 'block';
+                    
+                    DOM.selectionArea.style.left = `${left}px`;
+                    DOM.selectionArea.style.top = `${top}px`;
+                    DOM.selectionArea.style.width = `${width}px`;
+                    DOM.selectionArea.style.height = `${height}px`;
+                }
+            },
+
+            end(e) {
+                if (!State.interaction.isSelecting) return;
+                
+                const rect = DOM.canvas.getBoundingClientRect();
+                const width = parseFloat(DOM.selectionArea.style.width);
+                const height = parseFloat(DOM.selectionArea.style.height);
+                const left = parseFloat(DOM.selectionArea.style.left) + rect.left;
+                const top = parseFloat(DOM.selectionArea.style.top) + rect.top;
+                
+                if (width > CONFIG.interaction.selectionThreshold && 
+                    height > CONFIG.interaction.selectionThreshold) {
+                    const tags = DOM.container.querySelectorAll('.tag');
+                    
+                    tags.forEach(tag => {
+                        const tagRect = tag.getBoundingClientRect();
+                        const tagCenterX = tagRect.left + tagRect.width / 2;
+                        const tagCenterY = tagRect.top + tagRect.height / 2;
+                        
+                        if (tagCenterX >= left && tagCenterX <= left + width && 
+                            tagCenterY >= top && tagCenterY <= top + height) {
+                            TagManager.select(tag);
+                        }
+                    });
+                    
                     e.stopPropagation();
                     e.preventDefault();
                 }
+                
+                State.interaction.isSelecting = false;
+                DOM.selectionArea.style.display = 'none';
             }
-        }
-        
-        // 添加标签触摸事件
-        function setupTagTouchEvents(tag) {
-            // 长按计时器变量
-            let longPressTimer;
-            
-            // 长按开始事件
-            tag.addEventListener('touchstart', function(e) {
-                // 开始计时长按
-                longPressTimer = setTimeout(() => {
-                    // 长按后编辑标签
-                    editingTag = tag;
-                    const rect = tag.getBoundingClientRect();
-                    const tagCenterX = rect.left + rect.width / 2;
-                    const tagCenterY = rect.top + rect.height / 2;
-                    
-                    showInputModal(tagCenterX, tagCenterY, tag.textContent);
-                    log("长按编辑标签");
-                }, 800); // 800毫秒长按触发编辑
-            });
-            
-            // 触摸结束时清除长按计时器
-            tag.addEventListener('touchend', function() {
-                clearTimeout(longPressTimer);
-            });
-            
-            // 触摸移动时清除长按计时器
-            tag.addEventListener('touchmove', function() {
-                clearTimeout(longPressTimer);
-            });
-        }
-        
-        // 处理标签拖动触摸开始
-        function handleTagTouchStart(e) {
-            if (e.target.classList.contains('tag')) {
-                const tag = e.target;
-                isDragging = true;
-                currentTag = tag;
-                tag.classList.add('dragging');
-                
-                // 获取触摸位置
-                const touch = e.touches[0];
-                
-                // 获取标签中心位置
-                const rect = tag.getBoundingClientRect();
-                const tagCenterX = rect.left + rect.width / 2;
-                const tagCenterY = rect.top + rect.height / 2;
-                
-                // 计算偏移
-                offset = {
-                    x: touch.clientX - tagCenterX,
-                    y: touch.clientY - tagCenterY
-                };
-                
-                e.preventDefault();
-                log("标签触摸拖动开始");
-            }
-        }
-        
-        // 处理标签拖动触摸移动
-        function handleTagTouchMove(e) {
-            if (isDragging && currentTag) {
-                // 获取触摸位置
-                const touch = e.touches[0];
-                
-                // 计算减去偏移后的位置
-                const clientX = touch.clientX - offset.x;
-                const clientY = touch.clientY - offset.y;
-                
-                // 转换为画布坐标
-                const canvasPos = viewportToCanvas(clientX, clientY);
-                
-                // 更新标签位置
-                updateTagPosition(currentTag, canvasPos.x, canvasPos.y);
-                
-                e.preventDefault();
-            }
-        }
-        
-        // 处理标签拖动触摸结束
-        function handleTagTouchEnd(e) {
-            if (isDragging && currentTag) {
-                currentTag.classList.remove('dragging');
-                isDragging = false;
-                currentTag = null;
-                log("标签触摸拖动结束");
-                e.preventDefault();
-            }
-        }
-        
-        // 处理触摸开始事件
-        function handleTouchStart(e) {
-            log("触摸开始");
-            
-            // 如果触摸到标签，处理标签拖动
-            if (e.target.classList.contains('tag')) {
-                handleTagTouchStart(e);
-                return;
-            }
-            
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                
-                // 检查触摸的是否是画布或画布容器
-                if (element === canvas || element === canvasContainer) {
-                    // 在空白画布上触摸，显示输入框
-                    showInputModal(touch.clientX, touch.clientY);
-                    e.preventDefault();
-                }
-            }
-        }
-        
-        // 保存按钮点击事件
-        function handleSaveClick() {
-            const text = tagInput.value.trim();
-            log(`保存按钮点击: text="${text}"`);
-            if (text) {
-                if (editingTag) {
-                    editingTag.textContent = text;
-                } else {
-                    createTag(text, clickPosition.x, clickPosition.y);
-                }
-            }
-            hideInputModal();
-        }
-        
-        // 取消按钮点击事件
-        function handleCancelClick() {
-            log("取消按钮点击");
-            hideInputModal();
-        }
-        
-        // 处理输入框键盘事件
-        function handleInputKeydown(e) {
-            if (e.key === 'Enter') {
-                log("按下回车键");
-                handleSaveClick();
-            } else if (e.key === 'Escape') {
-                log("按下ESC键");
-                handleCancelClick();
-            }
-        }
-        
-        // 处理点击其他地方事件
-        function handleDocumentClick(e) {
-            if (e.target !== inputModal && 
-                !inputModal.contains(e.target) && 
-                e.target !== tagInput &&
-                inputModal.style.display === 'block') {
-                // 检查是否为保存或取消按钮点击
-                if (e.target !== saveBtn && e.target !== cancelBtn) {
-                    log("点击其他区域，关闭输入框");
-                    const text = tagInput.value.trim();
-                    if (text) {
-                        if (editingTag) {
-                            editingTag.textContent = text;
-                        } else {
-                            createTag(text, clickPosition.x, clickPosition.y);
+        };
+
+        // 事件处理器
+        const EventHandler = {
+            canvas: {
+                click(e) {
+                    if (State.interaction.isSelecting || 
+                        State.interaction.isDragging || 
+                        State.interaction.isPanning) return;
+
+                    const isValidClick = Utils.isValidClick(
+                        State.mouse.startPos,
+                        { x: e.clientX, y: e.clientY },
+                        State.mouse.startTime
+                    );
+
+                    if (isValidClick && !e.target.classList.contains('tag')) {
+                        if (e.target === DOM.canvas || e.target === DOM.container) {
+                            TagManager.clearSelection();
+                            InputModal.show(e.clientX, e.clientY);
+                            e.stopPropagation();
                         }
                     }
-                    hideInputModal();
+                },
+
+                mouseDown(e) {
+                    State.mouse.startTime = Date.now();
+                    State.mouse.startPos = { x: e.clientX, y: e.clientY };
+
+                    if (e.button === 1) {
+                        State.interaction.isPanning = true;
+                        State.mouse.panStart = { x: e.clientX, y: e.clientY };
+                        document.body.style.cursor = 'grabbing';
+                        e.preventDefault();
+                        return;
+                    }
+
+                    if (e.button === 0 && !State.interaction.isDragging && 
+                        !State.interaction.isPanning) {
+                        if (e.target === DOM.canvas || e.target === DOM.container) {
+                            if (!e.shiftKey) TagManager.clearSelection();
+                            SelectionArea.start(e);
+                        }
+                    }
+                },
+
+                mouseMove: Utils.debounce((e) => {
+                    if (State.interaction.isPanning) {
+                        const dx = e.clientX - State.mouse.panStart.x;
+                        const dy = e.clientY - State.mouse.panStart.y;
+                        
+                        const currentLeft = parseFloat(DOM.container.style.left) || 50;
+                        const currentTop = parseFloat(DOM.container.style.top) || 50;
+                        
+                        const newLeft = currentLeft + (dx / DOM.canvas.offsetWidth) * 100;
+                        const newTop = currentTop + (dy / DOM.canvas.offsetHeight) * 100;
+                        
+                        DOM.container.style.left = `${newLeft}%`;
+                        DOM.container.style.top = `${newTop}%`;
+                        
+                        State.mouse.panStart = { x: e.clientX, y: e.clientY };
+                        Viewport.updateCenter();
+                        
+                        e.preventDefault();
+                    } else if (!State.interaction.isDragging && 
+                              !State.interaction.isPanning && 
+                              e.buttons === 1) {
+                        SelectionArea.update(e);
+                    }
+                }, 16),
+
+                mouseUp(e) {
+                    if (State.interaction.isPanning) {
+                        State.interaction.isPanning = false;
+                        document.body.style.cursor = '';
+                        e.preventDefault();
+                    } else {
+                        SelectionArea.end(e);
+                    }
+                },
+
+                wheel(e) {
+                    e.preventDefault();
+                    const delta = Math.sign(e.deltaY) * -1;
+                    const scaleFactor = delta > 0 ? 1.1 : 0.9;
+                    
+                    let newScale = CONFIG.canvas.scale * scaleFactor;
+                    newScale = Math.max(CONFIG.canvas.minScale, 
+                                      Math.min(newScale, CONFIG.canvas.maxScale));
+                    
+                    DOM.container.style.transform = 
+                        `translate(-50%, -50%) scale(${newScale})`;
+                    CONFIG.canvas.scale = newScale;
+                }
+            },
+
+            tag: {
+                mouseDown(e) {
+                    if (e.button !== 0) return;
+                    
+                    State.interaction.isDragging = true;
+                    State.interaction.currentTag = this;
+                    this.classList.add('dragging');
+                    
+                    const rect = this.getBoundingClientRect();
+                    State.interaction.dragOffset = {
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top
+                    };
+                    
+                    e.stopPropagation();
+                    e.preventDefault();
+                },
+
+                doubleClick(e) {
+                    State.interaction.editingTag = this;
+                    const rect = this.getBoundingClientRect();
+                    InputModal.show(rect.left, rect.top, this.textContent);
+                    e.stopPropagation();
+                },
+
+                contextMenu(e) {
+                    ContextMenu.show(e, this);
+                }
+            },
+
+            input: {
+                keydown(e) {
+                    if (e.key === 'Enter') {
+                        InputModal.save();
+                    } else if (e.key === 'Escape') {
+                        InputModal.hide();
+                    }
+                }
+            },
+
+            document: {
+                click(e) {
+                    if (e.target !== DOM.inputModal && 
+                        !DOM.inputModal.contains(e.target) && 
+                        e.target !== DOM.tagInput &&
+                        DOM.inputModal.style.display === 'block') {
+                        if (e.target !== DOM.saveBtn && e.target !== DOM.cancelBtn) {
+                            InputModal.save();
+                        }
+                    }
+                    
+                    if (!DOM.contextMenu.contains(e.target)) {
+                        ContextMenu.hide();
+                    }
+                },
+
+                keydown(e) {
+                    if (e.key === 'Escape') {
+                        ContextMenu.hide();
+                    }
                 }
             }
-        }
-        
-        // 显示帮助提示
-        function showHelpTooltip() {
-            helpTooltip.style.display = 'block';
-            log("显示帮助提示");
-        }
-        
-        // 隐藏帮助提示
-        function hideHelpTooltip() {
-            helpTooltip.style.display = 'none';
-            log("隐藏帮助提示");
-        }
-        
-        // 防止默认拖拽行为
-        function preventDefault(e) {
-            e.preventDefault();
-        }
-        
-        // 初始化画布大小
-        function setupCanvas() {
-            // 设置画布容器大小
-            canvasContainer.style.width = `${CONFIG.canvasWidth}px`;
-            canvasContainer.style.height = `${CONFIG.canvasHeight}px`;
-            
-            // 确保初始位置设置为中心
-            canvasContainer.style.left = '50%';
-            canvasContainer.style.top = '50%';
-            
-            // 初始化视口中心和画布偏移量
-            updateViewportCenter();
-            
-            log(`画布初始化完成，尺寸: ${CONFIG.canvasWidth}x${CONFIG.canvasHeight}`);
-        }
-        
-        // 绑定所有事件
-        function bindEvents() {
-            log("绑定事件...");
-            
-            // 画布点击事件
-            canvas.addEventListener('click', handleCanvasClick);
-            // 也为画布容器添加点击事件
-            canvasContainer.addEventListener('click', handleCanvasClick);
-            
-            // 画布拖动事件 - 中键拖动
-            document.addEventListener('mousedown', handleCanvasMouseDown);
-            document.addEventListener('mousemove', handleCanvasMouseMove);
-            document.addEventListener('mouseup', handleCanvasMouseUp);
-            
-            // 处理鼠标事件
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-            
-            // 按钮事件
-            saveBtn.addEventListener('click', handleSaveClick);
-            cancelBtn.addEventListener('click', handleCancelClick);
-            
-            // 输入框事件
-            tagInput.addEventListener('keydown', handleInputKeydown);
-            
-            // 文档点击事件
-            document.addEventListener('click', handleDocumentClick);
-            
-            // 帮助按钮事件
-            helpBtn.addEventListener('mouseenter', showHelpTooltip);
-            helpBtn.addEventListener('mouseleave', hideHelpTooltip);
-            
-            // 移动端帮助按钮支持
-            helpBtn.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                if (helpTooltip.style.display === 'block') {
-                    hideHelpTooltip();
-                } else {
-                    showHelpTooltip();
-                }
-            });
-            
-            // 防止默认拖拽行为
-            document.addEventListener('dragover', preventDefault);
-            document.addEventListener('drop', preventDefault);
-            
-            // 阻止右键菜单
-            document.addEventListener('contextmenu', preventDefault);
-            
-            // 移动端事件
-            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-            canvasContainer.addEventListener('touchstart', handleTouchStart, { passive: false });
-            document.addEventListener('touchmove', handleTagTouchMove, { passive: false });
-            document.addEventListener('touchend', handleTagTouchEnd, { passive: false });
-            
-            // 移动端画布拖动
-            document.addEventListener('touchmove', handleCanvasTouchPan, { passive: false });
-            document.addEventListener('touchend', handleCanvasTouchPanEnd, { passive: false });
-            
-            // 窗口调整事件
-            window.addEventListener('resize', updateViewportCenter);
-            
-            log("所有事件已绑定");
-        }
-        
-        // 添加移动设备检测
-        function isMobileDevice() {
-            return (('ontouchstart' in window) ||
-                   (navigator.maxTouchPoints > 0) ||
-                   (navigator.msMaxTouchPoints > 0));
-        }
-        
+        };
+
+        // 帮助提示管理
+        const HelpTip = {
+            init() {
+                DOM.helpTooltip.innerHTML = `
+                    <p><strong>使用说明：</strong></p>
+                    <p>• 点击空白处添加新词条</p>
+                    <p>• 拖动词条可改变位置</p>
+                    <p>• 双击词条可编辑内容</p>
+                    <p>• 右键点击词条显示菜单</p>
+                    <p>• 在空白处拖动鼠标可框选多个词条</p>
+                    <p>• 按住Shift拖动可添加到已选中的词条</p>
+                    <p>• 右键点击选中的词条可批量操作</p>
+                    <p>• 按住鼠标中键拖动画布</p>
+                    <p>• 滚轮可缩放画布</p>
+                    <p>• 移动设备：长按词条显示菜单</p>
+                    <p>• 移动设备：双指拖动画布</p>
+                `;
+            },
+
+            show() {
+                DOM.helpTooltip.style.display = 'block';
+            },
+
+            hide() {
+                DOM.helpTooltip.style.display = 'none';
+            }
+        };
+
         // 初始化应用
         function initApp() {
-            // 设置画布大小
-            setupCanvas();
+            // 设置画布初始状态
+            DOM.container.style.width = `${CONFIG.canvas.width}px`;
+            DOM.container.style.height = `${CONFIG.canvas.height}px`;
+            DOM.container.style.left = '50%';
+            DOM.container.style.top = '50%';
+            DOM.container.style.transform = 'translate(-50%, -50%)';
+            
+            // 初始化组件
+            SelectionArea.init();
+            HelpTip.init();
+            Viewport.updateCenter();
             
             // 绑定事件
-            bindEvents();
+            DOM.canvas.addEventListener('click', EventHandler.canvas.click);
+            DOM.container.addEventListener('click', EventHandler.canvas.click);
             
-            // 设置画布重置功能
-            setupCanvasReset();
+            document.addEventListener('mousedown', EventHandler.canvas.mouseDown);
+            document.addEventListener('mousemove', EventHandler.canvas.mouseMove);
+            document.addEventListener('mouseup', EventHandler.canvas.mouseUp);
             
-            // 显示适当的调试信息
-            if (isMobileDevice()) {
-                log("检测到移动设备，触屏模式已启用，双指拖动可移动画布");
-            } else {
-                log("云词灵感画布已就绪，点击空白处添加词条，按住鼠标中键拖动画布");
-            }
+            DOM.canvas.addEventListener('wheel', EventHandler.canvas.wheel, { passive: false });
             
-            // 3秒后隐藏调试信息
-            setTimeout(() => {
-                document.getElementById('debug').style.display = 'none';
-            }, 3000);
+            DOM.saveBtn.addEventListener('click', () => InputModal.save());
+            DOM.cancelBtn.addEventListener('click', () => InputModal.hide());
+            DOM.tagInput.addEventListener('keydown', EventHandler.input.keydown);
+            
+            document.addEventListener('click', EventHandler.document.click);
+            document.addEventListener('keydown', EventHandler.document.keydown);
+            
+            DOM.helpBtn.addEventListener('mouseenter', () => HelpTip.show());
+            DOM.helpBtn.addEventListener('mouseleave', () => HelpTip.hide());
+            DOM.helpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                DOM.helpTooltip.style.display === 'block' ? HelpTip.hide() : HelpTip.show();
+            });
+            
+            DOM.resetBtn.addEventListener('click', () => {
+                DOM.container.style.left = '50%';
+                DOM.container.style.top = '50%';
+                DOM.container.style.transform = 'translate(-50%, -50%)';
+                CONFIG.canvas.scale = 1;
+                Viewport.updateCenter();
+            });
+            
+            // 右键菜单事件
+            document.getElementById('editTagItem').addEventListener('click', () => ContextMenu.handleEdit());
+            document.getElementById('copyTagItem').addEventListener('click', () => ContextMenu.handleCopy());
+            document.getElementById('deleteTagItem').addEventListener('click', () => ContextMenu.handleDelete());
+            
+            // 防止默认行为
+            document.addEventListener('dragover', Utils.preventDefault);
+            document.addEventListener('drop', Utils.preventDefault);
+            document.addEventListener('contextmenu', Utils.preventDefault);
         }
-        
+
         // 启动应用
         initApp();
     </script>
