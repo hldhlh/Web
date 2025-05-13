@@ -233,6 +233,27 @@
         let dragStartPos = { x: 0, y: 0 };
         let lastPos = { x: 0, y: 0 };
         
+        // 画布拖动相关变量
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        // 画布偏移量 - 用于坐标计算
+        let canvasOffsetLeft = 0;
+        let canvasOffsetTop = 0;
+        
+        // 更新画布位置偏移量
+        function updateCanvasOffset() {
+            // 从style中获取当前百分比位置
+            const leftPercent = parseFloat(canvasContainer.style.left) || 50;
+            const topPercent = parseFloat(canvasContainer.style.top) || 50;
+            
+            // 计算偏移像素值 (从50%中心点计算)
+            canvasOffsetLeft = (leftPercent - 50) / 100 * canvas.offsetWidth;
+            canvasOffsetTop = (topPercent - 50) / 100 * canvas.offsetHeight;
+            
+            log(`画布偏移量更新: 左${canvasOffsetLeft}px, 上${canvasOffsetTop}px`);
+        }
+        
         // 计算视口中心
         function updateViewportCenter() {
             // 获取画布元素的大小
@@ -244,11 +265,14 @@
                 y: rect.height / 2
             };
             
+            // 更新画布偏移量
+            updateCanvasOffset();
+            
             log(`视口中心坐标: (${viewportCenter.x}, ${viewportCenter.y})`);
             return viewportCenter;
         }
         
-        // 视口坐标转换为画布坐标
+        // 视口坐标转换为画布坐标 - 考虑画布偏移
         function viewportToCanvas(viewportX, viewportY) {
             updateViewportCenter();
             
@@ -256,21 +280,21 @@
             const offsetX = Math.round(viewportX - viewportCenter.x);
             const offsetY = Math.round(viewportY - viewportCenter.y);
             
-            // 计算画布中的坐标
-            const canvasX = CONFIG.canvasCenterX + offsetX;
-            const canvasY = CONFIG.canvasCenterY + offsetY;
+            // 计算画布中的坐标 (考虑画布已经偏移的量)
+            const canvasX = CONFIG.canvasCenterX + offsetX - canvasOffsetLeft;
+            const canvasY = CONFIG.canvasCenterY + offsetY - canvasOffsetTop;
             
             log(`视口坐标转换: 视口(${viewportX}, ${viewportY}) -> 画布(${canvasX}, ${canvasY})`);
             return { x: canvasX, y: canvasY };
         }
         
-        // 画布坐标转换为视口坐标
+        // 画布坐标转换为视口坐标 - 考虑画布偏移
         function canvasToViewport(canvasX, canvasY) {
             updateViewportCenter();
             
-            // 计算相对于画布中心的偏移
-            const offsetX = canvasX - CONFIG.canvasCenterX;
-            const offsetY = canvasY - CONFIG.canvasCenterY;
+            // 计算相对于画布中心的偏移 (考虑画布已经偏移的量)
+            const offsetX = canvasX - CONFIG.canvasCenterX + canvasOffsetLeft;
+            const offsetY = canvasY - CONFIG.canvasCenterY + canvasOffsetTop;
             
             // 计算视口中的坐标
             const viewportX = Math.round(viewportCenter.x + offsetX);
@@ -371,6 +395,165 @@
                     e.stopPropagation();
                 }
             }
+        }
+        
+        // 处理画布鼠标按下事件 - 中键拖动
+        function handleCanvasMouseDown(e) {
+            // 只响应鼠标中键(button === 1)
+            if (e.button === 1) {
+                isPanning = true;
+                panStartX = e.clientX;
+                panStartY = e.clientY;
+                document.body.style.cursor = 'grabbing';
+                e.preventDefault();
+                log("开始拖动画布");
+            }
+        }
+        
+        // 处理画布鼠标移动事件
+        function handleCanvasMouseMove(e) {
+            if (isPanning) {
+                const dx = e.clientX - panStartX;
+                const dy = e.clientY - panStartY;
+                
+                // 更新画布位置 - 移动画布容器
+                const currentLeft = parseFloat(canvasContainer.style.left) || 50;
+                const currentTop = parseFloat(canvasContainer.style.top) || 50;
+                
+                // 计算新位置 (百分比)
+                const newLeft = currentLeft + (dx / canvas.offsetWidth) * 100;
+                const newTop = currentTop + (dy / canvas.offsetHeight) * 100;
+                
+                // 应用新位置
+                canvasContainer.style.left = `${newLeft}%`;
+                canvasContainer.style.top = `${newTop}%`;
+                
+                // 更新起始位置
+                panStartX = e.clientX;
+                panStartY = e.clientY;
+                
+                // 更新视口中心和画布偏移量
+                updateViewportCenter();
+                
+                e.preventDefault();
+            }
+        }
+        
+        // 处理画布鼠标释放事件
+        function handleCanvasMouseUp(e) {
+            if (isPanning) {
+                isPanning = false;
+                document.body.style.cursor = '';
+                e.preventDefault();
+                log("停止拖动画布");
+            }
+        }
+        
+        // 处理触摸画布拖动
+        function handleCanvasTouchPan(e) {
+            if (e.touches.length === 2) {
+                // 双指触摸开始平移
+                e.preventDefault();
+                
+                if (!isPanning) {
+                    isPanning = true;
+                    panStartX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    panStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                    document.body.style.cursor = 'grabbing';
+                    log("开始双指拖动画布");
+                    return;
+                }
+                
+                // 计算双指中心点
+                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                
+                // 计算移动距离
+                const dx = touchX - panStartX;
+                const dy = touchY - panStartY;
+                
+                // 更新画布位置 - 移动画布容器
+                const currentLeft = parseFloat(canvasContainer.style.left) || 50;
+                const currentTop = parseFloat(canvasContainer.style.top) || 50;
+                
+                // 计算新位置 (百分比)
+                const newLeft = currentLeft + (dx / canvas.offsetWidth) * 100;
+                const newTop = currentTop + (dy / canvas.offsetHeight) * 100;
+                
+                // 应用新位置
+                canvasContainer.style.left = `${newLeft}%`;
+                canvasContainer.style.top = `${newTop}%`;
+                
+                // 更新起始位置
+                panStartX = touchX;
+                panStartY = touchY;
+                
+                // 更新视口中心和画布偏移量
+                updateViewportCenter();
+            }
+        }
+        
+        // 处理触摸结束
+        function handleCanvasTouchPanEnd(e) {
+            if (isPanning && e.touches.length < 2) {
+                isPanning = false;
+                document.body.style.cursor = '';
+                log("停止双指拖动画布");
+            }
+        }
+        
+        // 重置画布位置
+        function resetCanvasPosition() {
+            canvasContainer.style.left = '50%';
+            canvasContainer.style.top = '50%';
+            
+            // 更新视口中心和画布偏移量
+            updateViewportCenter();
+            
+            log("重置画布位置");
+        }
+        
+        // 添加画布重置功能
+        function setupCanvasReset() {
+            // 添加重置按钮
+            const resetBtn = document.createElement('div');
+            resetBtn.className = 'reset-button';
+            resetBtn.innerHTML = '⟲';
+            resetBtn.title = '重置画布位置';
+            document.body.appendChild(resetBtn);
+            
+            resetBtn.addEventListener('click', function() {
+                resetCanvasPosition();
+            });
+            
+            // 移动端支持
+            resetBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                resetCanvasPosition();
+            });
+            
+            // 添加按钮样式
+            const style = document.createElement('style');
+            style.textContent = `
+                .reset-button {
+                    position: fixed;
+                    bottom: 20px;
+                    left: 20px;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    background-color: #4a90e2;
+                    color: white;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 20px;
+                    cursor: pointer;
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                    z-index: 5;
+                }
+            `;
+            document.head.appendChild(style);
         }
         
         // 处理标签鼠标按下事件
@@ -636,7 +819,11 @@
             canvasContainer.style.width = `${CONFIG.canvasWidth}px`;
             canvasContainer.style.height = `${CONFIG.canvasHeight}px`;
             
-            // 初始化视口中心
+            // 确保初始位置设置为中心
+            canvasContainer.style.left = '50%';
+            canvasContainer.style.top = '50%';
+            
+            // 初始化视口中心和画布偏移量
             updateViewportCenter();
             
             log(`画布初始化完成，尺寸: ${CONFIG.canvasWidth}x${CONFIG.canvasHeight}`);
@@ -650,6 +837,11 @@
             canvas.addEventListener('click', handleCanvasClick);
             // 也为画布容器添加点击事件
             canvasContainer.addEventListener('click', handleCanvasClick);
+            
+            // 画布拖动事件 - 中键拖动
+            document.addEventListener('mousedown', handleCanvasMouseDown);
+            document.addEventListener('mousemove', handleCanvasMouseMove);
+            document.addEventListener('mouseup', handleCanvasMouseUp);
             
             // 处理鼠标事件
             document.addEventListener('mousemove', handleMouseMove);
@@ -692,6 +884,10 @@
             document.addEventListener('touchmove', handleTagTouchMove, { passive: false });
             document.addEventListener('touchend', handleTagTouchEnd, { passive: false });
             
+            // 移动端画布拖动
+            document.addEventListener('touchmove', handleCanvasTouchPan, { passive: false });
+            document.addEventListener('touchend', handleCanvasTouchPanEnd, { passive: false });
+            
             // 窗口调整事件
             window.addEventListener('resize', updateViewportCenter);
             
@@ -713,11 +909,14 @@
             // 绑定事件
             bindEvents();
             
+            // 设置画布重置功能
+            setupCanvasReset();
+            
             // 显示适当的调试信息
             if (isMobileDevice()) {
-                log("检测到移动设备，触屏模式已启用");
+                log("检测到移动设备，触屏模式已启用，双指拖动可移动画布");
             } else {
-                log("云词灵感画布已就绪，点击空白处添加词条");
+                log("云词灵感画布已就绪，点击空白处添加词条，按住鼠标中键拖动画布");
             }
             
             // 3秒后隐藏调试信息
