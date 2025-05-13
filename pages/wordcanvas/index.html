@@ -167,9 +167,10 @@
     <div class="help-button" id="helpBtn">?</div>
     <div class="help-tooltip" id="helpTooltip">
         <p><strong>使用说明：</strong></p>
-        <p>• 点击任意位置添加新词条</p>
+        <p>• 点击空白处添加新词条</p>
         <p>• 拖动词条可改变位置</p>
         <p>• 双击词条可编辑内容</p>
+        <p>• 移动设备：长按词条可编辑</p>
     </div>
     
     <div id="debug"></div>
@@ -241,8 +242,39 @@
             // 双击编辑
             tag.addEventListener('dblclick', handleTagDblClick);
             
+            // 为移动设备设置长按编辑
+            setupTagTouchEvents(tag);
+            
             canvas.appendChild(tag);
             return tag;
+        }
+        
+        // 添加标签触摸事件
+        function setupTagTouchEvents(tag) {
+            // 长按计时器变量
+            let longPressTimer;
+            
+            // 长按开始事件
+            tag.addEventListener('touchstart', function(e) {
+                // 开始计时长按
+                longPressTimer = setTimeout(() => {
+                    // 长按后编辑标签
+                    editingTag = tag;
+                    const rect = tag.getBoundingClientRect();
+                    showInputModal(rect.left, rect.top, tag.textContent);
+                    log("长按编辑标签");
+                }, 800); // 800毫秒长按触发编辑
+            });
+            
+            // 触摸结束时清除长按计时器
+            tag.addEventListener('touchend', function() {
+                clearTimeout(longPressTimer);
+            });
+            
+            // 触摸移动时清除长按计时器
+            tag.addEventListener('touchmove', function() {
+                clearTimeout(longPressTimer);
+            });
         }
         
         // 处理画布点击事件
@@ -395,9 +427,13 @@
                         x: touch.clientX - rect.left,
                         y: touch.clientY - rect.top
                     };
+                    
+                    // 阻止默认行为，防止触发其他事件
+                    e.preventDefault();
                 } else if (element === canvas) {
                     // 在空白画布上触摸，显示输入框
                     showInputModal(touch.clientX, touch.clientY);
+                    e.preventDefault();
                 }
             }
         }
@@ -419,6 +455,10 @@
                 currentTag.classList.remove('dragging');
                 isDragging = false;
                 currentTag = null;
+                
+                // 防止触发点击事件
+                e.preventDefault();
+                e.stopPropagation();
             } else {
                 // 获取触摸位置的元素
                 const touch = e.changedTouches[0];
@@ -429,6 +469,19 @@
                     showInputModal(touch.clientX, touch.clientY);
                 }
             }
+        }
+        
+        // 添加帮助触摸事件
+        function setupMobileHelp() {
+            // 在移动设备上，点击帮助按钮显示/隐藏帮助信息
+            helpBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                if (helpTooltip.style.display === 'block') {
+                    hideHelpTooltip();
+                } else {
+                    showHelpTooltip();
+                }
+            });
         }
         
         // 窗口大小调整
@@ -478,9 +531,12 @@
             document.addEventListener('contextmenu', preventDefault);
             
             // 移动端事件
-            canvas.addEventListener('touchstart', handleTouchStart);
-            document.addEventListener('touchmove', handleTouchMove);
-            document.addEventListener('touchend', handleTouchEnd);
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // 设置移动端帮助按钮
+            setupMobileHelp();
             
             // 窗口调整事件
             window.addEventListener('resize', handleResize);
@@ -488,9 +544,22 @@
             log("所有事件已绑定");
         }
         
+        // 添加移动设备检测
+        function isMobileDevice() {
+            return (('ontouchstart' in window) ||
+                   (navigator.maxTouchPoints > 0) ||
+                   (navigator.msMaxTouchPoints > 0));
+        }
+        
         // 初始化
         bindEvents();
-        log("云词灵感画布已就绪，点击空白处添加词条");
+        
+        // 显示适当的调试信息
+        if (isMobileDevice()) {
+            log("检测到移动设备，触屏模式已启用");
+        } else {
+            log("云词灵感画布已就绪，点击空白处添加词条");
+        }
         
         // 3秒后隐藏调试信息
         setTimeout(() => {
