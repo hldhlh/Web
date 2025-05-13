@@ -25,6 +25,16 @@
             position: relative;
             background-color: white;
             cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .canvas-container {
+            position: absolute;
+            width: 5000px;
+            height: 5000px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
         }
         
         .tag {
@@ -34,12 +44,12 @@
             border-radius: 4px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             cursor: move;
-            transition: transform 0.1s, box-shadow 0.2s;
             border: 1px solid #e6e6e6;
             z-index: 1;
             font-size: 16px;
             max-width: 300px;
             word-wrap: break-word;
+            transform: translate(-50%, -50%);
         }
         
         .tag:hover {
@@ -49,7 +59,6 @@
         
         .tag.dragging {
             opacity: 0.9;
-            transform: scale(1.05);
             z-index: 3;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
         }
@@ -154,7 +163,9 @@
     </style>
 </head>
 <body>
-    <div id="canvas"></div>
+    <div id="canvas">
+        <div class="canvas-container" id="canvasContainer"></div>
+    </div>
     
     <div class="input-modal" id="inputModal">
         <input type="text" id="tagInput" placeholder="输入词条或句子" autofocus>
@@ -187,6 +198,7 @@
         // 初始化变量
         log("初始化中...");
         const canvas = document.getElementById('canvas');
+        const canvasContainer = document.getElementById('canvasContainer');
         const inputModal = document.getElementById('inputModal');
         const tagInput = document.getElementById('tagInput');
         const saveBtn = document.getElementById('saveBtn');
@@ -194,44 +206,90 @@
         const helpBtn = document.getElementById('helpBtn');
         const helpTooltip = document.getElementById('helpTooltip');
         
+        // 画布配置和状态
+        const CONFIG = {
+            // 画布尺寸
+            canvasWidth: 5000,
+            canvasHeight: 5000,
+            // 画布中心
+            canvasCenterX: 2500,
+            canvasCenterY: 2500,
+            // 拖动相关
+            dragThreshold: 5,
+            // 视觉缩放比
+            scale: 1
+        };
+        
+        // 状态变量
         let clickPosition = { x: 0, y: 0 };
         let editingTag = null;
         let isDragging = false;
         let currentTag = null;
         let offset = { x: 0, y: 0 };
+        let viewportCenter = { x: 0, y: 0 };
         
-        // 获取页面缩放比例
-        function getPageZoom() {
-            return window.outerWidth / window.innerWidth;
+        // 拖动相关
+        let isDragStart = false;
+        let dragStartPos = { x: 0, y: 0 };
+        let lastPos = { x: 0, y: 0 };
+        
+        // 计算视口中心
+        function updateViewportCenter() {
+            // 获取画布元素的大小
+            const rect = canvas.getBoundingClientRect();
+            
+            // 计算视口中心
+            viewportCenter = {
+                x: rect.width / 2,
+                y: rect.height / 2
+            };
+            
+            log(`视口中心坐标: (${viewportCenter.x}, ${viewportCenter.y})`);
+            return viewportCenter;
         }
         
-        // 获取触摸或点击的准确坐标
-        function getAccuratePosition(clientX, clientY) {
-            // 获取画布元素的位置和大小
-            const canvasRect = canvas.getBoundingClientRect();
+        // 视口坐标转换为画布坐标
+        function viewportToCanvas(viewportX, viewportY) {
+            updateViewportCenter();
             
-            // 计算相对于画布的坐标
-            const x = clientX - canvasRect.left;
-            const y = clientY - canvasRect.top;
+            // 计算相对于视口中心的偏移
+            const offsetX = Math.round(viewportX - viewportCenter.x);
+            const offsetY = Math.round(viewportY - viewportCenter.y);
             
-            // 考虑可能的缩放比例
-            const zoom = getPageZoom();
+            // 计算画布中的坐标
+            const canvasX = CONFIG.canvasCenterX + offsetX;
+            const canvasY = CONFIG.canvasCenterY + offsetY;
             
-            // 记录调试信息
-            log(`位置计算: 客户端坐标(${clientX}, ${clientY}), 画布位置(${canvasRect.left}, ${canvasRect.top}), 缩放比例: ${zoom}, 最终位置(${x}, ${y})`);
+            log(`视口坐标转换: 视口(${viewportX}, ${viewportY}) -> 画布(${canvasX}, ${canvasY})`);
+            return { x: canvasX, y: canvasY };
+        }
+        
+        // 画布坐标转换为视口坐标
+        function canvasToViewport(canvasX, canvasY) {
+            updateViewportCenter();
             
-            return { x, y };
+            // 计算相对于画布中心的偏移
+            const offsetX = canvasX - CONFIG.canvasCenterX;
+            const offsetY = canvasY - CONFIG.canvasCenterY;
+            
+            // 计算视口中的坐标
+            const viewportX = Math.round(viewportCenter.x + offsetX);
+            const viewportY = Math.round(viewportCenter.y + offsetY);
+            
+            log(`画布坐标转换: 画布(${canvasX}, ${canvasY}) -> 视口(${viewportX}, ${viewportY})`);
+            return { x: viewportX, y: viewportY };
         }
         
         // 显示输入框
         function showInputModal(clientX, clientY, text = '') {
-            // 获取准确的位置
-            const position = getAccuratePosition(clientX, clientY);
-            log(`显示输入框: 客户端(${clientX}, ${clientY}), 计算后(${position.x}, ${position.y})`);
+            // 转换为画布坐标
+            const canvasPos = viewportToCanvas(clientX, clientY);
+            log(`显示输入框: 客户端(${clientX}, ${clientY}), 画布坐标(${canvasPos.x}, ${canvasPos.y})`);
             
-            // 保存点击位置
-            clickPosition = position;
+            // 保存点击位置（画布坐标）
+            clickPosition = canvasPos;
             
+            // 设置输入框位置（在客户端坐标上）
             inputModal.style.display = 'block';
             inputModal.style.left = `${clientX}px`;
             inputModal.style.top = `${clientY}px`;
@@ -256,56 +314,22 @@
             editingTag = null;
         }
         
-        // 窗口加载完成初始化标签位置为百分比
-        function initializeTagsPosition() {
-            const tags = document.querySelectorAll('.tag');
-            tags.forEach(tag => {
-                if (!tag.dataset.percentLeft) {
-                    convertTagToPercentagePosition(tag);
-                } else {
-                    // 如果已经有百分比位置，使用它
-                    tag.style.left = `${tag.dataset.percentLeft}%`;
-                    tag.style.top = `${tag.dataset.percentTop}%`;
-                }
-            });
-            log("已初始化所有标签为百分比位置");
-        }
-        
-        // 将标签位置转换为百分比
-        function convertTagToPercentagePosition(tag) {
-            // 解析当前的像素位置
-            let left = tag.style.left;
-            let top = tag.style.top;
-            
-            // 移除px单位
-            left = parseFloat(left);
-            top = parseFloat(top);
-            
-            // 转换为百分比
-            const percentLeft = (left / canvas.offsetWidth) * 100;
-            const percentTop = (top / canvas.offsetHeight) * 100;
-            
-            // 存储百分比值到数据集
-            tag.dataset.percentLeft = percentLeft;
-            tag.dataset.percentTop = percentTop;
-            
-            // 应用百分比位置
-            tag.style.left = `${percentLeft}%`;
-            tag.style.top = `${percentTop}%`;
-            
-            log(`标签转换为百分比位置: (${percentLeft}%, ${percentTop}%)`);
-        }
-        
         // 创建新标签
-        function createTag(text, x, y) {
-            log(`创建标签: "${text}" 位置: (${x}, ${y})`);
+        function createTag(text, canvasX, canvasY) {
+            log(`创建标签: "${text}" 位置(画布坐标): (${canvasX}, ${canvasY})`);
+            
+            // 创建DOM元素
             const tag = document.createElement('div');
             tag.className = 'tag';
             tag.textContent = text;
             
-            // 设置标签位置，先使用像素定位
-            tag.style.left = `${x}px`;
-            tag.style.top = `${y}px`;
+            // 存储画布坐标
+            tag.dataset.canvasX = canvasX;
+            tag.dataset.canvasY = canvasY;
+            
+            // 设置标签位置
+            tag.style.left = `${canvasX}px`;
+            tag.style.top = `${canvasY}px`;
             
             // 绑定拖动事件
             tag.addEventListener('mousedown', handleTagMouseDown);
@@ -316,12 +340,112 @@
             // 为移动设备设置长按编辑
             setupTagTouchEvents(tag);
             
-            canvas.appendChild(tag);
-            
-            // 立即将位置转换为百分比
-            convertTagToPercentagePosition(tag);
+            // 添加到容器
+            canvasContainer.appendChild(tag);
             
             return tag;
+        }
+        
+        // 更新标签位置
+        function updateTagPosition(tag, canvasX, canvasY) {
+            // 更新数据属性 - 使用取整的值避免小数点精度问题
+            const roundedX = Math.round(canvasX);
+            const roundedY = Math.round(canvasY);
+            
+            tag.dataset.canvasX = roundedX;
+            tag.dataset.canvasY = roundedY;
+            
+            // 更新样式位置 - 使用取整的值确保精确定位
+            tag.style.left = `${roundedX}px`;
+            tag.style.top = `${roundedY}px`;
+        }
+        
+        // 处理画布点击事件
+        function handleCanvasClick(e) {
+            log(`画布点击: (${e.clientX}, ${e.clientY}), isDragging=${isDragging}`);
+            // 确保不是拖动结束的点击
+            if (!isDragging) {
+                // 检查点击的是否是画布或画布容器
+                if (e.target === canvas || e.target === canvasContainer) {
+                    showInputModal(e.clientX, e.clientY);
+                    e.stopPropagation();
+                }
+            }
+        }
+        
+        // 处理标签鼠标按下事件
+        function handleTagMouseDown(e) {
+            if (e.button !== 0) return; // 只响应左键
+            
+            isDragging = true;
+            currentTag = this;
+            this.classList.add('dragging');
+            
+            // 获取当前标签的画布坐标
+            const canvasX = parseFloat(this.dataset.canvasX);
+            const canvasY = parseFloat(this.dataset.canvasY);
+            
+            // 获取鼠标相对于标签中心的偏移
+            const rect = this.getBoundingClientRect();
+            const tagCenterX = rect.left + rect.width / 2;
+            const tagCenterY = rect.top + rect.height / 2;
+            
+            offset = {
+                x: e.clientX - tagCenterX,
+                y: e.clientY - tagCenterY
+            };
+            
+            // 阻止事件冒泡和默认行为
+            e.stopPropagation();
+            e.preventDefault();
+            log("标签开始拖动");
+        }
+        
+        // 处理标签双击事件
+        function handleTagDblClick(e) {
+            editingTag = this;
+            
+            // 获取标签相对于视口的位置
+            const rect = this.getBoundingClientRect();
+            const tagCenterX = rect.left + rect.width / 2;
+            const tagCenterY = rect.top + rect.height / 2;
+            
+            showInputModal(tagCenterX, tagCenterY, this.textContent);
+            e.stopPropagation();
+            log("双击编辑标签");
+        }
+        
+        // 处理鼠标移动事件
+        function handleMouseMove(e) {
+            if (isDragging && currentTag) {
+                // 获取鼠标位置减去偏移
+                const clientX = e.clientX - offset.x;
+                const clientY = e.clientY - offset.y;
+                
+                // 转换为画布坐标
+                const canvasPos = viewportToCanvas(clientX, clientY);
+                
+                // 更新标签位置 - 直接设置而不使用动画
+                updateTagPosition(currentTag, canvasPos.x, canvasPos.y);
+                
+                e.preventDefault();
+            }
+        }
+        
+        // 处理鼠标释放事件
+        function handleMouseUp(e) {
+            if (isDragging && currentTag) {
+                currentTag.classList.remove('dragging');
+                isDragging = false;
+                currentTag = null;
+                log("标签拖动结束");
+                
+                // 阻止拖动结束时的点击事件传播
+                if (e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }
+            }
         }
         
         // 添加标签触摸事件
@@ -336,7 +460,10 @@
                     // 长按后编辑标签
                     editingTag = tag;
                     const rect = tag.getBoundingClientRect();
-                    showInputModal(rect.left, rect.top, tag.textContent);
+                    const tagCenterX = rect.left + rect.width / 2;
+                    const tagCenterY = rect.top + rect.height / 2;
+                    
+                    showInputModal(tagCenterX, tagCenterY, tag.textContent);
                     log("长按编辑标签");
                 }, 800); // 800毫秒长按触发编辑
             });
@@ -352,77 +479,85 @@
             });
         }
         
-        // 处理画布点击事件
-        function handleCanvasClick(e) {
-            log(`画布点击: (${e.clientX}, ${e.clientY}), isDragging=${isDragging}`);
-            // 确保不是拖动结束的点击，且点击的是画布而不是标签
-            if (!isDragging && e.target === canvas) {
-                showInputModal(e.clientX, e.clientY);
-                e.stopPropagation();
+        // 处理标签拖动触摸开始
+        function handleTagTouchStart(e) {
+            if (e.target.classList.contains('tag')) {
+                const tag = e.target;
+                isDragging = true;
+                currentTag = tag;
+                tag.classList.add('dragging');
+                
+                // 获取触摸位置
+                const touch = e.touches[0];
+                
+                // 获取标签中心位置
+                const rect = tag.getBoundingClientRect();
+                const tagCenterX = rect.left + rect.width / 2;
+                const tagCenterY = rect.top + rect.height / 2;
+                
+                // 计算偏移
+                offset = {
+                    x: touch.clientX - tagCenterX,
+                    y: touch.clientY - tagCenterY
+                };
+                
+                e.preventDefault();
+                log("标签触摸拖动开始");
             }
         }
         
-        // 处理标签鼠标按下事件
-        function handleTagMouseDown(e) {
-            if (e.button !== 0) return; // 只响应左键
-            isDragging = true;
-            currentTag = this;
-            this.classList.add('dragging');
-            
-            const rect = this.getBoundingClientRect();
-            offset = {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-            
-            // 阻止事件冒泡和默认行为
-            e.stopPropagation();
-            e.preventDefault();  // 添加preventDefault防止其他事件触发
-            log("标签开始拖动");
-        }
-        
-        // 处理标签双击事件
-        function handleTagDblClick(e) {
-            editingTag = this;
-            const rect = this.getBoundingClientRect();
-            showInputModal(rect.left, rect.top, this.textContent);
-            e.stopPropagation();
-            log("双击编辑标签");
-        }
-        
-        // 处理鼠标移动事件
-        function handleMouseMove(e) {
+        // 处理标签拖动触摸移动
+        function handleTagTouchMove(e) {
             if (isDragging && currentTag) {
-                currentTag.style.left = `${e.clientX - offset.x}px`;
-                currentTag.style.top = `${e.clientY - offset.y}px`;
+                // 获取触摸位置
+                const touch = e.touches[0];
+                
+                // 计算减去偏移后的位置
+                const clientX = touch.clientX - offset.x;
+                const clientY = touch.clientY - offset.y;
+                
+                // 转换为画布坐标
+                const canvasPos = viewportToCanvas(clientX, clientY);
+                
+                // 更新标签位置
+                updateTagPosition(currentTag, canvasPos.x, canvasPos.y);
+                
                 e.preventDefault();
             }
         }
         
-        // 处理鼠标释放事件
-        function handleMouseUp(e) {
+        // 处理标签拖动触摸结束
+        function handleTagTouchEnd(e) {
             if (isDragging && currentTag) {
                 currentTag.classList.remove('dragging');
-                
-                // 更新拖动后的位置为百分比
-                updateTagPositionAfterDrag(currentTag);
-                
                 isDragging = false;
                 currentTag = null;
-                log("标签拖动结束");
-                
-                // 阻止拖动结束时的点击事件传播
-                if (e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                }
+                log("标签触摸拖动结束");
+                e.preventDefault();
             }
         }
         
-        // 处理拖动结束后的位置更新
-        function updateTagPositionAfterDrag(tag) {
-            // 将当前像素位置转换为百分比
-            convertTagToPercentagePosition(tag);
+        // 处理触摸开始事件
+        function handleTouchStart(e) {
+            log("触摸开始");
+            
+            // 如果触摸到标签，处理标签拖动
+            if (e.target.classList.contains('tag')) {
+                handleTagTouchStart(e);
+                return;
+            }
+            
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                
+                // 检查触摸的是否是画布或画布容器
+                if (element === canvas || element === canvasContainer) {
+                    // 在空白画布上触摸，显示输入框
+                    showInputModal(touch.clientX, touch.clientY);
+                    e.preventDefault();
+                }
+            }
         }
         
         // 保存按钮点击事件
@@ -495,130 +630,26 @@
             e.preventDefault();
         }
         
-        // 处理触摸开始事件
-        function handleTouchStart(e) {
-            log("触摸开始");
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                
-                if (element && element.classList.contains('tag')) {
-                    isDragging = true;
-                    currentTag = element;
-                    currentTag.classList.add('dragging');
-                    
-                    const rect = currentTag.getBoundingClientRect();
-                    offset = {
-                        x: touch.clientX - rect.left,
-                        y: touch.clientY - rect.top
-                    };
-                    
-                    // 阻止默认行为，防止触发其他事件
-                    e.preventDefault();
-                } else if (element === canvas) {
-                    // 在空白画布上触摸，显示输入框
-                    showInputModal(touch.clientX, touch.clientY);
-                    e.preventDefault();
-                }
-            }
-        }
-        
-        // 处理触摸移动事件
-        function handleTouchMove(e) {
-            if (isDragging && currentTag && e.touches.length === 1) {
-                const touch = e.touches[0];
-                currentTag.style.left = `${touch.clientX - offset.x}px`;
-                currentTag.style.top = `${touch.clientY - offset.y}px`;
-                e.preventDefault();
-            }
-        }
-        
-        // 处理触摸结束事件
-        function handleTouchEnd(e) {
-            log("触摸结束");
-            if (isDragging && currentTag) {
-                currentTag.classList.remove('dragging');
-                
-                // 更新拖动后的位置为百分比
-                updateTagPositionAfterDrag(currentTag);
-                
-                isDragging = false;
-                currentTag = null;
-                
-                // 防止触发点击事件
-                e.preventDefault();
-                e.stopPropagation();
-            } else {
-                // 获取触摸位置的元素
-                const touch = e.changedTouches[0];
-                const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                
-                // 只有点击画布而不是标签时才显示输入框
-                if (element === canvas) {
-                    showInputModal(touch.clientX, touch.clientY);
-                }
-            }
-        }
-        
-        // 添加帮助触摸事件
-        function setupMobileHelp() {
-            // 在移动设备上，点击帮助按钮显示/隐藏帮助信息
-            helpBtn.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                if (helpTooltip.style.display === 'block') {
-                    hideHelpTooltip();
-                } else {
-                    showHelpTooltip();
-                }
-            });
-        }
-        
-        // 监听缩放变化
-        function setupZoomListener() {
-            // 监听窗口缩放事件
-            window.addEventListener('resize', handleResize);
+        // 初始化画布大小
+        function setupCanvas() {
+            // 设置画布容器大小
+            canvasContainer.style.width = `${CONFIG.canvasWidth}px`;
+            canvasContainer.style.height = `${CONFIG.canvasHeight}px`;
             
-            // 监听orientationchange事件（设备旋转）
-            window.addEventListener('orientationchange', function() {
-                setTimeout(handleResize, 300); // 延迟执行，等待旋转完成
-            });
+            // 初始化视口中心
+            updateViewportCenter();
             
-            // 使用MutationObserver监视body的style变化（某些浏览器缩放会改变body样式）
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.attributeName === 'style') {
-                        handleResize();
-                    }
-                });
-            });
-            
-            observer.observe(document.body, { attributes: true });
-            
-            log("已设置缩放和旋转监听器");
-        }
-        
-        // 窗口大小调整
-        function handleResize() {
-            log("窗口大小或缩放比例改变，更新标签位置");
-            const tags = document.querySelectorAll('.tag');
-            tags.forEach(tag => {
-                // 如果已经有百分比位置，使用它
-                if (tag.dataset.percentLeft && tag.dataset.percentTop) {
-                    tag.style.left = `${tag.dataset.percentLeft}%`;
-                    tag.style.top = `${tag.dataset.percentTop}%`;
-                } else {
-                    // 否则转换为百分比位置
-                    convertTagToPercentagePosition(tag);
-                }
-            });
+            log(`画布初始化完成，尺寸: ${CONFIG.canvasWidth}x${CONFIG.canvasHeight}`);
         }
         
         // 绑定所有事件
         function bindEvents() {
             log("绑定事件...");
-            // 移除直接在HTML中的onclick属性，改为在这里绑定事件
-            canvas.removeAttribute('onclick');
+            
+            // 画布点击事件
             canvas.addEventListener('click', handleCanvasClick);
+            // 也为画布容器添加点击事件
+            canvasContainer.addEventListener('click', handleCanvasClick);
             
             // 处理鼠标事件
             document.addEventListener('mousemove', handleMouseMove);
@@ -638,6 +669,16 @@
             helpBtn.addEventListener('mouseenter', showHelpTooltip);
             helpBtn.addEventListener('mouseleave', hideHelpTooltip);
             
+            // 移动端帮助按钮支持
+            helpBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                if (helpTooltip.style.display === 'block') {
+                    hideHelpTooltip();
+                } else {
+                    showHelpTooltip();
+                }
+            });
+            
             // 防止默认拖拽行为
             document.addEventListener('dragover', preventDefault);
             document.addEventListener('drop', preventDefault);
@@ -647,14 +688,12 @@
             
             // 移动端事件
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-            document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+            canvasContainer.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTagTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTagTouchEnd, { passive: false });
             
-            // 设置移动端帮助按钮
-            setupMobileHelp();
-            
-            // 设置缩放监听
-            setupZoomListener();
+            // 窗口调整事件
+            window.addEventListener('resize', updateViewportCenter);
             
             log("所有事件已绑定");
         }
@@ -666,23 +705,29 @@
                    (navigator.msMaxTouchPoints > 0));
         }
         
-        // 初始化
-        bindEvents();
-        
-        // 初始化已有标签的位置
-        initializeTagsPosition();
-        
-        // 显示适当的调试信息
-        if (isMobileDevice()) {
-            log("检测到移动设备，触屏模式已启用");
-        } else {
-            log("云词灵感画布已就绪，点击空白处添加词条");
+        // 初始化应用
+        function initApp() {
+            // 设置画布大小
+            setupCanvas();
+            
+            // 绑定事件
+            bindEvents();
+            
+            // 显示适当的调试信息
+            if (isMobileDevice()) {
+                log("检测到移动设备，触屏模式已启用");
+            } else {
+                log("云词灵感画布已就绪，点击空白处添加词条");
+            }
+            
+            // 3秒后隐藏调试信息
+            setTimeout(() => {
+                document.getElementById('debug').style.display = 'none';
+            }, 3000);
         }
         
-        // 3秒后隐藏调试信息
-        setTimeout(() => {
-            document.getElementById('debug').style.display = 'none';
-        }, 3000);
+        // 启动应用
+        initApp();
     </script>
 </body>
 </html>
