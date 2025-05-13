@@ -200,22 +200,51 @@
         let currentTag = null;
         let offset = { x: 0, y: 0 };
         
+        // 获取页面缩放比例
+        function getPageZoom() {
+            return window.outerWidth / window.innerWidth;
+        }
+        
+        // 获取触摸或点击的准确坐标
+        function getAccuratePosition(clientX, clientY) {
+            // 获取画布元素的位置和大小
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            // 计算相对于画布的坐标
+            const x = clientX - canvasRect.left;
+            const y = clientY - canvasRect.top;
+            
+            // 考虑可能的缩放比例
+            const zoom = getPageZoom();
+            
+            // 记录调试信息
+            log(`位置计算: 客户端坐标(${clientX}, ${clientY}), 画布位置(${canvasRect.left}, ${canvasRect.top}), 缩放比例: ${zoom}, 最终位置(${x}, ${y})`);
+            
+            return { x, y };
+        }
+        
         // 显示输入框
-        function showInputModal(x, y, text = '') {
-            log(`显示输入框: (${x}, ${y})`);
-            clickPosition = { x, y };
+        function showInputModal(clientX, clientY, text = '') {
+            // 获取准确的位置
+            const position = getAccuratePosition(clientX, clientY);
+            log(`显示输入框: 客户端(${clientX}, ${clientY}), 计算后(${position.x}, ${position.y})`);
+            
+            // 保存点击位置
+            clickPosition = position;
+            
             inputModal.style.display = 'block';
-            inputModal.style.left = `${x}px`;
-            inputModal.style.top = `${y}px`;
+            inputModal.style.left = `${clientX}px`;
+            inputModal.style.top = `${clientY}px`;
             tagInput.value = text;
             tagInput.focus();
+            
             // 确保输入框在视口内
             const rect = inputModal.getBoundingClientRect();
             if (rect.right > window.innerWidth) {
-                inputModal.style.left = `${x - (rect.right - window.innerWidth) - 10}px`;
+                inputModal.style.left = `${clientX - (rect.right - window.innerWidth) - 10}px`;
             }
             if (rect.bottom > window.innerHeight) {
-                inputModal.style.top = `${y - (rect.bottom - window.innerHeight) - 10}px`;
+                inputModal.style.top = `${clientY - (rect.bottom - window.innerHeight) - 10}px`;
             }
         }
         
@@ -227,12 +256,54 @@
             editingTag = null;
         }
         
+        // 窗口加载完成初始化标签位置为百分比
+        function initializeTagsPosition() {
+            const tags = document.querySelectorAll('.tag');
+            tags.forEach(tag => {
+                if (!tag.dataset.percentLeft) {
+                    convertTagToPercentagePosition(tag);
+                } else {
+                    // 如果已经有百分比位置，使用它
+                    tag.style.left = `${tag.dataset.percentLeft}%`;
+                    tag.style.top = `${tag.dataset.percentTop}%`;
+                }
+            });
+            log("已初始化所有标签为百分比位置");
+        }
+        
+        // 将标签位置转换为百分比
+        function convertTagToPercentagePosition(tag) {
+            // 解析当前的像素位置
+            let left = tag.style.left;
+            let top = tag.style.top;
+            
+            // 移除px单位
+            left = parseFloat(left);
+            top = parseFloat(top);
+            
+            // 转换为百分比
+            const percentLeft = (left / canvas.offsetWidth) * 100;
+            const percentTop = (top / canvas.offsetHeight) * 100;
+            
+            // 存储百分比值到数据集
+            tag.dataset.percentLeft = percentLeft;
+            tag.dataset.percentTop = percentTop;
+            
+            // 应用百分比位置
+            tag.style.left = `${percentLeft}%`;
+            tag.style.top = `${percentTop}%`;
+            
+            log(`标签转换为百分比位置: (${percentLeft}%, ${percentTop}%)`);
+        }
+        
         // 创建新标签
         function createTag(text, x, y) {
             log(`创建标签: "${text}" 位置: (${x}, ${y})`);
             const tag = document.createElement('div');
             tag.className = 'tag';
             tag.textContent = text;
+            
+            // 设置标签位置，先使用像素定位
             tag.style.left = `${x}px`;
             tag.style.top = `${y}px`;
             
@@ -246,6 +317,10 @@
             setupTagTouchEvents(tag);
             
             canvas.appendChild(tag);
+            
+            // 立即将位置转换为百分比
+            convertTagToPercentagePosition(tag);
+            
             return tag;
         }
         
@@ -328,6 +403,10 @@
         function handleMouseUp(e) {
             if (isDragging && currentTag) {
                 currentTag.classList.remove('dragging');
+                
+                // 更新拖动后的位置为百分比
+                updateTagPositionAfterDrag(currentTag);
+                
                 isDragging = false;
                 currentTag = null;
                 log("标签拖动结束");
@@ -338,6 +417,12 @@
                     e.preventDefault();
                 }
             }
+        }
+        
+        // 处理拖动结束后的位置更新
+        function updateTagPositionAfterDrag(tag) {
+            // 将当前像素位置转换为百分比
+            convertTagToPercentagePosition(tag);
         }
         
         // 保存按钮点击事件
@@ -432,8 +517,6 @@
                     e.preventDefault();
                 } else if (element === canvas) {
                     // 在空白画布上触摸，显示输入框
-                    // 精确记录触摸位置，确保标签创建在正确位置
-                    clickPosition = { x: touch.clientX, y: touch.clientY };
                     showInputModal(touch.clientX, touch.clientY);
                     e.preventDefault();
                 }
@@ -455,6 +538,10 @@
             log("触摸结束");
             if (isDragging && currentTag) {
                 currentTag.classList.remove('dragging');
+                
+                // 更新拖动后的位置为百分比
+                updateTagPositionAfterDrag(currentTag);
+                
                 isDragging = false;
                 currentTag = null;
                 
@@ -468,8 +555,6 @@
                 
                 // 只有点击画布而不是标签时才显示输入框
                 if (element === canvas) {
-                    // 精确记录触摸位置，确保标签创建在正确位置
-                    clickPosition = { x: touch.clientX, y: touch.clientY };
                     showInputModal(touch.clientX, touch.clientY);
                 }
             }
@@ -488,17 +573,43 @@
             });
         }
         
+        // 监听缩放变化
+        function setupZoomListener() {
+            // 监听窗口缩放事件
+            window.addEventListener('resize', handleResize);
+            
+            // 监听orientationchange事件（设备旋转）
+            window.addEventListener('orientationchange', function() {
+                setTimeout(handleResize, 300); // 延迟执行，等待旋转完成
+            });
+            
+            // 使用MutationObserver监视body的style变化（某些浏览器缩放会改变body样式）
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.attributeName === 'style') {
+                        handleResize();
+                    }
+                });
+            });
+            
+            observer.observe(document.body, { attributes: true });
+            
+            log("已设置缩放和旋转监听器");
+        }
+        
         // 窗口大小调整
         function handleResize() {
+            log("窗口大小或缩放比例改变，更新标签位置");
             const tags = document.querySelectorAll('.tag');
             tags.forEach(tag => {
-                // 使用百分比定位确保标签位置在窗口调整后保持相对位置
-                const left = parseFloat(tag.style.left) / window.innerWidth * 100;
-                const top = parseFloat(tag.style.top) / window.innerHeight * 100;
-                tag.dataset.percentLeft = left;
-                tag.dataset.percentTop = top;
-                tag.style.left = `${left}%`;
-                tag.style.top = `${top}%`;
+                // 如果已经有百分比位置，使用它
+                if (tag.dataset.percentLeft && tag.dataset.percentTop) {
+                    tag.style.left = `${tag.dataset.percentLeft}%`;
+                    tag.style.top = `${tag.dataset.percentTop}%`;
+                } else {
+                    // 否则转换为百分比位置
+                    convertTagToPercentagePosition(tag);
+                }
             });
         }
         
@@ -542,8 +653,8 @@
             // 设置移动端帮助按钮
             setupMobileHelp();
             
-            // 窗口调整事件
-            window.addEventListener('resize', handleResize);
+            // 设置缩放监听
+            setupZoomListener();
             
             log("所有事件已绑定");
         }
@@ -557,6 +668,9 @@
         
         // 初始化
         bindEvents();
+        
+        // 初始化已有标签的位置
+        initializeTagsPosition();
         
         // 显示适当的调试信息
         if (isMobileDevice()) {
