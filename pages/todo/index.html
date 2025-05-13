@@ -1070,6 +1070,105 @@ body {
     display: block;
     opacity: 1;
 }
+
+.color-theme-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.color-dialog-content {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    width: 320px;
+    max-width: 90%;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.color-dialog-content h3 {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    text-align: center;
+}
+
+.color-options {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 25px;
+}
+
+.color-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.color-option:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.color-option.active {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.color-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-bottom: 8px;
+}
+
+.color-option.purple .color-circle {
+    background-color: var(--theme-purple);
+}
+
+.color-option.blue .color-circle {
+    background-color: var(--theme-blue);
+}
+
+.color-option.red .color-circle {
+    background-color: var(--theme-red);
+}
+
+.color-name {
+    font-size: 14px;
+}
+
+.color-dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.color-dialog-buttons button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.color-cancel-btn {
+    background-color: #f1f1f1;
+    color: #333;
+}
+
+.color-confirm-btn {
+    background-color: var(--primary-color);
+    color: white;
+}
     </style>
 </head>
 <body data-theme="purple">
@@ -2896,90 +2995,238 @@ body {
 
             // 添加列表按钮点击事件
             document.querySelector('.sidebar-add').addEventListener('click', function() {
-                // 创建新的列表项
-                const newItem = document.createElement('li');
-                newItem.className = 'sidebar-item';
-                newItem.innerHTML = `
-                    <div class="sidebar-icon purple">新</div>
-                    <span class="editing" contenteditable="true">新列表</span>
-                    <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
-                    <div class="sidebar-popup-menu">
-                        <div class="sidebar-popup-menu-item edit">
-                            <i class="bi bi-pencil"></i>编辑名称
+                // 创建颜色选择对话框
+                const colorDialog = document.createElement('div');
+                colorDialog.className = 'color-theme-dialog';
+                colorDialog.innerHTML = `
+                    <div class="color-dialog-content">
+                        <h3>选择列表颜色</h3>
+                        <div class="color-options">
+                            <div class="color-option purple active" data-theme="purple">
+                                <div class="color-circle"></div>
+                                <div class="color-name">紫色</div>
+                            </div>
+                            <div class="color-option blue" data-theme="blue">
+                                <div class="color-circle"></div>
+                                <div class="color-name">蓝色</div>
+                            </div>
+                            <div class="color-option red" data-theme="red">
+                                <div class="color-circle"></div>
+                                <div class="color-name">红色</div>
+                            </div>
                         </div>
-                        <div class="sidebar-popup-menu-item delete">
-                            <i class="bi bi-trash3"></i>删除列表
+                        <div class="color-dialog-buttons">
+                            <button class="color-cancel-btn">取消</button>
+                            <button class="color-confirm-btn">确定</button>
                         </div>
                     </div>
                 `;
                 
-                // 添加到列表中
-                const sidebarList = document.querySelector('.sidebar-list');
-                sidebarList.appendChild(newItem);
+                // 添加样式
+                const style = document.createElement('style');
+                style.textContent = `
+                    .color-theme-dialog {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: rgba(0, 0, 0, 0.5);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        z-index: 2000;
+                    }
+                    .color-dialog-content {
+                        background: white;
+                        border-radius: 12px;
+                        padding: 20px;
+                        width: 320px;
+                        max-width: 90%;
+                        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+                    }
+                    .color-dialog-content h3 {
+                        margin: 0 0 20px 0;
+                        font-size: 18px;
+                        text-align: center;
+                    }
+                    .color-options {
+                        display: flex;
+                        justify-content: space-around;
+                        margin-bottom: 25px;
+                    }
+                    .color-option {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        cursor: pointer;
+                        padding: 8px;
+                        border-radius: 8px;
+                        transition: background-color 0.2s;
+                    }
+                    .color-option:hover {
+                        background-color: rgba(0, 0, 0, 0.05);
+                    }
+                    .color-option.active {
+                        background-color: rgba(0, 0, 0, 0.1);
+                    }
+                    .color-circle {
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        margin-bottom: 8px;
+                    }
+                    .color-option.purple .color-circle {
+                        background-color: var(--theme-purple);
+                    }
+                    .color-option.blue .color-circle {
+                        background-color: var(--theme-blue);
+                    }
+                    .color-option.red .color-circle {
+                        background-color: var(--theme-red);
+                    }
+                    .color-name {
+                        font-size: 14px;
+                    }
+                    .color-dialog-buttons {
+                        display: flex;
+                        justify-content: flex-end;
+                        gap: 10px;
+                    }
+                    .color-dialog-buttons button {
+                        padding: 8px 16px;
+                        border-radius: 6px;
+                        border: none;
+                        font-size: 14px;
+                        cursor: pointer;
+                    }
+                    .color-cancel-btn {
+                        background-color: #f1f1f1;
+                        color: #333;
+                    }
+                    .color-confirm-btn {
+                        background-color: var(--primary-color);
+                        color: white;
+                    }
+                `;
+                document.head.appendChild(style);
+                document.body.appendChild(colorDialog);
                 
-                // 获取名称元素并设置焦点
-                const listSpan = newItem.querySelector('span');
+                // 添加颜色选项点击事件
+                colorDialog.querySelectorAll('.color-option').forEach(option => {
+                    option.addEventListener('click', function() {
+                        // 移除所有active类
+                        colorDialog.querySelectorAll('.color-option').forEach(opt => {
+                            opt.classList.remove('active');
+                        });
+                        // 添加active类到当前选中项
+                        this.classList.add('active');
+                    });
+                });
                 
-                // 设置焦点并选择所有文本
-                setTimeout(() => {
-                    listSpan.focus();
+                // 添加取消按钮点击事件
+                colorDialog.querySelector('.color-cancel-btn').addEventListener('click', function() {
+                    // 移除对话框
+                    colorDialog.remove();
+                    // 移除样式
+                    style.remove();
+                });
+                
+                // 添加确定按钮点击事件
+                colorDialog.querySelector('.color-confirm-btn').addEventListener('click', function() {
+                    // 获取选中的颜色主题
+                    const selectedTheme = colorDialog.querySelector('.color-option.active').dataset.theme;
                     
-                    // 选中所有文本
-                    const range = document.createRange();
-                    range.selectNodeContents(listSpan);
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(range);
+                    // 创建新的列表项
+                    const newItem = document.createElement('li');
+                    newItem.className = 'sidebar-item';
+                    newItem.innerHTML = `
+                        <div class="sidebar-icon ${selectedTheme}">新</div>
+                        <span class="editing" contenteditable="true">新列表</span>
+                        <div class="sidebar-more"><i class="bi bi-three-dots"></i></div>
+                        <div class="sidebar-popup-menu">
+                            <div class="sidebar-popup-menu-item edit">
+                                <i class="bi bi-pencil"></i>编辑名称
+                            </div>
+                            <div class="sidebar-popup-menu-item delete">
+                                <i class="bi bi-trash3"></i>删除列表
+                            </div>
+                        </div>
+                    `;
                     
-                    // 为名称添加编辑相关事件
-                    // 按Enter或失去焦点时保存
-                    function saveNewListName() {
-                        const listName = listSpan.textContent.trim();
+                    // 移除对话框
+                    colorDialog.remove();
+                    // 移除样式
+                    style.remove();
+                    
+                    // 添加到列表中
+                    const sidebarList = document.querySelector('.sidebar-list');
+                    sidebarList.appendChild(newItem);
+                    
+                    // 获取名称元素并设置焦点
+                    const listSpan = newItem.querySelector('span');
+                    
+                    // 设置焦点并选择所有文本
+                    setTimeout(() => {
+                        listSpan.focus();
                         
-                        // 确保名称不为空
-                        if (listName === '') {
-                            // 如果为空，移除该列表项
-                            if (newItem.parentNode) {
-                                newItem.parentNode.removeChild(newItem);
+                        // 选中所有文本
+                        const range = document.createRange();
+                        range.selectNodeContents(listSpan);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        
+                        // 为名称添加编辑相关事件
+                        // 按Enter或失去焦点时保存
+                        function saveNewListName() {
+                            const listName = listSpan.textContent.trim();
+                            
+                            // 确保名称不为空
+                            if (listName === '') {
+                                // 如果为空，移除该列表项
+                                if (newItem.parentNode) {
+                                    newItem.parentNode.removeChild(newItem);
+                                }
+                                return;
                             }
-                            return;
+                            
+                            // 更新图标中的首字符
+                            const firstChar = listName.charAt(0);
+                            newItem.querySelector('.sidebar-icon').textContent = firstChar;
+                            
+                            // 移除编辑状态
+                            listSpan.contentEditable = "false";
+                            listSpan.classList.remove('editing');
+                            
+                            // 切换到新创建的列表
+                            updateThemeAndTitle(newItem);
+                            
+                            // 移除事件监听器
+                            listSpan.removeEventListener('keydown', handleKeyDown);
+                            listSpan.removeEventListener('blur', saveNewListName);
                         }
                         
-                        // 更新图标中的首字符
-                        const firstChar = listName.charAt(0);
-                        newItem.querySelector('.sidebar-icon').textContent = firstChar;
-                        
-                        // 移除编辑状态
-                        listSpan.contentEditable = "false";
-                        listSpan.classList.remove('editing');
-                        
-                        // 切换到新创建的列表
-                        updateThemeAndTitle(newItem);
-                        
-                        // 移除事件监听器
-                        listSpan.removeEventListener('keydown', handleKeyDown);
-                        listSpan.removeEventListener('blur', saveNewListName);
-                    }
-                    
-                    // 处理键盘事件
-                    function handleKeyDown(e) {
-                        if (e.key === 'Enter') {
-                            e.preventDefault(); // 阻止插入换行
-                            saveNewListName();
-                            listSpan.blur(); // 移除焦点
-                        } else if (e.key === 'Escape') {
-                            e.preventDefault();
-                            // 如果按ESC，取消创建
-                            if (newItem.parentNode) {
-                                newItem.parentNode.removeChild(newItem);
+                        // 处理键盘事件
+                        function handleKeyDown(e) {
+                            if (e.key === 'Enter') {
+                                e.preventDefault(); // 阻止插入换行
+                                saveNewListName();
+                                listSpan.blur(); // 移除焦点
+                            } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                // 如果按ESC，取消创建
+                                if (newItem.parentNode) {
+                                    newItem.parentNode.removeChild(newItem);
+                                }
                             }
                         }
-                    }
-                    
-                    // 添加事件监听器
-                    listSpan.addEventListener('keydown', handleKeyDown);
-                    listSpan.addEventListener('blur', saveNewListName);
-                }, 50);
+                        
+                        // 添加事件监听器
+                        listSpan.addEventListener('keydown', handleKeyDown);
+                        listSpan.addEventListener('blur', saveNewListName);
+                    }, 50);
+                });
             });
 
             // 点击文档其他地方关闭所有弹出菜单
