@@ -432,6 +432,8 @@
                     e.preventDefault();
                 } else if (element === canvas) {
                     // 在空白画布上触摸，显示输入框
+                    // 精确记录触摸位置，确保标签创建在正确位置
+                    clickPosition = { x: touch.clientX, y: touch.clientY };
                     showInputModal(touch.clientX, touch.clientY);
                     e.preventDefault();
                 }
@@ -466,6 +468,8 @@
                 
                 // 只有点击画布而不是标签时才显示输入框
                 if (element === canvas) {
+                    // 精确记录触摸位置，确保标签创建在正确位置
+                    clickPosition = { x: touch.clientX, y: touch.clientY };
                     showInputModal(touch.clientX, touch.clientY);
                 }
             }
