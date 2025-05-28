@@ -2100,6 +2100,11 @@ body {
         // 修复创建空白可编辑任务的功能
         function createEmptyEditableTask() {
             console.log("创建新任务函数被调用");
+
+            if (!activeGroupId) { // Check global activeGroupId
+                showToast("请先选择或创建一个列表以添加任务。", 3000);
+                return;
+            }
             
             try {
                 // 确保任务列表元素存在
