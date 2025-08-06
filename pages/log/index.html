@@ -4,74 +4,240 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>日志</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        .timeline-line {
-            position: absolute;
-            left: 8px;
-            top: 0;
-            bottom: -16px;
-            width: 1px;
-            background: #d1d5db;
-        }
-        .timeline-item:last-child .timeline-line {
-            display: none;
-        }
-        .timeline-dot {
-            position: absolute;
-            left: 6px;
-            top: 6px;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: #6b7280;
-        }
-        /* 确保时间线容器有正确的定位上下文 */
-        #timeline {
-            position: relative;
-        }
-        .timeline-item {
-            position: relative;
-        }
-    </style>
-</head>
-<body class="bg-white min-h-screen">
-    <div class="max-w-2xl mx-auto px-4 py-6">
-        <h1 class="text-xl font-medium mb-6">日志</h1>
+    <link rel="stylesheet" href="styles.css">
+    <!-- CDN加载优化脚本 -->
+    <script>
+        // CDN配置 - 多源备选，确保全球可访问
+        const CDN_CONFIG = {
+            supabase: [
+                'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+                'https://unpkg.com/@supabase/supabase-js@2',
+                'https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/supabase.min.js',
+                'https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2',
+                'https://cdn.skypack.dev/@supabase/supabase-js@2'
+            ]
+        };
 
-        <form id="logForm" class="mb-8">
+        // CDN加载器
+        class CDNLoader {
+            constructor() {
+                this.loadedScripts = new Set();
+                this.loadedStyles = new Set();
+                this.timeout = 8000; // 8秒超时
+            }
+
+            // 检测资源类型
+            getResourceType(url) {
+                return 'js';
+            }
+
+            // 检测地理位置优化CDN顺序
+            async optimizeCDNOrder(urls) {
+                const optimized = [...urls];
+                
+                try {
+                    // 简单的地理检测 - 基于时区
+                    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    
+                    if (timezone.includes('Asia') || timezone.includes('Shanghai') || timezone.includes('Hong_Kong')) {
+                        // 亚洲地区优先使用更快的CDN
+                        optimized.sort((a, b) => {
+                            if (a.includes('fastly')) return -1;
+                            if (b.includes('fastly')) return 1;
+                            return 0;
+                        });
+                    } else if (timezone.includes('Europe')) {
+                        // 欧洲地区优化
+                        optimized.sort((a, b) => {
+                            if (a.includes('cdnjs') || a.includes('jsdelivr')) return -1;
+                            if (b.includes('cdnjs') || b.includes('jsdelivr')) return 1;
+                            return 0;
+                        });
+                    }
+                } catch (error) {
+                    console.log('地理位置检测失败，使用默认顺序');
+                }
+                
+                return optimized;
+            }
+
+            // 加载单个资源
+            loadResource(url, type) {
+                return new Promise((resolve, reject) => {
+                    let element;
+                    
+                    if (type === 'css') {
+                        element = document.createElement('link');
+                        element.rel = 'stylesheet';
+                        element.href = url;
+                    } else {
+                        element = document.createElement('script');
+                        element.src = url;
+                    }
+
+                    // 设置超时
+                    const timeoutId = setTimeout(() => {
+                        element.remove();
+                        reject(new Error(`加载超时: ${url}`));
+                    }, this.timeout);
+
+                    element.onload = () => {
+                        clearTimeout(timeoutId);
+                        console.log(`✅ CDN加载成功: ${url}`);
+                        resolve(url);
+                    };
+
+                    element.onerror = () => {
+                        clearTimeout(timeoutId);
+                        element.remove();
+                        reject(new Error(`加载失败: ${url}`));
+                    };
+
+                    document.head.appendChild(element);
+                });
+            }
+
+            // 尝试加载多个CDN源直到成功
+            async loadWithFallback(name, urls) {
+                const type = this.getResourceType(urls[0]);
+                const optimizedUrls = await this.optimizeCDNOrder(urls);
+                
+                console.log(`🚀 开始加载 ${name}，尝试顺序:`, optimizedUrls);
+
+                for (let i = 0; i < optimizedUrls.length; i++) {
+                    const url = optimizedUrls[i];
+                    try {
+                        await this.loadResource(url, type);
+                        
+                        // 特殊处理：验证Supabase是否真正可用
+                        if (name === 'supabase') {
+                            await this.waitForSupabase();
+                        }
+                        
+                        console.log(`✅ ${name} 加载成功: ${url}`);
+                        return url;
+                    } catch (error) {
+                        console.warn(`❌ ${name} CDN失败 (${i + 1}/${optimizedUrls.length}): ${error.message}`);
+                        
+                        if (i === optimizedUrls.length - 1) {
+                            throw new Error(`所有 ${name} CDN源均不可用`);
+                        }
+                        
+                        // 短暂延迟后尝试下一个CDN
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+            }
+
+            // 等待Supabase加载完成
+            waitForSupabase() {
+                return new Promise((resolve, reject) => {
+                    let attempts = 0;
+                    const maxAttempts = 50;
+                    
+                    const checkSupabase = () => {
+                        attempts++;
+                        
+                        if (window.supabase && typeof window.supabase.createClient === 'function') {
+                            resolve();
+                        } else if (attempts >= maxAttempts) {
+                            reject(new Error('Supabase验证超时'));
+                        } else {
+                            setTimeout(checkSupabase, 100);
+                        }
+                    };
+                    
+                    checkSupabase();
+                });
+            }
+
+            // 显示加载状态
+            showLoadingStatus(message, type = 'info') {
+                const existingStatus = document.querySelector('.status-indicator');
+                if (existingStatus) {
+                    existingStatus.remove();
+                }
+
+                const status = document.createElement('div');
+                status.className = `status-indicator ${type}`;
+                status.textContent = message;
+                document.body.appendChild(status);
+
+                setTimeout(() => {
+                    if (status && status.parentNode) {
+                        status.remove();
+                    }
+                }, type === 'error' ? 8000 : 3000);
+            }
+        }
+
+        // 初始化CDN加载器
+        const cdnLoader = new CDNLoader();
+
+        // 页面加载完成后开始加载CDN
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                cdnLoader.showLoadingStatus('正在加载数据库连接...', 'info');
+                
+                // 只加载Supabase CDN
+                const supabaseUrl = await cdnLoader.loadWithFallback('supabase', CDN_CONFIG.supabase);
+
+                cdnLoader.showLoadingStatus('CDN加载完成', 'success');
+                console.log('🎉 Supabase CDN加载完成:', supabaseUrl);
+                
+                // 触发自定义事件，通知主应用CDN已准备就绪
+                window.dispatchEvent(new CustomEvent('cdnReady', {
+                    detail: { supabase: supabaseUrl }
+                }));
+                
+            } catch (error) {
+                console.error('❌ CDN加载失败:', error);
+                cdnLoader.showLoadingStatus('CDN加载失败，部分功能可能不可用', 'error');
+                
+                // 即使CDN失败也要初始化基本功能
+                window.dispatchEvent(new CustomEvent('cdnError', {
+                    detail: { error: error.message }
+                }));
+            }
+        });
+    </script>
+
+</head>
+<body>
+    <div class="container">
+        <h1 class="page-title">日志</h1>
+
+        <form id="logForm" class="form-container">
             <textarea id="logContent" name="content" rows="3"
-                      class="w-full px-3 py-2 border-b border-gray-200 focus:outline-none focus:border-gray-400 resize-none"
+                      class="form-textarea"
                       placeholder="记录..." required></textarea>
-            <div class="flex justify-end space-x-2 mt-3">
-                <button type="button" id="cancelBtn" class="text-sm text-gray-500 hover:text-gray-700 hidden">
+            <div class="form-actions">
+                <button type="button" id="cancelBtn" class="btn btn-cancel hidden">
                     取消
                 </button>
-                <button type="submit" id="submitBtn"
-                        class="text-sm bg-black text-white px-4 py-1 hover:bg-gray-800">
+                <button type="submit" id="submitBtn" class="btn btn-primary">
                     保存
                 </button>
             </div>
         </form>
 
-        <div id="timeline" class="relative pl-6">
+        <div id="timeline" class="timeline-container">
             <!-- 日志条目 -->
         </div>
 
-        <div id="emptyState" class="text-center py-8 text-gray-400 text-sm hidden">
+        <div id="emptyState" class="empty-state hidden">
             暂无日志
         </div>
     </div>
 
-    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-30 hidden items-center justify-center">
-        <div class="bg-white p-6 max-w-xs mx-4">
-            <p class="mb-4 text-sm">确定删除？</p>
-            <div class="flex justify-end space-x-2">
-                <button id="cancelDelete" class="text-sm text-gray-500 hover:text-gray-700">
+    <div id="deleteModal" class="modal hidden">
+        <div class="modal-content">
+            <p class="modal-text">确定删除？</p>
+            <div class="modal-actions">
+                <button id="cancelDelete" class="btn btn-cancel">
                     取消
                 </button>
-                <button id="confirmDelete" class="text-sm bg-red-600 text-white px-3 py-1 hover:bg-red-700">
+                <button id="confirmDelete" class="btn btn-danger">
                     删除
                 </button>
             </div>

@@ -66,28 +66,13 @@ class ConnectionManager {
 
     // 显示提示信息
     showToast(message, type = 'info') {
-        const existingToast = document.querySelector('.connection-toast');
+        const existingToast = document.querySelector('.status-indicator');
         if (existingToast) {
             existingToast.remove();
         }
 
         const toast = document.createElement('div');
-        toast.className = `connection-toast fixed top-4 right-4 px-3 py-2 rounded text-xs font-medium z-50 max-w-xs`;
-        
-        switch (type) {
-            case 'success':
-                toast.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-200');
-                break;
-            case 'error':
-                toast.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200');
-                break;
-            case 'warning':
-                toast.classList.add('bg-yellow-100', 'text-yellow-800', 'border', 'border-yellow-200');
-                break;
-            default:
-                toast.classList.add('bg-blue-100', 'text-blue-800', 'border', 'border-blue-200');
-        }
-
+        toast.className = `status-indicator ${type}`;
         toast.textContent = message;
         document.body.appendChild(toast);
 
@@ -106,6 +91,10 @@ class ConnectionManager {
 // 初始化连接管理器
 const connectionManager = new ConnectionManager();
 
+// 全局变量
+let supabase = null;
+let isAppInitialized = false;
+
 // 初始化Supabase客户端，添加超时和错误处理
 function initializeSupabase() {
     try {
@@ -113,7 +102,7 @@ function initializeSupabase() {
             throw new Error('Supabase CDN未能加载');
         }
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             realtime: connectionManager.isMobile ? {
                 // 移动端优化：增加心跳间隔，减少连接频率
                 params: {
@@ -123,15 +112,57 @@ function initializeSupabase() {
             } : undefined
         });
 
-        return supabase;
+        console.log('✅ Supabase客户端初始化成功');
+        return client;
     } catch (error) {
-        console.error('Supabase初始化失败:', error);
+        console.error('❌ Supabase初始化失败:', error);
         connectionManager.showToast('数据库连接失败', 'error');
         return null;
     }
 }
 
-const supabase = initializeSupabase();
+// CDN就绪时初始化应用
+function initializeApp() {
+    if (isAppInitialized) return;
+    
+    console.log('🚀 开始初始化日志应用...');
+    
+    // 初始化Supabase
+    supabase = initializeSupabase();
+    
+    // 初始化日志管理器
+    if (typeof LogManager !== 'undefined') {
+        window.logManager = new LogManager();
+        isAppInitialized = true;
+        console.log('✅ 日志应用初始化完成');
+    } else {
+        console.error('❌ LogManager类未找到');
+    }
+}
+
+// 监听CDN加载完成事件
+window.addEventListener('cdnReady', (event) => {
+    console.log('📦 CDN加载完成:', event.detail);
+    connectionManager.showToast('资源加载完成', 'success');
+    
+    // 延迟初始化，确保所有依赖都已就绪
+    setTimeout(initializeApp, 100);
+});
+
+// 监听CDN加载失败事件
+window.addEventListener('cdnError', (event) => {
+    console.error('❌ CDN加载失败:', event.detail);
+    connectionManager.showToast('资源加载失败，功能可能受限', 'error');
+    
+    // 即使CDN失败也尝试初始化基本功能
+    setTimeout(() => {
+        if (window.supabase) {
+            initializeApp();
+        } else {
+            console.warn('⚠️ 无Supabase支持，应用以降级模式运行');
+        }
+    }, 1000);
+});
 
 // 日志管理类
 class LogManager {
@@ -156,11 +187,13 @@ class LogManager {
         } else {
             console.error('❌ Supabase不可用，实时同步无法启动');
             connectionManager.showToast('实时同步不可用，请刷新页面重试', 'warning');
-            this.showRealtimeStatus(false);
         }
         
         this.isInitialized = true;
         console.log('📝 日志应用初始化完成');
+        
+        // 开始实时监听连接状态
+        this.startConnectionMonitoring();
     }
 
     // 绑定事件
@@ -321,26 +354,23 @@ class LogManager {
                         console.log('✅ 实时监听已成功启用');
                         connectionManager.showToast('实时同步已启用', 'success');
                         this.realtimeRetryCount = 0; // 重置重试计数
-                        this.showRealtimeStatus(true);
+                        // 状态会由监听器自动更新，不需要手动调用
                         break;
                         
                     case 'CHANNEL_ERROR':
                         console.error('❌ 实时监听连接失败:', err);
                         connectionManager.showToast('实时同步连接失败', 'error');
-                        this.showRealtimeStatus(false);
                         this.retryRealtimeConnection();
                         break;
                         
                     case 'TIMED_OUT':
                         console.warn('⏰ 实时监听连接超时');
                         connectionManager.showToast('实时同步连接超时，正在重试...', 'warning');
-                        this.showRealtimeStatus(false);
                         this.retryRealtimeConnection();
                         break;
                         
                     case 'CLOSED':
                         console.log('🔒 实时监听连接已关闭');
-                        this.showRealtimeStatus(false);
                         if (connectionManager.isOnline) {
                             connectionManager.showToast('实时同步连接已断开，正在重连...', 'warning');
                             this.retryRealtimeConnection();
@@ -404,39 +434,135 @@ class LogManager {
 
     // 显示实时状态指示器
     showRealtimeStatus(isConnected) {
-        // 移除旧的状态指示器
-        const existingIndicator = document.querySelector('.realtime-status');
-        if (existingIndicator) {
-            existingIndicator.remove();
+        // 查找或创建状态指示器
+        let indicator = document.querySelector('.realtime-status');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.className = 'realtime-status';
+            document.body.appendChild(indicator);
         }
 
-        // 创建状态指示器
-        const indicator = document.createElement('div');
-        indicator.className = 'realtime-status fixed top-20 right-4 px-2 py-1 rounded text-xs font-medium z-40 flex items-center';
+        // 更新状态
+        indicator.className = isConnected ? 'realtime-status connected' : 'realtime-status disconnected';
         
         if (isConnected) {
-            indicator.classList.add('bg-green-50', 'text-green-700', 'border', 'border-green-200');
             indicator.innerHTML = `
-                <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                <div class="status-dot green pulse"></div>
                 实时同步
             `;
         } else {
-            indicator.classList.add('bg-gray-50', 'text-gray-500', 'border', 'border-gray-200');
             indicator.innerHTML = `
-                <div class="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                <div class="status-dot gray"></div>
                 同步断开
             `;
         }
 
-        document.body.appendChild(indicator);
+        // 状态指示器现在持续显示，不会自动隐藏
+        this.updateConnectionStatus();
+    }
 
-        // 10秒后自动隐藏（除非是断开状态）
-        if (isConnected) {
-            setTimeout(() => {
-                if (indicator && indicator.parentNode) {
-                    indicator.remove();
+    // 更新连接状态信息
+    updateConnectionStatus() {
+        const indicator = document.querySelector('.realtime-status');
+        if (!indicator) return;
+
+        // 添加点击查看详细信息的功能
+        indicator.onclick = () => {
+            const isConnected = this.realtimeChannel && this.realtimeChannel.state === 'joined';
+            const networkStatus = connectionManager.isOnline ? '在线' : '离线';
+            const supabaseStatus = supabase ? '已加载' : '未加载';
+            const connectionQuality = connectionManager.connectionQuality || '未知';
+            
+            const details = `
+=== 连接状态详情 ===
+网络状态: ${networkStatus}
+Supabase: ${supabaseStatus}
+实时连接: ${isConnected ? '已连接' : '断开'}
+连接质量: ${connectionQuality}
+重试次数: ${this.realtimeRetryCount || 0}
+设备类型: ${connectionManager.isMobile ? '移动端' : '桌面端'}
+            `.trim();
+            
+            console.log(details);
+            connectionManager.showToast('连接详情已输出到控制台', 'info');
+        };
+
+        // 添加tooltip提示
+        indicator.title = '点击查看详细连接信息';
+    }
+
+    // 开始实时监听连接状态
+    startConnectionMonitoring() {
+        // 初始显示状态
+        this.showRealtimeStatus(false);
+        
+        // 每5秒检查一次连接状态
+        this.connectionMonitorInterval = setInterval(() => {
+            this.checkAndUpdateConnectionStatus();
+        }, 5000);
+        
+        console.log('🔄 开始实时监听数据库连接状态');
+    }
+
+    // 检查并更新连接状态
+    async checkAndUpdateConnectionStatus() {
+        try {
+            // 检查网络状态
+            const networkOnline = navigator.onLine;
+            
+            // 检查Supabase客户端状态
+            const supabaseAvailable = !!supabase;
+            
+            // 检查实时连接状态
+            const realtimeConnected = this.realtimeChannel && this.realtimeChannel.state === 'joined';
+            
+            // 定期测试数据库连接
+            let databaseReachable = false;
+            if (supabaseAvailable && networkOnline) {
+                try {
+                    // 使用轻量级查询测试连接
+                    await connectionManager.executeWithRetry(async () => {
+                        const { error } = await supabase.from('logs').select('id').limit(1);
+                        if (error) throw error;
+                        databaseReachable = true;
+                    }, '连接测试');
+                } catch (error) {
+                    console.warn('数据库连接测试失败:', error.message);
+                    databaseReachable = false;
                 }
-            }, 10000);
+            }
+            
+            // 综合判断连接状态
+            const overallConnected = networkOnline && supabaseAvailable && realtimeConnected && databaseReachable;
+            
+            // 更新状态显示
+            this.showRealtimeStatus(overallConnected);
+            
+            // 如果连接状态发生变化，记录日志
+            if (this.lastConnectionStatus !== overallConnected) {
+                console.log(`📡 连接状态变化: ${overallConnected ? '已连接' : '已断开'}`);
+                console.log({
+                    网络: networkOnline ? '在线' : '离线',
+                    Supabase: supabaseAvailable ? '可用' : '不可用',
+                    实时连接: realtimeConnected ? '已连接' : '断开',
+                    数据库: databaseReachable ? '可达' : '不可达',
+                    综合状态: overallConnected ? '正常' : '异常'
+                });
+                this.lastConnectionStatus = overallConnected;
+            }
+            
+        } catch (error) {
+            console.error('连接状态检查失败:', error);
+            this.showRealtimeStatus(false);
+        }
+    }
+
+    // 停止连接监听
+    stopConnectionMonitoring() {
+        if (this.connectionMonitorInterval) {
+            clearInterval(this.connectionMonitorInterval);
+            this.connectionMonitorInterval = null;
+            console.log('🛑 停止实时连接状态监听');
         }
     }
 
@@ -589,29 +715,30 @@ class LogManager {
 
     // 创建日志条目HTML
     createLogItem(log) {
-        const timeAgo = this.getTimeAgo(log.created_at);
+        const timeInfo = this.getDetailedTime(log.created_at);
         const isUpdated = log.updated_at && log.updated_at !== log.created_at;
+        const updatedTimeInfo = isUpdated ? this.getDetailedTime(log.updated_at) : null;
 
         return `
-            <div class="timeline-item relative pb-6" data-id="${log.id}">
+            <div class="timeline-item" data-id="${log.id}">
                 <div class="timeline-line"></div>
                 <div class="timeline-dot"></div>
-                <div class="ml-4">
-                    <div class="flex justify-between items-start mb-2">
-                        <p class="text-gray-700 text-sm whitespace-pre-wrap flex-1">${this.escapeHtml(log.content)}</p>
-                        <div class="flex space-x-2 ml-4">
-                            <button onclick="logManager.editLog('${log.id}')"
-                                    class="text-gray-500 hover:text-gray-700 text-xs">
+                <div class="timeline-content">
+                    <div class="timeline-header">
+                        <p class="timeline-text">${this.escapeHtml(log.content)}</p>
+                        <div class="timeline-actions">
+                            <button onclick="logManager.editLog('${log.id}')" class="timeline-action">
                                 编辑
                             </button>
-                            <button onclick="logManager.showDeleteModal('${log.id}')"
-                                    class="text-gray-500 hover:text-gray-700 text-xs">
+                            <button onclick="logManager.showDeleteModal('${log.id}')" class="timeline-action">
                                 删除
                             </button>
                         </div>
                     </div>
-                    <div class="text-xs text-gray-400">
-                        ${timeAgo}${isUpdated ? ' (已编辑)' : ''}
+                    <div class="timeline-meta">
+                        <span class="time-tooltip" title="${timeInfo.full}">
+                            ${timeInfo.simple}
+                        </span>${isUpdated ? ` <span class="time-tooltip" title="编辑于: ${updatedTimeInfo.full}">(已编辑)</span>` : ''}
                     </div>
                 </div>
             </div>
@@ -633,6 +760,64 @@ class LogManager {
         return '刚刚';
     }
 
+    // 获取详细时间信息
+    getDetailedTime(timestamp) {
+        const time = new Date(timestamp);
+        const now = new Date();
+        
+        // 格式化日期
+        const year = time.getFullYear();
+        const month = time.getMonth() + 1;
+        const date = time.getDate();
+        const hours = time.getHours();
+        const minutes = time.getMinutes();
+        const seconds = time.getSeconds();
+        
+        // 获取星期几
+        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        const weekday = weekdays[time.getDay()];
+        
+        // 判断上午/下午/凌晨等
+        let timeOfDay;
+        if (hours >= 0 && hours < 6) {
+            timeOfDay = '凌晨';
+        } else if (hours >= 6 && hours < 12) {
+            timeOfDay = '上午';
+        } else if (hours >= 12 && hours < 18) {
+            timeOfDay = '下午';
+        } else {
+            timeOfDay = '晚上';
+        }
+        
+        // 12小时制显示
+        const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+        
+        // 判断是否是今天、昨天等
+        const isToday = now.toDateString() === time.toDateString();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const isYesterday = yesterday.toDateString() === time.toDateString();
+        
+        let dateStr;
+        if (isToday) {
+            dateStr = '今天';
+        } else if (isYesterday) {
+            dateStr = '昨天';
+        } else if (year === now.getFullYear()) {
+            dateStr = `${month}月${date}日`;
+        } else {
+            dateStr = `${year}年${month}月${date}日`;
+        }
+        
+        // 格式化时间
+        const timeStr = `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        return {
+            full: `${dateStr} ${weekday} ${timeOfDay} ${timeStr}`,
+            simple: this.getTimeAgo(timestamp)
+        };
+    }
+
     // HTML转义
     escapeHtml(text) {
         const div = document.createElement('div');
@@ -642,45 +827,92 @@ class LogManager {
 
     // 清理资源
     cleanup() {
+        // 停止连接状态监听
+        this.stopConnectionMonitoring();
+        
+        // 清理实时连接
         if (this.realtimeChannel && supabase) {
             supabase.removeChannel(this.realtimeChannel);
             this.realtimeChannel = null;
         }
+        
+        // 移除状态指示器
+        const indicator = document.querySelector('.realtime-status');
+        if (indicator) {
+            indicator.remove();
+        }
     }
 }
 
-// 初始化应用
-const logManager = new LogManager();
-
-// 将logManager暴露到全局，供网络监听器使用
-window.logManager = logManager;
-
 // 页面卸载时清理资源
 window.addEventListener('beforeunload', () => {
-    logManager.cleanup();
+    if (window.logManager && typeof window.logManager.cleanup === 'function') {
+        window.logManager.cleanup();
+    }
+});
+
+// 兼容性检查 - 如果CDN已经加载完成（比如直接访问），立即初始化
+document.addEventListener('DOMContentLoaded', () => {
+    // 等待一小段时间，让CDN加载器有机会运行
+    setTimeout(() => {
+        if (!isAppInitialized && window.supabase) {
+            console.log('🔄 检测到Supabase已可用，直接初始化...');
+            initializeApp();
+        }
+    }, 500);
 });
 
 // 添加调试工具
 window.debugRealtime = () => {
-    if (logManager) {
+    if (window.logManager) {
         console.log('=== 实时订阅调试信息 ===');
-        console.log('连接状态:', logManager.checkRealtimeStatus());
+        console.log('应用初始化状态:', isAppInitialized);
+        console.log('连接状态:', window.logManager.checkRealtimeStatus());
         console.log('网络状态:', connectionManager.isOnline ? '在线' : '离线');
         console.log('是否移动端:', connectionManager.isMobile);
-        console.log('重试次数:', logManager.realtimeRetryCount || 0);
+        console.log('重试次数:', window.logManager.realtimeRetryCount || 0);
+        console.log('Supabase可用:', !!supabase);
         
-        if (logManager.realtimeChannel) {
+        if (window.logManager.realtimeChannel) {
             console.log('频道详情:', {
-                topic: logManager.realtimeChannel.topic,
-                state: logManager.realtimeChannel.state,
-                joinedAt: logManager.realtimeChannel.joinedAt
+                topic: window.logManager.realtimeChannel.topic,
+                state: window.logManager.realtimeChannel.state,
+                joinedAt: window.logManager.realtimeChannel.joinedAt
             });
         }
         
         // 手动重新连接
         console.log('手动重新连接实时订阅...');
-        logManager.setupRealtime();
+        window.logManager.setupRealtime();
+    } else {
+        console.warn('⚠️ 日志管理器未初始化');
+        console.log('CDN状态检查:');
+        console.log('- Supabase可用:', !!window.supabase);
+        console.log('- 应用初始化:', isAppInitialized);
+        
+        if (window.supabase && !isAppInitialized) {
+            console.log('🔄 尝试手动初始化应用...');
+            initializeApp();
+        }
     }
+};
+
+// 添加CDN状态检查工具
+window.debugCDN = () => {
+    console.log('=== CDN状态调试信息 ===');
+    console.log('自定义CSS可用:', !!document.querySelector('link[href*="styles.css"]'));
+    console.log('Supabase可用:', !!window.supabase);
+    console.log('应用初始化状态:', isAppInitialized);
+    console.log('网络状态:', navigator.onLine ? '在线' : '离线');
+    console.log('用户代理:', navigator.userAgent);
+    console.log('时区:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+    
+    // 检查已加载的资源
+    const scripts = Array.from(document.querySelectorAll('script[src]'));
+    const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+    
+    console.log('已加载的脚本:', scripts.map(s => s.src));
+    console.log('已加载的样式:', links.map(l => l.href));
 };
 
 /* 
